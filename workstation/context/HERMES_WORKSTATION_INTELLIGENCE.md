@@ -1,5 +1,9 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-10 — Operational speed preflight status
+
+The current lane is blocked before runtime implementation: required upstream-baseline CI is red and focused tests reproduce DIRECT-attestation authenticity/scope failures. This does not establish product speed or cost. Latency, actual model/tool calls, tokens, and cost remain UNKNOWN; native E1/E2/E3 remain unrun. Follow the dated [preflight evidence](engineering-journal/operational-speed-preflight-2026-10-10.md) and existing qualification gates.
+
 <!-- dogfood-gate:2026-10-09 -->
 ## 2026-10-09 — D-042: Dogfood is the product's executable acceptance contract
 

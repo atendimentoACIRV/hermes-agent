@@ -1,5 +1,9 @@
 # Architectural Decisions
 
+## Operational speed gate — 2026-10-10 status
+
+This records current qualification status under existing decisions; it creates no new decision ID. Runtime operational-speed work remains blocked until the pinned upstream baseline qualifies and DIRECT attestation authenticity/scope regressions pass. Current evidence supports neither a product latency/cost claim nor native E1/E2/E3 completion. See [dated preflight](engineering-journal/operational-speed-preflight-2026-10-10.md).
+
 <!-- dogfood-gate:2026-10-09 -->
 ## D-042 — Dogfood is a first-class, empirical product gate (2026-10-09)
 

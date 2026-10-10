@@ -1,5 +1,9 @@
 # Workstation roadmap
 
+## 2026-10-10 — Operational speed preflight
+
+**Status: BLOCKED / EVIDENCE AND REGRESSION TESTS ONLY.** The selected upstream baseline is not qualified: required Workstation CI failed (`laya` missing; 7 failures, 893 passed, 2 skipped), and two focused DIRECT-attestation regressions fail on the audit head. Product latency/cost and native E1/E2/E3 remain UNKNOWN/not run. Do not start operational-speed runtime work until the baseline and attestation gate close. [Preflight evidence](context/engineering-journal/operational-speed-preflight-2026-10-10.md).
+
 <!-- dogfood-gate:2026-10-09 -->
 ## 2026-10-09 — D-042 Dogfood-first product acceptance, native learning and HyperFrames qualification
 

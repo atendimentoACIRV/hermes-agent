@@ -1,5 +1,9 @@
 # Current State
 
+## 2026-10-10 — Operational speed preflight: BLOCKED
+
+Audit head `8e64b38a81adcf8a01dc2ed05aa3eb078adc9f9f` is not product-qualified. Required baseline run [37826432518](https://github.com/kevynlucasprofissional-stack/hermes-agent/actions/runs/37826432518) failed contracts (7 `ModuleNotFoundError: laya`, 893 passed, 2 skipped); core-patch passed and durable/replay were skipped. The focused Windows attestation run also failed 2 regressions (7 passed), observing DIRECT where SHADOW was expected for self-signed and rehashed attestations. A separate focused contract-fixture run passed 75 tests with 1 skipped; it is not real Trello/HyperFrames/Electron proof and does not close the RED. Audit-base Desktop typecheck exited 1 with unresolved `blobatar/blob` and `blobatar/react` imports in the reused ancestor `node_modules` environment; this is an incomplete dependency diagnostic, not native verification. No external effects were attempted. Operational latency, model/tool calls, tokens, and cost are UNKNOWN; native E1/E2/E3 were not run. [Evidence](engineering-journal/operational-speed-preflight-2026-10-10.md).
+
 <!-- dogfood-gate:2026-10-09 -->
 ## 2026-10-09 Dogfood-first independent audit — DOCUMENTED / NO NEW CODE
 

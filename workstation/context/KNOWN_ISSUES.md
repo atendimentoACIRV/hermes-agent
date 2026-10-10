@@ -1,5 +1,9 @@
 # Workstation Known Issues
 
+## Operational-speed preflight — baseline and DIRECT attestation remain open (2026-10-10)
+
+The upstream-aligned baseline is unqualified: required CI contracts failed on missing `laya`, and focused regressions show self-signed and rehashed attestations can resolve outside SHADOW. No product effects were executed. Treat product latency, call counts, token/cost data, and native E1/E2/E3 as UNKNOWN/not run. The exact receipts and next gate are in the [preflight record](engineering-journal/operational-speed-preflight-2026-10-10.md).
+
 ## KI-027 — Rigid online learning limits discard valuable same-run opportunities [OPEN — OPPORTUNITY/PRODUCT]
 
 **Observed design gap (2026-10-08):** At `938d9b2beeaf`, SHADOW mode suppresses mining and validation entirely. DIRECT is unlocked by any nonempty `direct_qualification_ref` (not a verified attestation). `OnlineCompilabilityMonitor` discards queued events on saturation/stop and evicts 900s-idle hot windows; attempt budgets (3 compilation attempts per segment; 3 validations per candidate), 4 offers and 64 windows do not re-open based on genuine new evidence or rehydrate persistent opportunity state. The existing 100-item checkpoint limit is a fairness budget but does not independently ensure next-checkpoint continuation. Long-running TaskRuns are not intentionally cancelled by these learning limits; loss is missed or postponed compilation/reuse.

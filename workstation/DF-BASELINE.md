@@ -1,4 +1,5 @@
 # Hermes Workstation — DF-BASELINE (DF0–DF7 Dogfood Causal Closure Matrix)
+> **Current qualification note (2026-10-10):** Historical qualification rows below do not establish the present operational-speed baseline. Current required CI is red, two focused DIRECT-attestation regressions fail, and product latency/cost plus native E1/E2/E3 are UNKNOWN/not run. See [dated preflight evidence](context/engineering-journal/operational-speed-preflight-2026-10-10.md).
 **Date:** 2026-10-09  
 **Branch:** `codex/dogfood-causal-closure-20261009`  
 **Adopted Upstream Pin:** `71a2fe399bbd7a219c71f9d9fca2b313b01f2057` (`HW-032`/`HW-033`)  

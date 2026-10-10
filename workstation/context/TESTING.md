@@ -1,5 +1,9 @@
 # Workstation Testing
 
+## 2026-10-10 operational speed preflight — BLOCKED
+
+Official native Windows runner for `workstation/tests/test_direct_qualification_attestation.py` exited 1: 7 passed, 2 failed (`test_self_signed_attestation_cannot_enable_direct`; `test_rehashed_attestation_cannot_expand_qualified_scope`). Both observed DIRECT where SHADOW was expected. Required baseline CI run [37826432518](https://github.com/kevynlucasprofissional-stack/hermes-agent/actions/runs/37826432518) failed contracts with 7 missing-Laya failures (893 passed, 2 skipped); core-patch passed; durable/replay skipped. A separate existing-contract fixture run passed 75, failed 0, skipped 1; it does not qualify the product or close the security RED. Audit-base Desktop typecheck exited 1 with unresolved `blobatar/blob` and `blobatar/react` imports from the reused ancestor `node_modules` environment, an incomplete dependency diagnostic rather than native verification. No external effects were attempted. Full commands and evidence are in the [preflight record](engineering-journal/operational-speed-preflight-2026-10-10.md).
+
 ## 2026-10-08 H-081 clean-profile and timeout qualification
 
 The H-081 complete suite includes real Anthropic SDK construction. Its clean CI install

@@ -1,5 +1,9 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-10 — Operational speed preflight (BLOCKED)
+
+The completed preflight reproduced two failing DIRECT-attestation regressions on audit head `8e64b38a81adcf8a01dc2ed05aa3eb078adc9f9f` (7 passed, 2 failed; both observed DIRECT instead of SHADOW); required baseline CI [37826432518](https://github.com/kevynlucasprofissional-stack/hermes-agent/actions/runs/37826432518) also failed contracts due to missing `laya` (7 failures, 893 passed, 2 skipped). A separate fixture-focused run passed 75, failed 0, skipped 1, without establishing product proof or closing the RED. Audit-base Desktop typecheck failed on unresolved `blobatar/blob` and `blobatar/react` imports in the reused ancestor dependency environment. No runtime fix, external effect, or native E1/E2/E3 run is claimed. Product latency and cost remain UNKNOWN. Continue evidence/tests/docs only until baseline and attestation gate close. [Full command, phase row, and evidence](operational-speed-preflight-2026-10-10.md).
+
 <!-- dogfood-gate:2026-10-09 -->
 ## 2026-10-09 — D-042 Dogfood-first audit and handoff (DOCS ONLY)
 
