@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useNativeViewOcclusion } from '@/app/browser/native-view-occlusion'
+import { TaskJournalDrawer } from '@/app/browser/task-journal-drawer'
 import type { WorkstationBrowserBounds, WorkstationBrowserState, WorkstationBrowserTabState } from '@/app/browser/types'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
@@ -81,6 +82,7 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
   const [state, setState] = useState<WorkstationBrowserState>(EMPTY_STATE)
   const [runtimeDiscovered, setRuntimeDiscovered] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [showJournal, setShowJournal] = useState(false)
   const hostRef = useRef<HTMLDivElement | null>(null)
 
   const selectedStoredSessionId = useStore($selectedStoredSessionId)
@@ -117,6 +119,13 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
     () => state.tabs.find(tab => tab.id === state.activeTabId) ?? state.tabs[0] ?? null,
     [state.activeTabId, state.tabs]
   )
+
+  const backgroundTaskCount = useMemo(() => {
+    if (!state.tasks) return 0
+    return state.tasks.filter(
+      task => task.taskId !== preferredTaskId && (task.status === 'parked' || task.status === 'hidden')
+    ).length
+  }, [state.tasks, preferredTaskId])
 
   const run = useCallback(
     async (fn: () => Promise<WorkstationBrowserState>) => {
@@ -315,11 +324,21 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
           </Button>
         </div>
 
-        <div className="min-w-0 flex-1 truncate px-1 text-center font-mono text-[11px] text-(--ui-text-secondary)">
-          {shortTitle(activeTab)}
+        <div className="min-w-0 flex-1 truncate px-1 text-center font-mono text-[11px] text-(--ui-text-secondary) flex items-center justify-center gap-1.5">
+          {busy && <span className="size-1.5 shrink-0 rounded-full bg-amber-400 animate-pulse" title="Action in progress" />}
+          <span className="truncate">{shortTitle(activeTab)}</span>
         </div>
 
         <div className="flex items-center gap-1">
+          {backgroundTaskCount > 0 && (
+            <span
+              className="rounded-full bg-(--ui-sidebar-surface-background) border border-(--ui-stroke-tertiary) px-1.5 py-0.5 text-[9px] font-mono text-(--ui-text-tertiary)"
+              title={`${backgroundTaskCount} background browser task(s) running`}
+            >
+              ⚡{backgroundTaskCount}
+            </span>
+          )}
+
           <span
             className={cn(
               'rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase',
@@ -334,6 +353,42 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
             {state.paused ? 'Paused' : state.controlOwner}
           </span>
 
+          {state.controlOwner === 'human' ? (
+            <Button
+              aria-label="Release Human Control"
+              onClick={() => void run(() => bridge.releaseControl(preferredTaskId ?? undefined))}
+              size="icon-xs"
+              variant="ghost"
+              className="text-sky-400 hover:text-sky-300"
+              title="Hand control back to agent"
+            >
+              <Codicon name="robot" size="0.75rem" />
+            </Button>
+          ) : (
+            <Button
+              aria-label="Take Human Control"
+              onClick={() => void run(() => bridge.takeControl(preferredTaskId ?? undefined, activeSessionKey ?? undefined))}
+              size="icon-xs"
+              variant="ghost"
+              className="text-(--ui-text-tertiary) hover:text-(--ui-text-primary)"
+              title="Take human control"
+            >
+              <Codicon name="person" size="0.75rem" />
+            </Button>
+          )}
+
+          {preferredTaskId && (
+            <Button
+              aria-label="Toggle Execution History"
+              onClick={() => setShowJournal(prev => !prev)}
+              size="icon-xs"
+              variant={showJournal ? 'secondary' : 'ghost'}
+              title="Execution history & journal"
+            >
+              <Codicon name="history" size="0.75rem" />
+            </Button>
+          )}
+
           {onPopOut && (
             <Button
               aria-label="Pop out to Browser Hub"
@@ -346,6 +401,25 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
           )}
         </div>
       </div>
+
+      {(activeTab?.loading || busy) && (
+        <div className="h-0.5 w-full bg-emerald-500/20 overflow-hidden">
+          <div className="h-full bg-emerald-500 animate-pulse w-full" />
+        </div>
+      )}
+
+      {state.controlOwner === 'human' && (
+        <div className="flex items-center justify-between gap-2 border-b border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs text-sky-300">
+          <span>Human control active. Agent actions safely paused.</span>
+          <Button
+            onClick={() => void run(() => bridge.releaseControl(preferredTaskId ?? undefined))}
+            size="xs"
+            variant="secondary"
+          >
+            Release to Agent
+          </Button>
+        </div>
+      )}
 
       {isAttachedElsewhere && (
         <div className="flex items-center justify-between gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">
@@ -378,6 +452,13 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
           <div className="absolute inset-0 grid place-items-center text-xs text-(--ui-text-tertiary)">
             Starting Workstation Browser…
           </div>
+        )}
+        {showJournal && preferredTaskId && (
+          <TaskJournalDrawer
+            taskId={preferredTaskId}
+            onClose={() => setShowJournal(false)}
+            className="absolute inset-y-0 right-0 z-20 w-80 shadow-2xl border-l border-(--ui-stroke-secondary)"
+          />
         )}
       </div>
     </div>

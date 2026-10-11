@@ -717,3 +717,43 @@ test('browser_type handles clear and append options without errors', async () =>
   assert.equal(appended.success, true)
   await runtime.destroy()
 })
+
+test('idempotent duplicate mutation replay with same operation_id returns previous receipt without re-execution', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const taskId = 'task-idempotent-test'
+  const operationId = 'op-unique-12345'
+
+  await executeControlRequest(runtime, {
+    action: 'browser_navigate',
+    task_id: taskId,
+    operation_id: 'op-nav-1',
+    arguments: { url: 'https://example.test/form' }
+  })
+
+  const firstType = await executeControlRequest(runtime, {
+    action: 'browser_type',
+    task_id: taskId,
+    operation_id: operationId,
+    arguments: { ref: '@e1', text: 'first run', clear: true }
+  })
+
+  assert.equal(firstType.success, true)
+  assert.equal(firstType.idempotent_replay, undefined)
+
+  // Replaying the exact same mutation with the same operation_id
+  const replayType = await executeControlRequest(runtime, {
+    action: 'browser_type',
+    task_id: taskId,
+    operation_id: operationId,
+    arguments: { ref: '@e1', text: 'first run', clear: true }
+  })
+
+  assert.equal(replayType.success, true)
+  assert.equal(replayType.idempotent_replay, true)
+  assert.equal(replayType.operation_id, operationId)
+  assert.deepEqual(replayType.receipt, firstType.receipt)
+
+  await runtime.destroy()
+})
+

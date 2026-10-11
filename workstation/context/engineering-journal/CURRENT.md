@@ -1,5 +1,46 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-11 — BROW-C2C Browser Ecosystem Optimizations Implementation (PR #67)
+
+**Classificação: IMPLEMENTAÇÃO RUNTIME, TESTES E QUALIFICAÇÃO INTEGRADOS.**
+Branch: `feat/workstation-browser-optimization-c2c`.
+Base/Pin Upstream: `66605471e9f0b0832abbefaf625ce08e948ca540` verificado como ancestral do HEAD. Seams audit: 14 classificados, 0 não classificados, 0 regressões de orçamento.
+
+### Unidades Concluídas e Verificadas:
+1. **BROW-00 / BROW-01 (Baseline & Benchmark):**
+   - Qualificação da baseline com suíte completa de referência (Vitest patch-kit: 24 passed, Node benchmark: 12 passed, Pytest rotas: 16 passed, Electron runtime: 89 passed).
+   - Fixtures cobrindo 7 cenários: forms, delayed hydration, tables/lists, rich editor, navigation, tab recovery, human takeover.
+2. **OPT-01 (Browser Batch Actions):**
+   - `apps/desktop/electron/workstation-browser-batch.ts` implementado com tipagem estrita de ações serializadas (`click`, `type`, `press`, `scroll`).
+   - Integrado em `executeControlRequest()` com validação por passo do lease (`BrowserHumanControlLease`), receipts por suboperação (`BrowserOwnerReceipt`), persistência de progresso e halt imediato no primeiro efeito incerto ou intervenção humana (`409 USER_CONTROL_ACTIVE`).
+   - Registrado de ponta a ponta na camada Python: `tools/browser_workstation.py`, `tools/browser_tool.py`, `workstation/integrations/hermes/browser_controller.py`, `workstation/routing.py`, `workstation/operational_kernel.py`, `workstation/run_adoption.py`.
+   - Testes: 11 unitários Vitest, 4 de integração Electron, 3 de integração pytest (`test_browser_batch_actions.py`).
+3. **OPT-02 (Snapshot com Accessibility Tree):**
+   - `apps/desktop/electron/workstation-browser-snapshot.ts` implementando leitura experimental de CDP `Accessibility.getFullAXTree` com mapeamento híbrido para `window.__hermesWorkstationRefs`.
+   - Feature flag `HERMES_BROWSER_AXTREE_ENABLED` (padrão desligada); fallback canônico preservado em `inventoryScript()`.
+   - 8 testes Vitest cobrindo shadow DOM, iframe, editable content, canvas/SPA e WebContents destruído.
+4. **OPT-03 (Extração Estruturada Aprimorada):**
+   - `apps/desktop/electron/workstation-browser-extract-cache.ts` com `BoundedExtractCache` indexado por estado completo do documento (`documentFingerprint`, `documentEpoch`, `mutationRevision`, `queryDigest`, `taskId`, `tabId`, `profileId`).
+   - Normalização tipada por schema e sanitização/isolamento estrito de dados sensíveis (tokens, JWT, passwords, cartões de crédito).
+   - Invalidação automática em mutações, navegações (`did-navigate`, `did-navigate-in-page`), crashes e assunção de controle humano.
+   - 9 testes unitários Vitest e validação com `test_browser_extract_items.py` (2 passed).
+5. **OPT-04 (Snapshot Delta):**
+   - `apps/desktop/electron/workstation-browser-snapshot-diff.ts` conectado como projeção opcional de `snapshotForEntry()`.
+   - Reconstrução exata e verificação de conservadorismo (fallback para snapshot completo em truncamento, mismatch de baseline ou economia < 20%).
+   - 9 testes Vitest cobrindo documentos extensos (2.000+ linhas), caracteres Unicode e corrupção de hunks.
+6. **OPT-06 / OPT-09 / OPT-12 (Estabilidade & Resiliência):**
+   - Prevenção de execução duplicada via idempotência de `operation_id` em mutações na fila de controle.
+   - Resiliência em `render-process-gone` com reset de `loading`, marcação de `stale` e retenção no `pendingSessionTabs`.
+   - 12 testes de resiliência Vitest passando (100% green).
+7. **UX (Melhorias inspiradas no BrowserOS):**
+   - Painel `workstation-browser-pane.tsx` atualizado com banner de transição segura para controle humano, barra de progresso para carregamento/execução, identificador de tarefas em segundo plano e acesso integrado ao `TaskJournalDrawer`.
+8. **OPT-05 (Importação de Sessões Chrome - HOLD):**
+   - Mantido estritamente em HOLD por motivos de privacidade e conformidade com §2 do `SECURITY.md`.
+   - Documento de análise de risco e requisitos mandatórios registrado em `workstation/context/OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`.
+
+Suíte Electron Browser: 15 arquivos, 140 testes 100% green.
+Pytest Browser: 19 testes em `test_browser_workstation_route.py` e `test_browser_batch_actions.py` 100% green.
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — D-043: EffectCraft/OpenReel/HyperFrames -> CW engine-neutral
 **CLASSIFICAÇÃO: DESIGN E IMPLEMENTAÇÃO ENGINE-NEUTRAL.** Fontes EffectCraft, OpenReel, HyperFrames; Creative Document, Command Bus, NLE, Semantic Edit Plan, Freeform scene adapters, Video Export pipeline (CWN-00..06). [Jornal completo](creative-engine-neutral-2026-10-10.md).

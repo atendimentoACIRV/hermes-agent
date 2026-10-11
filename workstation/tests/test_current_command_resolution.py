@@ -69,3 +69,19 @@ def test_ambiguous_observed_uninstalled_and_cancelled_commands_do_not_dispatch()
     assert consult(fresh) is None, "missing installed capability falls back to reasoning"
     fresh._interrupt_requested = True
     assert consult(fresh) is None
+
+
+def test_dispatch_failure_returns_wait_safely(monkeypatch):
+    """When dispatch raises an exception, operational resolution returns WAIT and does not retry blindly."""
+    agent, work = admit("Abre o Trello.")
+    assert work.requires_task
+
+    from unittest.mock import patch
+    with patch("workstation.integrations.hermes.operational_resolution._dispatch_intent", side_effect=RuntimeError("Controller connection lost")):
+        with patch("workstation.work_intent.current_command_objective", return_value={"operation_id": "op_test", "operation_intent": {}, "inputs": {}}):
+            resolution = consult(agent)
+            assert resolution is not None
+            assert resolution.outcome is OperationalOutcome.WAIT
+            assert "Controller connection lost" in resolution.final_response or "RuntimeError" in resolution.final_response
+            assert "dispatch_failed:RuntimeError" in resolution.reason
+

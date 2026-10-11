@@ -1,5 +1,15 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser no Runtime e UX
+**Síntese de Implementação:** O ecossistema de navegação foi aprimorado sem introduzir novos engines concorrentes ao `TaskCompiler`, sem quebrar o lease `BrowserHumanControlLease`, sem reexecuções cegas de mutações incertas e sem violar o isolamento de perfis (§2 do `SECURITY.md`).
+- **Batch Actions (`browser_batch_actions`):** Execução sequencial estrita com assert de lease a cada passo, receipts rastreáveis (`BrowserOwnerReceipt`) e interrupção no primeiro efeito incerto.
+- **Accessibility Tree (`tryAccessibilitySnapshot`):** Leitura experimental via CDP `Accessibility.getFullAXTree` com mapeamento reverso para referências `@eN` no DOM e fallback seguro para o snapshot tradicional via `inventoryScript()`.
+- **Extração com Cache Confinado (`BoundedExtractCache`):** Revalidação obrigatória de identidade do documento (`documentFingerprint`, `documentEpoch`, `mutationRevision`) antes de qualquer hit de cache. Redação estrita de tokens, segredos e chaves de API.
+- **Projeção Delta (`diffSnapshot`):** Redução de tráfego de snapshot via diff de linhas com validação estrita de integridade e fallback para payload completo em casos de truncamento ou ganho de bytes insuficiente.
+- **Resiliência e Idempotência:** Deduplicação de requisições de mutação via chave `operation_id`, tratamento limpo de crashes em `render-process-gone` e recuperação de abas sem perda de identidade de `BrowserTask`.
+- **Transição Humano/Agente na UX:** Botões dedicados no painel do chat para tomar/liberar controle manual, indicadores de progresso e acesso direto ao diário de execução (`TaskJournalDrawer`).
+- **OPT-05 (Importação de Sessões Chrome):** Mantido em HOLD com avaliação de risco e requisitos mandatórios documentados em `workstation/context/OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`.
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — Creative Workstation D-043: inteligência arquitetura + evidências
 **Síntese:** Creative Document com IDs e rational media map; Command Bus + transações, histórico/Undo; split/trim/ripple/slip/slide/roll verificáveis; Semantic Edit Plan com diff/revisões, real preview e aprovação parcial; camada freeform com parâmetros ou opacidade explícita; adaptadores de renderização qualificados por métricas; UX contextual que permite cortar, animar e fazer design/3D sobre o mesmo projeto; Experience Compiler existente pode compilar procedimentos criativos com prova real. Não criar outro BrowserTask, TaskRun, ArtifactStore, Control Plane ou registry de aprendizagem.

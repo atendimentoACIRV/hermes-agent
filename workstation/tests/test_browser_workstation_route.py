@@ -258,6 +258,28 @@ def test_workstation_schema_tools_includes_extract_items():
     assert "browser_extract_items" in bw._WORKSTATION_SCHEMA_TOOLS
 
 
+def test_workstation_schema_tools_includes_batch_actions():
+    assert "browser_batch_actions" in bw._WORKSTATION_SCHEMA_TOOLS
+
+
+def test_browser_batch_actions_dispatches_with_steps(controller):
+    steps = [
+        {"kind": "click", "ref": "@e1"},
+        {"kind": "type", "ref": "@e2", "text": "hello"},
+        {"kind": "press", "key": "Enter"}
+    ]
+    result = bw.workstation_routed_browser_handler(
+        "browser_batch_actions",
+        {"steps": steps},
+        fallback=lambda: pytest.fail("legacy fallback must not run"),
+        task_id="task-batch",
+    )
+    decoded = json.loads(result)
+    assert decoded["runtime"] == "electron-chromium"
+    assert decoded["action"] == "browser_batch_actions"
+    assert decoded["arguments"]["steps"] == steps
+
+
 def test_adaptive_browser_loop_uses_one_task_despite_repeatability(controller):
     from types import SimpleNamespace
     from unittest.mock import patch

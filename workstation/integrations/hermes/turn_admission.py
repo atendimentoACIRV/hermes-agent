@@ -6,6 +6,7 @@ from agent.turn_ingress import TurnIngress, TurnOrigin, TurnTrustClass
 from agent.turn_route_policy import TurnRoutePolicy, set_current_turn_route_policy
 from workstation.contracts import IntentAuthority, MessageEnvelope, MessageOrigin
 from workstation.work_intent import prepare_turn_work
+from workstation.prefabs.integration import prepare_user_navigation, prepare_user_trello_read
 
 
 def workstation_turn_admission(
@@ -97,6 +98,18 @@ def workstation_turn_admission(
     agent._work_compilation_candidates = {}
     agent._work_procedure_trace = []
     agent._work_procedure_trace_truncated = False
+
+    # Prefab Fast Path: extract exact-match navigation/read intents from human-origin turns
+    # Only for authenticated human turns with CREATE_WORK or UPDATE_WORK authority
+    if (isinstance(envelope, MessageEnvelope) and
+        str(envelope.origin).lower() == "human" and
+        str(envelope.intent_authority).lower() in {"create_work", "update_work"}):
+        nav_key = prepare_user_navigation(envelope)
+        if nav_key:
+            agent._prefab_navigation_intent = nav_key
+        trello_intent = prepare_user_trello_read(envelope)
+        if trello_intent:
+            agent._prefab_trello_read_intent = trello_intent
 
     intent = prepare_turn_work(agent, envelope.content, envelope=envelope)
     from workstation.telemetry import TelemetryEventType, emit_event

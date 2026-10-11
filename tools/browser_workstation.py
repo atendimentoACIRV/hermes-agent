@@ -151,6 +151,7 @@ _WORKSTATION_SCHEMA_TOOLS = frozenset({
     "browser_vision",
     "browser_console",
     "browser_extract_items",
+    "browser_batch_actions",
     # Extension management is a Desktop-session capability: the agent can
     # request it explicitly, but non-Desktop sessions never carry these
     # schemas. Runtime reachability/policy remain checked at dispatch.
@@ -726,6 +727,10 @@ def _dispatch(
         _validate_navigation(args)
     if action == "browser_type":
         resolve_browser_type_text(args, task_id=task_id, session_id=session_id)
+    if action == "browser_batch_actions":
+        for step in args.get("steps", []):
+            if isinstance(step, dict) and step.get("kind") == "type":
+                resolve_browser_type_text(step, task_id=task_id, session_id=session_id)
     key = _task_key(task_id, session_id)
     try:
         timeout = float(os.getenv("HERMES_WORKSTATION_BROWSER_TIMEOUT", str(_DEFAULT_TIMEOUT_SECONDS)))

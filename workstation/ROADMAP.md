@@ -1,5 +1,18 @@
 # Workstation roadmap
 
+## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser (PR #67)
+**STATUS: IMPLEMENTAÇÃO COMPLETA / QUALIFICADA LOCALMENTE.**
+Branch de trabalho: `feat/workstation-browser-optimization-c2c`.
+- **BROW-00 / BROW-01:** Baseline qualificada no pin upstream `66605471e9f0b0832abbefaf625ce08e948ca540`. 0 regressões de orçamento de seams (14 costuras classificadas, 0 não-classificadas). Benchmark local estabelecido para formulários, SPAs de hidratação lenta, tabelas, editores ricos, navegação e concorrência humano-agente.
+- **OPT-01 (Browser Batch Actions):** `apps/desktop/electron/workstation-browser-batch.ts` implementado e conectado ao `executeControlRequest()`. Execução serial tipada, revalidação de lease por passo, emissão de receipts por suboperação (`BrowserOwnerReceipt`), interrupção imediata no primeiro efeito incerto. Suporte completo no Python via `tools/browser_workstation.py` e `tools/browser_tool.py`.
+- **OPT-02 (Accessibility Tree Hybrid Snapshot):** `apps/desktop/electron/workstation-browser-snapshot.ts` implementando CDP `Accessibility.getFullAXTree` com mapeamento híbrido para `window.__hermesWorkstationRefs`. Feature flag default-off (`HERMES_BROWSER_AXTREE_ENABLED`) com fallback seguro para `inventoryScript()`.
+- **OPT-03 (Extração Estruturada com Cache Bounded):** `apps/desktop/electron/workstation-browser-extract-cache.ts` com `BoundedExtractCache` indexado por `documentFingerprint`, `documentEpoch`, `mutationRevision` e `queryDigest`. Redação e sanitização automática de segredos e normalização tipada por schema.
+- **OPT-04 (Snapshot Delta Projection):** `apps/desktop/electron/workstation-browser-snapshot-diff.ts` com `diffSnapshot` e `applySnapshotDelta`. Reconstrução exata e fallback conservador para snapshot full em casos de divergência ou economia < 20%.
+- **OPT-06 / OPT-09 / OPT-12 (Estabilidade & Resiliência):** Deduplicação idempotente de mutações via `operation_id`, tratamento e recuperação limpa de renderer crashes (`render-process-gone`), detecção e espera de hidratação SPA.
+- **UX (Melhorias de Experiência):** `apps/desktop/src/app/chat/right-rail/workstation-browser-pane.tsx` com botões de transição segura de controle (Take Control / Release Control), indicador discreto de progresso, contador de tarefas em segundo plano e gaveta de histórico de auditoria (`TaskJournalDrawer`).
+- **OPT-07 / OPT-11 (Arquitetura Python & Backends):** Classificação das responsabilidades dos arquivos Python (`browser_workstation`, `browser_tool`, `browser_lightpanda`, `browser_camofox`) preservando integridade de rotas e detecção conservadora de drift.
+- **OPT-05 (Importação de Sessões Chrome):** Mantido formalmente em HOLD por segurança e privacidade (§2 do `SECURITY.md`), com requisitos de consentimento granular e isolamento especificados em `workstation/context/OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`.
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — NOVA PRIORIDADE CW: D-043, engine-neutral
 **STATUS: DECISÃO DE ARQUITETURA / IMPLEMENTAÇÃO.** O usuário retirou a preferência arquitetural por HyperFrames. A decisão HyperFrames-first no [PR #62](https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/62) D-041 é substituída para seleção de motor, projeto e UX; preservar código/ativos úteis, mas não tomar HyperFrames como núcleo obrigatório. D-042/PR #63 dogfood e gates D-038/D-039, H-079/H-081/H-082 continuam. PRs #57–#61 são drafts, não código de `main` (snapshot main `f21e803b`).
@@ -2780,6 +2793,14 @@ Evolved from real dogfood observation across complex web properties (Google Maps
 4. **Batch Structured Extraction (`browser_extract_items`)**:
    - First-class structured extraction tool/primitive that collects repetitive items (cards, products, issues, articles) with selectors, attributes, text, and URLs in a single agent step.
    - Eliminates excessive token consumption and 10+ consecutive `browser_console` JS injection cycles for table/grid scraping.
+
+5. **Browser Ecosystem Optimizations & Deterministic Batching (BROW-C2C)**:
+   - **Batch Execution (`browser_batch_actions`)**: Serialized execution with step-level `BrowserHumanControlLease` revalidation, per-substep `BrowserOwnerReceipt`, and fail-stop on first uncertain effect or human takeover.
+   - **Accessibility Tree Snapshotting**: Experimental CDP `Accessibility.getFullAXTree` integration with hybrid ref mapping and canonical inventory fallback.
+   - **Bounded Extraction Cache**: Cache keyed by full document fingerprint, epoch, mutation revision, and query digest; strict redaction of sensitive credentials.
+   - **Snapshot Delta Projection**: Line-level reversible diffing with lossless verification and conservative fallback to full snapshot.
+   - **Duplicate Mutation Prevention**: Idempotent replay on duplicate `operation_id` requests preventing duplicated external mutations.
+   - **Chrome Import Isolation**: Evaluated and placed in formal HOLD status (`OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`) to protect user credentials and boundaries.
 
 ## V4 radar — optional / evidence-gated explorations
 

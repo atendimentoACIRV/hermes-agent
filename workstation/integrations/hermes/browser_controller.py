@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 WORKSTATION_BROWSER_CAPABILITIES = (
     "browser_console",
     "browser_extract_items",
+    "browser_batch_actions",
     "browser_get_images",
     "browser_vision",
     "browser_read_http",

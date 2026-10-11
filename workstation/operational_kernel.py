@@ -233,6 +233,8 @@ class OperationalKernel:
             return {"tool": "browser_click", "args": {"ref": inputs.get("ref", "@e1")}}
         if primitive in {"browser_navigate", "navigate"}:
             return {"tool": "browser_navigate", "args": {"url": inputs.get("url", "")}}
+        if primitive in {"browser_batch_actions", "batch_actions"}:
+            return {"tool": "browser_batch_actions", "args": {"steps": inputs.get("steps", [])}}
         return {"tool": primitive, "args": inputs}
 
     def execute_primitive(
@@ -331,6 +333,10 @@ class OperationalKernel:
             if not dispatch:
                 raise RuntimeError("Browser primitive requires dispatch function")
             return dispatch("browser_extract_items", inputs)
+        if primitive in {"browser_batch_actions", "batch_actions"}:
+            if not dispatch:
+                raise RuntimeError("Browser primitive requires dispatch function")
+            return dispatch("browser_batch_actions", {"steps": inputs.get("steps", [])})
 
         # 3. Control primitives
         if primitive == 'process_observe':

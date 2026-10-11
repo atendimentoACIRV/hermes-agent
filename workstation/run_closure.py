@@ -326,6 +326,7 @@ class HandoffWakeCondition(str, Enum):
     RUN_CONTRACT_VIOLATION = "RUN_CONTRACT_VIOLATION"
     USER_INTERVENTION_REQUESTED = "USER_INTERVENTION_REQUESTED"
     EXECUTION_ENVELOPE_EXHAUSTED = "EXECUTION_ENVELOPE_EXHAUSTED"
+    CONCURRENT_HUMAN_EDIT = "CONCURRENT_HUMAN_EDIT"
 
 
 @dataclass
@@ -497,6 +498,11 @@ def execute_in_flight_handoff(
             args = step.get("args", {})
             bound_args = _bind_item_parameters(args, input_payload)
 
+            if step.get("concurrent_edit_check"):
+                conflict = step["concurrent_edit_check"](bound_args, input_payload)
+                if conflict:
+                    raise Exception(f"{HandoffWakeCondition.CONCURRENT_HUMAN_EDIT.value}: {conflict}")
+
             if step.get("pre_condition_check"):
                 pre_ok = step["pre_condition_check"](bound_args, input_payload)
                 if not pre_ok:
@@ -544,6 +550,7 @@ def execute_in_flight_handoff(
                 HandoffWakeCondition.POST_VERIFIER_FAILED.value,
                 HandoffWakeCondition.PRE_CONDITION_FAILED.value,
                 HandoffWakeCondition.UNRECOVERABLE_DOM_OR_STATE_DRIFT.value,
+                HandoffWakeCondition.CONCURRENT_HUMAN_EDIT.value,
             },
             "summary": summary.to_dict(),
         }

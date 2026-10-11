@@ -664,6 +664,60 @@ BROWSER_TOOL_SCHEMAS = [
             "required": []
         }
     },
+    {
+        "name": "browser_batch_actions",
+        "description": "Execute a sequential batch of browser interaction steps (click, type, press, scroll) atomically in the active browser tab. Each step is checked against current authority/lease before execution, produces a verified receipt, and execution halts immediately on the first failure or uncertain effect with no blind retries. Max 20 steps per batch. Requires browser_navigate first.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "type": "array",
+                    "description": "List of actions to perform sequentially (up to 20 steps).",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": ["click", "type", "press", "scroll"],
+                                "description": "Type of action to perform."
+                            },
+                            "ref": {
+                                "type": "string",
+                                "description": "Target element reference (e.g., '@e3') for click and type."
+                            },
+                            "text": {
+                                "type": "string",
+                                "description": "Text to type into the field (for 'type' action)."
+                            },
+                            "clear": {
+                                "type": "boolean",
+                                "description": "Whether to clear existing text first (default True for 'type')."
+                            },
+                            "append": {
+                                "type": "boolean",
+                                "description": "Whether to append to existing text (default False for 'type')."
+                            },
+                            "key": {
+                                "type": "string",
+                                "description": "Key to press (for 'press' action, e.g. 'Enter', 'Tab')."
+                            },
+                            "direction": {
+                                "type": "string",
+                                "enum": ["up", "down"],
+                                "description": "Direction to scroll (for 'scroll' action)."
+                            },
+                            "anchor": {
+                                "type": "object",
+                                "description": "Optional semantic anchor."
+                            }
+                        },
+                        "required": ["kind"]
+                    }
+                }
+            },
+            "required": ["steps"]
+        }
+    },
 ]
 
 from tools import browser_tool_snapshot as _snapshot
@@ -1012,6 +1066,22 @@ def browser_press(key: str, task_id: Optional[str] = None) -> str:
     if _is_camofox_mode():
         return _camofox("camofox_press", key, task_id)
     return _guarded_action(task_id, "press", "press", [key], {"pressed": key}, f"Failed to press {key}")
+
+
+def browser_batch_actions(steps: list[dict], task_id: Optional[str] = None, **kwargs) -> str:
+    """Execute a sequential batch of browser interaction steps atomically in the active tab."""
+    effective_task_id = _last_session_key(task_id or "default")
+    blocked = _blocked_private_page_action(effective_task_id, "execute batch actions")
+    if blocked is not None:
+        return blocked
+    return routed_browser_handler(
+        "browser_batch_actions",
+        {"steps": steps},
+        fallback=lambda: _dumps(_err("browser_batch_actions requires Workstation Browser runtime")),
+        task_id=task_id,
+        session_id=kwargs.get("session_id"),
+        run_id=kwargs.get("run_id")
+    )
 
 
 def _blocked_private_page_json(blocked_url: str, why: str) -> str:
@@ -1485,6 +1555,7 @@ _BROWSER_TOOL_TABLE = (
     ("browser_vision", "👁️", _install.check_browser_vision_requirements, {"question": "", "annotate": False}),
     ("browser_console", "🖥️", _install.check_browser_requirements, {"clear": False, "expression": None}),
     ("browser_read_http", "🌐", None, {"url": "", "method": "GET", "headers": None}),
+    ("browser_batch_actions", "⚡", None, {"steps": []}),
 )
 
 
