@@ -5689,3 +5689,17 @@ unclassified / 0 budget regressions. Exact-head CI remains not GREEN (Actions
 HTTP 422 history + Desktop failures open); this authorization does not relabel
 those gates VERIFIED and does not authorize main merge. Target runtime work
 continues on this branch with RED->GREEN per phase and separate upstream sync.
+
+## 2026-10-11 — P0 Kanban read-effect misclassification: reproduced and corrected (development only)
+
+Evidence source: user-provided Hermes session `acessar-chat-do-chatgpt-20261011.json` (session `20261011_171414_03271b`). The run reported `kanban_show` and `kanban_list` receipts labeled `tool_effect=MUTATION`, followed by `uncertain_mutation_requires_review` and `SUPERSEDED`. A task `t_fed4f433` was observed blocked in that historical run; this patch does not mutate user Kanban state.
+
+**Upstream-first preflight / scope:** candidate branch from `origin/main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. Observed local `upstream/main@9e827685f2ff9e76579418fadd090fb0407f15e4`, current ancestor pin/merge-base `66605471e9f0b0832abbefaf625ce08e948ca540`, main relative to observed upstream `963 ahead / 96 behind`. The maintainer's previously recorded H-079 `PASS_WITH_AUTHORIZATION` permits *development continuation*, not exact-head CI qualification or promotion. No upstream merge is made in this hotfix worktree; upstream overlap/CI gate must be reconciled before promotion.
+
+**Hypothesis / RED:** `tools/kanban_tools.py` registered all 15 Kanban tools without explicit effect. `tools.effects.tool_effect` therefore returned MUTATION for `kanban_show`, `kanban_list`, `kanban_attachments` (verified in unmodified `origin/main` worktree by direct Python probe), potentially contaminating the per-run mutation/approval ledger. No blanket change to the conservative unknown-tool fallback was warranted.
+
+**Smallest bounded corrective change:** register the three proven read-only Kanban tools with `ToolEffect.PURE_READ`, all 12 other tools explicitly `ToolEffect.MUTATION`. Preserve existing handlers, permissions, task/run authority and destructive-action policy. Add tests covering every registered tool and no mutation ledger/dispatch preparation for unsuccessful reads. The existing `record_mutation` and `prepare_mutation` already skip tools outside WRITE_EFFECTS once correctly classified.
+
+**GREEN:** direct post-change probe: read tools = PURE_READ; `kanban_complete` = MUTATION. New regression suite: 18/18 PASS via `scripts/run_tests.sh` and isolated test `.venv` (Windows). Adjacent Kanban/policy/supersession suites executed separately; full results recorded in the PR, not assumed by this entry.
+
+**Nonclaims / follow-on gates:** this does not resolve previously persisted uncertainty receipts or an orphaned canonical TaskRun, prove UI buttons responsive, or fix the supersession dead end. No cleanup of user ledgers, no automatic approval bypass, no live data mutation. Next fix needs a separate fail-closed reproduction of policy-denied writes and a typed canonical-run continuation, with native Windows replay; Creative MVP remains parallel P0. Promotion requires exact-head CI and E2E receipts.

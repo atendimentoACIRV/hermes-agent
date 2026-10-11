@@ -17,6 +17,7 @@ from typing import Any, Callable, Optional
 
 from agent.redact import redact_sensitive_text
 from hermes_cli.goals import judge_goal
+from tools.effects import ToolEffect
 from tools.registry import no_cache_check_fn, registry, tool_error
 from hermes_cli.config import cfg_get, load_config
 from tools.kanban_tools_schemas import (
@@ -1309,7 +1310,12 @@ _TOOLS = (
     ("kanban_unblock", KANBAN_UNBLOCK_SCHEMA, _handle_unblock, "▶"),
     ("kanban_link", KANBAN_LINK_SCHEMA, _handle_link, "🔗"))
 
+# Queries cannot create mutation uncertainty or request destructive approval.
+# All other Kanban verbs explicitly retain conservative write classification.
+_KANBAN_READ_TOOLS = frozenset({"kanban_show", "kanban_list", "kanban_attachments"})
+
 for _name, _sch, _handler, _emoji in _TOOLS:
     _gate = _check_kanban_orchestrator_mode if _name in _ORCHESTRATOR_TOOLS else _check_kanban_mode
+    _effect = ToolEffect.PURE_READ if _name in _KANBAN_READ_TOOLS else ToolEffect.MUTATION
     registry.register(name=_name, toolset="kanban", schema=_sch, handler=_handler, emoji=_emoji,
-                      check_fn=_gate)
+                      check_fn=_gate, effect=_effect)
