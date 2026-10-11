@@ -66,7 +66,7 @@ if (-not $env:HERMES_DESKTOP_CDP_PORT) {
   $WorkstationDisabledRendererCdp = $false
 }
 
-if ($env:OS -match "Windows_NT" -or $IsWindows) {
+if ($env:OS -match "Windows_NT") {
   try {
     $icoPath = Join-Path $Root "Hermes Work.ico"
     if (Test-Path $icoPath) {
