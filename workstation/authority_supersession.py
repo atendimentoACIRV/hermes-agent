@@ -15,15 +15,15 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from workstation.artifacts import ArtifactStore
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class AuthorityTerminationKind(str, Enum):
@@ -45,22 +45,58 @@ class AuthoritySuperseded:
     termination_kind: AuthorityTerminationKind = AuthorityTerminationKind.SUPERSEDED
     checkpoint_ref: Optional[str] = None
     pending_items_ref: Optional[str] = None
-    uncertain_effects: List[Dict[str, Any]] = field(default_factory=list)
+    uncertain_effects: list[dict[str, Any]] = field(default_factory=list)
     continuation_allowed: bool = False
     created_at: str = field(default_factory=_utc_now)
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["termination_kind"] = self.termination_kind.value
         return d
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> AuthoritySuperseded:
+    def from_dict(cls, data: dict[str, Any]) -> AuthoritySuperseded:
         cdata = dict(data)
         if "termination_kind" in cdata and isinstance(cdata["termination_kind"], str):
             cdata["termination_kind"] = AuthorityTerminationKind(cdata["termination_kind"])
         return cls(**cdata)
+
+
+class MutationAuthorityFenceError(RuntimeError):
+    """Fail-closed mutation fence with enough durable context for canonical recovery."""
+
+    def __init__(self, record: AuthoritySuperseded) -> None:
+        self.task_id = record.task_id
+        self.stale_run_id = record.stale_run_id
+        self.current_run_id = record.current_run_id
+        self.continuation_allowed = record.continuation_allowed
+        self.checkpoint_ref = record.checkpoint_ref
+        self.pending_items_ref = record.pending_items_ref
+        if record.termination_kind == AuthorityTerminationKind.SUPERSEDED:
+            if record.continuation_allowed:
+                self.code = "AUTHORITY_SUPERSEDED"
+                self.recovery_action = "resume_in_canonical_run"
+            else:
+                self.code = "CANONICAL_RUN_UNCLAIMED"
+                self.recovery_action = "claim_new_canonical_run_and_replan"
+        else:
+            self.code = record.termination_kind.value
+            self.recovery_action = "request_new_user_authorization"
+        super().__init__(json.dumps(self.to_dict(), sort_keys=True))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "code": self.code,
+            "task_id": self.task_id,
+            "stale_run_id": self.stale_run_id,
+            "current_run_id": self.current_run_id,
+            "continuation_allowed": self.continuation_allowed,
+            "checkpoint_ref": self.checkpoint_ref,
+            "pending_items_ref": self.pending_items_ref,
+            "recovery_action": self.recovery_action,
+            "dispatched": False,
+        }
 
 
 def classify_run_authority(
@@ -152,9 +188,9 @@ def checkpoint_superseded_execution(
     task_id: str,
     stale_run_id: str,
     current_run_id: Optional[str],
-    completed_results: List[Dict[str, Any]],
-    pending_items: List[Dict[str, Any]],
-    uncertain_effects: Optional[List[Dict[str, Any]]] = None,
+    completed_results: list[dict[str, Any]],
+    pending_items: list[dict[str, Any]],
+    uncertain_effects: Optional[list[dict[str, Any]]] = None,
     artifact_store: Optional[ArtifactStore] = None,
     termination_kind: AuthorityTerminationKind = AuthorityTerminationKind.SUPERSEDED,
 ) -> AuthoritySuperseded:
@@ -227,7 +263,7 @@ def resume_superseded_work(
     superseded_record: AuthoritySuperseded,
     new_run_id: str,
     artifact_store: Optional[ArtifactStore] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Restore continuation into new_run_id, enforcing readback on uncertain mutations.
 
     Returns dict with restored unconfirmed items, requiring reconciliation on any
