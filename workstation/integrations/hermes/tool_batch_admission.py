@@ -54,17 +54,23 @@ def workstation_tool_batch_admission(
             handoff_mgr = HumanHandoffManager(
                 get_hermes_home() / "workstation" / "human_handoffs.json"
             )
+            from workstation.batch_detection import call_key
             handoff = handoff_mgr.request(
                 task_id=task_id,
                 session_id=session_id,
                 reason="uncertain_mutation_requires_review",
-                scope={"tool_call_id": call_id},
+                scope={"operation_key": call_key(fn_name, fn_args)},
             )
+            if handoff.status == "ready":
+                handoff_mgr.consume(handoff.handoff_id)
+            reviewed = handoff.status == "consumed"
             synthetic = json.dumps({
-                "status": "handoff_requested",
+                "status": "human_review_completed" if reviewed else "handoff_requested",
                 "handoff_id": handoff.handoff_id,
-                "reason": "Human confirmation required before destructive mutation",
+                "reason": ("Independent readback is required before retrying an uncertain external mutation"
+                           if reviewed else "Human confirmation required before destructive mutation"),
                 "tool": fn_name,
+                "code": "uncertain_effect_requires_readback" if reviewed else "uncertain_mutation_requires_review",
             })
             batch_decisions.append(
                 BatchAdmissionDecision(

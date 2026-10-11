@@ -9,7 +9,7 @@ ExecutionJournal.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
 import json
 from pathlib import Path
@@ -21,12 +21,12 @@ from uuid import uuid4
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _parse_time(value: str) -> datetime:
     parsed = datetime.fromisoformat(value)
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 class ExecutionStatus(str, Enum):
@@ -190,7 +190,7 @@ class EvidenceState:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EvidenceState":
+    def from_dict(cls, data: dict[str, Any]) -> EvidenceState:
         return cls(
             task_id=str(data["task_id"]),
             session_id=str(data["session_id"]),
@@ -489,7 +489,7 @@ class TypedResource:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TypedResource":
+    def from_dict(cls, data: dict[str, Any]) -> TypedResource:
         return cls(
             resource_type=str(data["resource_type"]),
             resource_id=str(data["resource_id"]),
@@ -640,6 +640,12 @@ class HumanHandoffManager:
     ) -> HumanHandoff:
         if not reason.strip() or not task_id.strip() or not session_id.strip():
             raise ValueError("task, session and reason are required for handoff")
+        # Repeated attempts for one operation share its pending/handled review.
+        # An ephemeral tool_call_id is not a stable operation identity.
+        for existing in self._handoffs.values():
+            if (existing.task_id == task_id and existing.session_id == session_id
+                    and existing.reason == reason and existing.scope == scope):
+                return existing
         handoff = HumanHandoff(
             handoff_id=f"handoff-{uuid4().hex}",
             task_id=task_id,
@@ -660,6 +666,15 @@ class HumanHandoffManager:
         handoff.status = "ready"
         handoff.returned_by = returned_by
         handoff.resumed_at = _utc_now()
+        self._persist()
+        return True
+
+    def consume(self, handoff_id: str) -> bool:
+        """Acknowledge one resumed review; never infer external-effect verification."""
+        handoff = self._handoffs.get(handoff_id)
+        if handoff is None or handoff.status != "ready":
+            return False
+        handoff.status = "consumed"
         self._persist()
         return True
 

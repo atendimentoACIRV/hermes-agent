@@ -245,7 +245,7 @@ def decisions_for_calls(agent, calls):
                 if record.get('status') == 'uncertain':
                     evidence[key] = record
 
-        if evidence.get(key, {}).get('status') == 'uncertain':
+        if effect in WRITE_EFFECTS and evidence.get(key, {}).get('status') == 'uncertain':
             decision = CompilationDecision.REQUIRE_HUMAN
         elif name != 'work_execute' and 'work_execute' in getattr(agent, 'valid_tool_names', ()) and effect in WRITE_EFFECTS:
             signature = structural_signature(name, args)
