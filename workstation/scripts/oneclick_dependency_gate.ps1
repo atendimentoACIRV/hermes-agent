@@ -17,7 +17,7 @@ $StampFile = Join-Path $RuntimeRoot "Runtime\oneclick-dependencies.sha256"
 function Get-InstallFingerprint {
   $patterns = @(
     "package.json", "package-lock.json", ".npmrc", ".nvmrc",
-    "pyproject.toml", "uv.lock", "workstation/install.ps1",
+    "pyproject.toml", "uv.lock",
     "apps/*/package.json", "ui-tui/package.json",
     "ui-tui/packages/*/package.json", "web/package.json",
     "tests-js/package.json"
