@@ -62,7 +62,7 @@ def workstation_completion_admission(
         if isinstance(candidate, dict):
             if candidate.get("status") == "verified_completed" or candidate.get("acceptance_approved") is True:
                 return CompletionAdmissionResult(admitted=True, receipt=candidate)
-            if candidate.get("status") in {"uncertain", "blocked", "failed"}:
+            if candidate.get("status") in {"uncertain", "blocked", "failed", "queued_unstarted"}:
                 return CompletionAdmissionResult(
                     admitted=False,
                     reason=f"outcome_{candidate.get('status')}",

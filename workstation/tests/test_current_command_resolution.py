@@ -30,17 +30,12 @@ def consult(agent):
         user_message=agent._message_envelope.content, messages=[], api_call_count=0, iteration=0))
 
 
-def test_fresh_trello_command_reaches_authority_router_without_prior_objective():
+def test_one_shot_trello_command_is_not_a_durable_kanban_task():
     agent, work = admit("Abre o Trello.")
-    assert work.requires_task and work.requires_browser
-    assert agent._canonical_work_task_id
-    store = DurableTaskStore()
-    try:
-        assert store.get_connection().execute("SELECT COUNT(*) FROM work_plans").fetchone()[0] == 0
-    finally:
-        store.close()
-    # A real registered candidate requires authority human ingress cannot grant.
-    # The existing router must refuse it; recognition must never elevate permission.
+    assert not work.requires_task and work.requires_browser
+    assert work.admission_kind == "point_action"
+    assert getattr(agent, "_canonical_work_task_id", None) is None
+    # A capability's existence must not auto-mint a TaskRun or effect authority.
     OperationalCapabilityRegistry().register(OperationalCapability(
         id="test.open_trello", name="open Trello", version="1",
         lifecycle=CapabilityLifecycle.PROMOTED,
@@ -51,9 +46,12 @@ def test_fresh_trello_command_reaches_authority_router_without_prior_objective()
             authority_required=AuthorityScope(level=AuthorityLevel.EXTERNAL_REVERSIBLE,
                 allowed_actions={"navigate"}, allowed_resources={"native_browser"}),
             verifier={"kind": "value", "evidence_strength": "E2"})))
-    resolution = consult(agent)
-    assert resolution is not None and resolution.outcome is OperationalOutcome.HANDOFF
-    assert resolution.reason == "ASK_HUMAN"
+    assert consult(agent) is None
+    store = DurableTaskStore()
+    try:
+        assert store.get_connection().execute("SELECT COUNT(*) FROM work_plans").fetchone()[0] == 0
+    finally:
+        store.close()
 
 
 def test_ambiguous_observed_uninstalled_and_cancelled_commands_do_not_dispatch():
@@ -65,25 +63,31 @@ def test_ambiguous_observed_uninstalled_and_cancelled_commands_do_not_dispatch()
     observed, work = admit("Abre o Trello.", IntentAuthority.OBSERVATION_ONLY)
     assert not work.requires_task and consult(observed) is None
     fresh, work = admit("Abre o Trello.")
-    assert work.requires_task
+    assert not work.requires_task
     assert consult(fresh) is None, "missing installed capability falls back to reasoning"
     fresh._interrupt_requested = True
     assert consult(fresh) is None
 
 
-def test_dispatch_failure_returns_wait_safely(monkeypatch):
-    """When dispatch raises an exception, operational resolution returns WAIT and does not retry blindly."""
-    agent, work = admit("Abre o Trello.")
-    assert work.requires_task
-
+def test_one_shot_browser_failure_handoffs_without_creating_task():
+    """Native prefab failures are not silently retried through task execution."""
     from unittest.mock import patch
-    with patch("workstation.integrations.hermes.operational_resolution._dispatch_intent", side_effect=RuntimeError("Controller connection lost")):
-        with patch("workstation.work_intent.current_command_objective", return_value={"operation_id": "op_test", "operation_intent": {}, "inputs": {}}):
+    from workstation.prefabs.integration import prepare_user_navigation
+    agent, work = admit("Abre o Trello.")
+    assert not work.requires_task
+    agent._prefab_navigation_intent = prepare_user_navigation(agent._message_envelope)
+    assert agent._prefab_navigation_intent
+    agent.valid_tool_names = {"browser_navigate", "browser_snapshot"}
+    with patch("workstation.integrations.hermes.scoped_execution.workstation_durable_dispatch",
+               return_value=lambda *a: "{}"):
+        with patch("workstation.prefabs.integration.navigate",
+                   side_effect=RuntimeError("Controller connection lost")):
             resolution = consult(agent)
-            assert resolution is not None
-            assert resolution.outcome is OperationalOutcome.WAIT
-            assert "Controller connection lost" in resolution.final_response or "RuntimeError" in resolution.final_response
-            assert "dispatch_failed:RuntimeError" in resolution.reason
+    assert resolution is not None
+    assert resolution.outcome is OperationalOutcome.HANDOFF
+    assert resolution.reason == "prefab_dispatch_uncertain"
+    assert consult(agent) is None  # consumed once; no retry
+    assert getattr(agent, "_canonical_work_task_id", None) is None
 
 
 def test_fresh_hyperframe_command_falls_back_safely_without_studio_capability():
@@ -94,7 +98,7 @@ def test_fresh_hyperframe_command_falls_back_safely_without_studio_capability():
     side effect from the pre-reasoning path.
     """
     agent, work = admit("Abre o Hyperframe.")
-    assert work.requires_task
+    assert not work.requires_task and work.admission_kind == "point_action"
     # No creative capability is installed: the router must refuse without
     # effects and the boundary must fall back to reasoning (None) — never
     # EXECUTED from the pre-reasoning path without owner-certified readback.

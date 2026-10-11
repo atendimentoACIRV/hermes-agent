@@ -1,5 +1,9 @@
 # Workstation roadmap
 
+## 2026-10-11 — P0 Smart Task Admission / D-045 (isolated PR; release gate open)
+**Order:** S-0 classify a human turn as conversation / point action / durable work → S-1 auto-create only durable responsibility as canonical `triage`, no speculative Run → S-2 claim by existing Kanban CAS at actual Workstation effect/TaskCompiler execution → S-3 preserve unstarted outcome as `queued_unstarted` and refuse unverifiable completion → S-4 detach blocked/superseded runs from subsequent chat turns, deduplicate unfinished identical tasks → S-5 replay Windows native multi-turn Browser/TaskRun/Controller + CI exact SHA. The previous generic `browser/site/pesquisa` keyword promotion is not authority. Related independent PRs: #71–74 (effect taxonomies, uncertainty/handoff, supersession); do not silently merge or assume their behavior is present in this branch.
+
+
 ## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser (PR #67)
 **STATUS: IMPLEMENTAÇÃO COMPLETA / QUALIFICADA LOCALMENTE.**
 Branch de trabalho: `feat/workstation-browser-optimization-c2c`.

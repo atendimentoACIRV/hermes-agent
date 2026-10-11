@@ -1,5 +1,9 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-11 — D-045: Kanban assists work; it does not own chat conversations
+A Session persists conversation; a Task persists a durable responsibility; a TaskRun is a fenced *execution attempt*. D-045 keeps automatic Kanban for genuine multi-stage/repetitive work, but one-shot browser/UI commands and answers do not become cards merely by keyword. Auto-created durable cards wait in `triage` until a trusted real execution boundary claims the canonical Run. An unstarted card is `queued_unstarted`, not `verified_completed` or falsely `blocked`. A blocked task is shown as historical responsibility, never a borrowed lease; cross-turn repeat requests reuse unfinished canonical identity. This is not a scheduler/approval/verifier rewrite. Reference D-045 and isolated implementation journal for RED→GREEN and release-gate limits.
+
+
 ## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser no Runtime e UX
 **Síntese de Implementação:** O ecossistema de navegação foi aprimorado sem introduzir novos engines concorrentes ao `TaskCompiler`, sem quebrar o lease `BrowserHumanControlLease`, sem reexecuções cegas de mutações incertas e sem violar o isolamento de perfis (§2 do `SECURITY.md`).
 - **Batch Actions (`browser_batch_actions`):** Execução sequencial estrita com assert de lease a cada passo, receipts rastreáveis (`BrowserOwnerReceipt`) e interrupção no primeiro efeito incerto.

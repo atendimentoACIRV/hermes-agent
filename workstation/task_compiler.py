@@ -8,12 +8,14 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 from enum import Enum
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 import hashlib
 import json
 import time
 import re
-from typing import Any, Callable
+from itertools import chain
+from typing import Any
+from collections.abc import Callable
 
 from agent.tool_guardrails import classify_tool_failure
 from workstation.artifacts import ArtifactStore
@@ -56,7 +58,7 @@ def batch_intent(prompt: Any) -> bool:
     count = re.search(r"\b(?:[2-9]|[1-9][0-9]+)\s+[\w-]+s\b", lower)
     fan_out = re.search(r"\b(?:cada\s+(?:registro|item|arquivo|usuário|usuario)|todos?\s+(?:esses?|estes?|os)|mesma\s+.+\s+ness(?:es|as)|each\s+|all\s+these)", lower)
     structured = False
-    for candidate in [prompt] + re.findall(r"```(?:json)?\s*(.*?)```", prompt, re.S):
+    for candidate in [prompt] + re.findall(r"```(?:json)?\s*(.*?)```", prompt, re.DOTALL):
         try:
             payload = json.loads(candidate)
         except ValueError:
@@ -270,6 +272,23 @@ class TaskCompiler:
     def execute(self, request: dict, *, task_id: str, session_id: str, dispatch: Callable,
                 progress: Callable | None = None, provider_usage: dict | None = None,
                 environment: str | None = None, event_bus=None, canonical_task_id: str | None = None) -> dict:
+        # An ingress-triaged responsibility owns no Run. Open its first Run only
+        # when a real executable plan reaches the existing TaskCompiler boundary.
+        # Discovery, status and contracts remain non-executing observations.
+        has_executable = any(request.get(key) for key in (
+            "operation_intent", "capability_id", "steps", "recipe_key", "operation_fingerprint"
+        ))
+        if canonical_task_id and has_executable and request.get("action") not in {"discover", "status", "contract"}:
+            from hermes_cli import kanban_db
+            from workstation.kanban import WorkstationKanbanBridge
+            bridge = WorkstationKanbanBridge()
+            with bridge.get_connection() as conn:
+                pending_task = kanban_db.get_task(conn, canonical_task_id)
+            if pending_task is None or pending_task.session_id != session_id:
+                raise PermissionError("canonical_task_session_mismatch")
+            if pending_task.status in {"triage", "ready"}:
+                self.canonical_run_id = bridge.start_triaged_task(
+                    canonical_task_id, session_id=session_id, objective=pending_task.body)
         if request.get("action") == "route" or request.get("operation_intent"):
             return self._execute_route(request, task_id=task_id, session_id=session_id,
                 dispatch=dispatch, progress=progress, provider_usage=provider_usage,
@@ -363,7 +382,7 @@ class TaskCompiler:
                     raise ValueError("External mutation target requires a real mutation step; preparation cannot establish persistence verification")
                 from workstation.browser_transaction import evidence_strength
                 for mutation in matching:
-                    for verifier in sum(canonical_graph.values(), []):
+                    for verifier in chain.from_iterable(canonical_graph.values()):
                         if mutation in verifier.get('verifies', []) and verifier['tool'] == 'browser_snapshot':
                             if int(evidence_strength(verifier)) < 2:
                                 raise ValueError('External commit requires persisted readback; native browser snapshot is same-session semantic evidence')
@@ -419,7 +438,7 @@ class TaskCompiler:
         # Cached procedures still verify each item. Only a matching recipe plus
         # successful persisted preflight can skip the admission canary.
         canary_required = mutable_batch and not (recipe_reused and preflight)
-        all_steps = (sum(graph.values(), []) if graph else steps) + preflight
+        all_steps = (list(chain.from_iterable(graph.values())) if graph else steps) + preflight
         if kind == WorkClass.PROMPT_QUEUE and not any(s.get("wait") for s in steps):
             raise ValueError("Prompt queue requires a bounded completion wait before advancing")
         if not steps or len(steps) > 64 or len(request["items"]) > 10000:
@@ -759,7 +778,7 @@ class TaskCompiler:
                         if subscription is not None:
                             from workstation.runtime import WaitContract
                             contract = WaitContract(wait["event_type"], task_id,
-                                (datetime.now(timezone.utc) + timedelta(seconds=max(0, deadline - time.monotonic()))).isoformat(),
+                                (datetime.now(UTC) + timedelta(seconds=max(0, deadline - time.monotonic()))).isoformat(),
                                 str(_bind(wait["correlation_id"], payload, bindings)), session_id)
                             try:
                                 event_bus.wait(contract, subscription=subscription)
@@ -1021,7 +1040,7 @@ class TaskCompiler:
         # request["authority"] may only narrow this owner-supplied scope below.
         trusted_authority = None
         if getattr(self, "trusted_authority", None) is not None:
-            trusted_authority = getattr(self, "trusted_authority")
+            trusted_authority = self.trusted_authority
         elif canonical_task_id or task_id:
             try:
                 from hermes_cli import kanban_db
