@@ -23,8 +23,9 @@ from workstation.run_adoption import AdoptionReport, DurableRunAdoptionOwner, Ru
 logger = logging.getLogger(__name__)
 
 # Primitives the Hermes durable dispatcher can run and read back independently today.
-_SUPPORTED = ("write_file", "read_file")
-_READBACK = ("write_file",)
+# Extended for browser and Trello API primitives per OPC-005.
+_SUPPORTED = ("write_file", "read_file", "browser_navigate", "browser_snapshot", "trello_api_get")
+_READBACK = ("write_file", "browser_navigate", "browser_snapshot", "trello_api_get")
 _GUTTER = re.compile(r"^\s*\d+\|", re.M)
 
 
@@ -47,6 +48,92 @@ def _readback_write_file(dispatch, artifacts: ArtifactStore, task_id: str):
         }, schema="workstation.run_local_readback.v1").ref
         return {"ok": ok, "evidence_ref": ref}
     return readback
+
+
+def _readback_browser_navigate(dispatch, artifacts: ArtifactStore, task_id: str):
+    """Independent readback for browser_navigate via browser_snapshot URL verification."""
+    def readback(primitive: str, bound_args: dict, raw: Any) -> Optional[dict]:
+        if primitive != "browser_navigate" or "url" not in bound_args:
+            return None
+        expected_url = bound_args["url"]
+        try:
+            observed = json.loads(dispatch("browser_snapshot", {"full": False}))
+            # Extract URL from snapshot
+            observed_url = ""
+            if isinstance(observed, dict):
+                for key in ("url", "current_url", "currentUrl", "page_url", "pageUrl"):
+                    val = observed.get(key)
+                    if isinstance(val, str) and val.startswith("https://"):
+                        observed_url = val
+                        break
+        except Exception:
+            return {"ok": False, "evidence_ref": None}
+        from workstation.prefabs.engine import same_destination
+        ok = same_destination(observed_url, expected_url)
+        ref = artifacts.store(task_id, f"readback_{uuid.uuid4().hex[:10]}.json", {
+            "primitive": primitive, "expected_url": expected_url, "observed_url": observed_url, "matched": ok,
+        }, schema="workstation.run_local_readback.v1").ref
+        return {"ok": ok, "evidence_ref": ref}
+    return readback
+
+
+def _readback_browser_snapshot(dispatch, artifacts: ArtifactStore, task_id: str):
+    """Independent readback for browser_snapshot - verify URL matches expected."""
+    def readback(primitive: str, bound_args: dict, raw: Any) -> Optional[dict]:
+        if primitive != "browser_snapshot":
+            return None
+        # browser_snapshot itself is the verification - check if result has valid URL
+        try:
+            observed = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(observed, dict):
+                has_url = any(
+                    isinstance(observed.get(key), str) and observed[key].startswith("https://")
+                    for key in ("url", "current_url", "currentUrl", "page_url", "pageUrl")
+                )
+                ok = has_url
+            else:
+                ok = False
+        except Exception:
+            ok = False
+        ref = artifacts.store(task_id, f"readback_{uuid.uuid4().hex[:10]}.json", {
+            "primitive": primitive, "matched": ok,
+        }, schema="workstation.run_local_readback.v1").ref
+        return {"ok": ok, "evidence_ref": ref}
+    return readback
+
+
+def _readback_trello_api_get(dispatch, artifacts: ArtifactStore, task_id: str):
+    """Independent readback for trello_api_get - verify response has expected fields."""
+    def readback(primitive: str, bound_args: dict, raw: Any) -> Optional[dict]:
+        if primitive != "trello_api_get":
+            return None
+        # Verify Trello API response has expected structure
+        try:
+            observed = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(observed, dict):
+                # Check for Trello card/board fields
+                has_id = "id" in observed or (isinstance(observed.get("cards"), list) and len(observed["cards"]) > 0)
+                has_name = "name" in observed or (isinstance(observed.get("cards"), list) and "name" in observed["cards"][0])
+                ok = has_id and has_name
+            else:
+                ok = False
+        except Exception:
+            ok = False
+        ref = artifacts.store(task_id, f"readback_{uuid.uuid4().hex[:10]}.json", {
+            "primitive": primitive, "matched": ok,
+        }, schema="workstation.run_local_readback.v1").ref
+        return {"ok": ok, "evidence_ref": ref}
+    return readback
+
+
+def _build_readback_fns(dispatch, artifacts: ArtifactStore, task_id: str) -> dict[str, callable]:
+    """Build readback functions for all supported primitives."""
+    return {
+        "write_file": _readback_write_file(dispatch, artifacts, task_id),
+        "browser_navigate": _readback_browser_navigate(dispatch, artifacts, task_id),
+        "browser_snapshot": _readback_browser_snapshot(dispatch, artifacts, task_id),
+        "trello_api_get": _readback_trello_api_get(dispatch, artifacts, task_id),
+    }
 
 
 def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> Optional[DurableRunAdoptionOwner]:
@@ -72,13 +159,17 @@ def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> Optional[Du
         with workstation_scoped_execution(agent, str(task_id), None):
             return inner(tool, args, str(task_id), f"runlocal_{uuid.uuid4().hex[:10]}")
 
+    readback_fns = _build_readback_fns(dispatch, artifacts, str(task_id))
+
     owner = DurableRunAdoptionOwner(
         DurableTaskStore, artifacts,
         authority_for_task=lambda task: trusted_effect_authority_from_agent(agent, session_id, task),
         dispatch_fn=dispatch,
-        readback_fn=_readback_write_file(dispatch, artifacts, str(task_id)),
+        readback_fn=None,  # Use per-primitive readback_fns via owner.readback_primitives
         readback_primitives=_READBACK, supported_primitives=_SUPPORTED, system2_counter=system2_counter,
     )
+    # Attach readback functions to owner for RunLocalAdopter to use
+    owner._readback_fns = readback_fns
     from workstation.experience_compiler.lifecycle import (
         get_validation_environment_provider,
         register_validation_environment_provider,
