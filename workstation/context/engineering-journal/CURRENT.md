@@ -3006,3 +3006,30 @@ origin carrying forged operational labels. Confirming evidence is any forged
 label appearing below the authoritative Operational References heading;
 refuting evidence is complete absence for origins 1–6 with survival only from a
 runtime-authenticated structured envelope.
+
+## 2026-09-16 — Frozen-main gap closure audit
+
+Status: IN PROGRESS; BASE_SHA=3344e67fb67a3f9d2e89fa08707325807449d9b8.
+Branch codex/workstation-gap-closure, isolated checkout .workstation-audit.
+The original main checkout's three local modifications are preserved/excluded.
+See ../GAP_LEDGER_2026-09-16.md for classification and ownership before edits.
+
+HW-E20260916-A: hypothesis that the recent generated hardening regressed current
+contracts. Confirm by behavioral failure on the frozen clean product checkout;
+refute individually with canonical gates, not skipped remote checks.
+Result: scripts/run_tests.sh workstation/tests -j 4 passed 303 tests, 0 failed,
+2 existing skips in 67.1s. Desktop UI/typecheck initially NON-EXECUTABLE due to
+inherited missing dependencies; isolated npm ci is the changed input before retry.
+
+HW-E20260916-B: hypothesis that temporary red-team artifacts or unauthorized
+behavior remain. Confirm by current tracked/untracked artifacts or decoded code
+outside the stated hardening scope. Static decode only, never execute the loader.
+Observed decoded hash matches declared SHA256; successful harness run 35103153602.
+Complete source/delta/workflow inspection and supply-chain/history gates pending.
+
+HW-E20260916-C: native Windows lock contention hypothesis. The recent worker
+persistence lease checks a foreign PID with os.kill(pid, 0), which is not a
+portable read-only liveness primitive. Test only an owned disposable child
+waiting on stdin: a contending canonical writer must time out fail-closed,
+leave lock/state unchanged, and the owner must ACK ping afterward. No product
+edit until this native behavioral reproduction fails on BASE_SHA.
