@@ -1,4 +1,5 @@
-import { useCreativeWorkspace } from './index'
+import { useCreativeWorkspace } from './CreativeWorkspaceContext'
+import type { CreativeComposition } from './types'
 
 export function CreativePreview() {
   const { project, playheadTime, isPlaying } = useCreativeWorkspace()
@@ -49,31 +50,7 @@ export function CreativePreview() {
 }
 
 interface CreativePreviewRendererProps {
-  composition: {
-    compositionId: string
-    name: string
-    width: number
-    height: number
-    tracks: Array<{
-      trackId: string
-      kind: string
-      clips: Array<{
-        clipId: string
-        assetId: string
-        timelineRange: { start: number; end: number }
-        sourceIn: number
-        speed: number
-        reverse: boolean
-        freeze: boolean
-      }>
-    }>
-    layers: Array<{
-      layerId: string
-      kind: string
-      transform: { x: number; y: number; opacity: number }
-      declaredParameters: Record<string, unknown>
-    }>
-  }
+  composition: CreativeComposition
   playheadTime: number
   width: number
   height: number

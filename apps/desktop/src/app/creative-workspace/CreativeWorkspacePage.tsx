@@ -1,4 +1,4 @@
-import { useCreativeWorkspace } from './index'
+import { useCreativeWorkspace } from './CreativeWorkspaceContext'
 import { CreativeTimeline } from './CreativeTimeline'
 import { CreativeInspector } from './CreativeInspector'
 import { CreativePreview } from './CreativePreview'

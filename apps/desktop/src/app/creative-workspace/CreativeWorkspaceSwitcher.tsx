@@ -1,4 +1,4 @@
-import { useCreativeWorkspace } from './index'
+import { useCreativeWorkspace } from './CreativeWorkspaceContext'
 
 export function CreativeWorkspaceSwitcher() {
   const { workspaceMode, setWorkspaceMode, pinnedPanels, togglePinPanel } = useCreativeWorkspace()

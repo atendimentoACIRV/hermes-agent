@@ -164,12 +164,12 @@ export function CreativeWorkspaceProvider({ children }: { children: React.ReactN
 
   const clearSelection = useCallback(() => {
     setSelectionState(prev => {
-      const next = {
+      const next: SelectionState = {
         ...prev,
-        selectedTrackIds: new Set(),
-        selectedClipIds: new Set(),
-        selectedLayerIds: new Set(),
-        selectedKeyframeIds: new Set(),
+        selectedTrackIds: new Set<string>(),
+        selectedClipIds: new Set<string>(),
+        selectedLayerIds: new Set<string>(),
+        selectedKeyframeIds: new Set<string>(),
       }
       $creativeSelection.set(next)
       return next

@@ -2,6 +2,10 @@
 
 Only explicit caller-level write operations in CLI use the official PATCH API.
 Provider-visible tool actions never mutate Trello.
+
+Credentials MUST be resolved through the profile-scoped secret_scope (agent.secret_scope.get_secret)
+to prevent cross-profile leakage in multiplexed gateway deployments. The default
+from_environment() is a fallback for non-multiplexed contexts (CLI, tests).
 """
 from __future__ import annotations
 
@@ -13,7 +17,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 BOARD_IDS = {"editorial": "Edq32SNp", "scrum": "GDM8ZE3r"}
 _ID = re.compile(r"^[a-zA-Z0-9_]{3,32}$")
@@ -30,10 +34,43 @@ class Credential:
 
     @classmethod
     def from_environment(cls) -> "Credential":
+        """Fallback for non-multiplexed contexts (CLI, tests).
+        
+        In multiplexed gateway deployments, callers MUST use from_secret_scope() instead.
+        """
         key = os.getenv("TRELLO_API_KEY", "").strip()
         token = os.getenv("TRELLO_TOKEN", "").strip()
         if not key or not token:
             raise TrelloAccessError("Configure TRELLO_API_KEY and TRELLO_TOKEN in the Hermes runtime")
+        return cls(key, token)
+
+    @classmethod
+    def from_secret_scope(cls) -> "Credential":
+        """Resolve credentials from the active profile's secret scope.
+        
+        Required for multiplexed gateway deployments. Fails closed with
+        UnscopedSecretError if no scope is active.
+        """
+        try:
+            from agent.secret_scope import get_secret, UnscopedSecretError
+        except ImportError:
+            raise TrelloAccessError("agent.secret_scope not available")
+        try:
+            key = get_secret("TRELLO_API_KEY", "").strip()
+            token = get_secret("TRELLO_TOKEN", "").strip()
+        except UnscopedSecretError as exc:
+            raise TrelloAccessError("No profile secret scope active; cannot resolve Trello credentials") from exc
+        if not key or not token:
+            raise TrelloAccessError("TRELLO_API_KEY and TRELLO_TOKEN not set in profile .env")
+        return cls(key, token)
+
+    @classmethod
+    def from_provider(cls, provider: Callable[[str], Optional[str]]) -> "Credential":
+        """Resolve credentials from a custom provider function(name) -> value|None."""
+        key = (provider("TRELLO_API_KEY") or "").strip()
+        token = (provider("TRELLO_TOKEN") or "").strip()
+        if not key or not token:
+            raise TrelloAccessError("Provider did not return TRELLO_API_KEY and TRELLO_TOKEN")
         return cls(key, token)
 
 
@@ -53,8 +90,26 @@ def _board_id(value: str) -> str:
 
 class TrelloClient:
     def __init__(self, credential: Credential | None = None,
-                 transport: Callable[..., Any] | None = None):
-        self.credential = credential or Credential.from_environment()
+                 transport: Callable[..., Any] | None = None,
+                 use_secret_scope: bool = True):
+        """Create a TrelloClient.
+        
+        Args:
+            credential: Explicit Credential (highest priority)
+            transport: Optional test transport
+            use_secret_scope: If True and no credential given, resolve from secret_scope.
+                             Falls back to environment if secret_scope unavailable.
+        """
+        if credential is not None:
+            self.credential = credential
+        elif use_secret_scope:
+            try:
+                self.credential = Credential.from_secret_scope()
+            except TrelloAccessError:
+                # Fallback for non-multiplexed contexts (CLI, tests)
+                self.credential = Credential.from_environment()
+        else:
+            self.credential = Credential.from_environment()
         self._transport = transport
 
     def _request(self, method: str, path: str, query: dict[str, str] | None = None,

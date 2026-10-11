@@ -61,5 +61,12 @@ registry.register(
                 "search": {"type": "string"},
                 "limit": {"type": "integer", "minimum": 1, "maximum": 100},
                 "description": {"type": "string", "description": "Desired text (hash comparison only, no write)"}},
-                "required": ["action"], "additionalProperties": False}}
+                "required": ["action"], "additionalProperties": False},
+            "when_to_use": ("Workstation read-only operations for known Trello boards. "
+                           "Use for listing boards, cards, reading card details, preparing description diffs. "
+                           "No mutations - all operations use official Trello REST API."),
+            "do_not_use": ("Mutations (create card, update description, move card), "
+                          "unauthorized boards, browser automation fallback."),
+            "risk": "read_only",
+            "verifier": "trello_api_get_readback"}
 )

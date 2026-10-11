@@ -1,4 +1,4 @@
-import { useCreativeWorkspace } from './index'
+import { useCreativeWorkspace } from './CreativeWorkspaceContext'
 import { useStore } from '@nanostores/react'
 import { useMemo, useCallback, useRef, useEffect } from 'react'
 import type { CreativeTrack, CreativeClip } from './types'

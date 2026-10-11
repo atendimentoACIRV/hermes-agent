@@ -1,4 +1,4 @@
-import { useCreativeWorkspace } from './index'
+import { useCreativeWorkspace } from './CreativeWorkspaceContext'
 
 export function CreativeToolbar() {
   const { project, isPlaying, setIsPlaying, playheadTime, setPlayheadTime, workspaceMode } = useCreativeWorkspace()

@@ -1,4 +1,4 @@
-import { useCreativeWorkspace } from './index'
+import { useCreativeWorkspace } from './CreativeWorkspaceContext'
 import { useMemo, useCallback, useState } from 'react'
 import type { CreativeLayer, CreativeKeyframe } from './types'
 
@@ -188,7 +188,7 @@ function CreativeGraphCurve({
             <input
               type="number"
               step="0.001"
-              value={kf.value}
+              value={String(kf.value)}
               onChange={e => onKeyframeDrag(kf.keyframeId, kf.time, Number(e.target.value))}
             />
             <select

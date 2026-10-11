@@ -5,7 +5,7 @@ export { CreativePreview } from './CreativePreview'
 export { CreativeGraphEditor } from './CreativeGraphEditor'
 export { CreativeToolbar } from './CreativeToolbar'
 export { CreativeWorkspaceSwitcher } from './CreativeWorkspaceSwitcher'
-export { CreativeWorkspaceProvider, useCreativeWorkspace } from './index'
+export { CreativeWorkspaceProvider, useCreativeWorkspace } from './CreativeWorkspaceContext'
 export type {
   CreativeProject,
   CreativeComposition,

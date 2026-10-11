@@ -1,4 +1,4 @@
-import { useCreativeWorkspace } from './index'
+import { useCreativeWorkspace } from './CreativeWorkspaceContext'
 import { useMemo } from 'react'
 import type { CreativeTrack, CreativeClip, CreativeLayer, CreativeKeyframe } from './types'
 

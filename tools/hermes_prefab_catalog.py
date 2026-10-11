@@ -65,7 +65,14 @@ registry.register(
                 "action": {"type": "string", "enum": ["catalog", "match_navigation", "match_trello_read", "get_destination"]},
                 "text": {"type": "string", "description": "Human command text to match (for match_navigation/match_trello_read)"},
                 "key": {"type": "string", "description": "Destination key (for get_destination)"}},
-                "required": ["action"], "additionalProperties": False}},
+                "required": ["action"], "additionalProperties": False},
+            "when_to_use": ("Exact human commands for known destinations (Trello boards, Instagram, WhatsApp, ChatGPT). "
+                           "Use when user says 'Abra o Trello', 'Liste os cards do Calendário Editorial', etc. "
+                           "Zero LLM cost - deterministic intent matching."),
+            "do_not_use": ("Vague commands, compound requests, URLs not in catalog, destructive actions. "
+                          "Do not use for 'Abra o Trello e delete os cards' or 'Abrir https://trello.com/xyz'."),
+            "risk": "read_only",
+            "verifier": "independent_browser_snapshot_url_verified"},
     description="Prefabricated capability catalog and intent matcher",
     emoji="📦",
 )
