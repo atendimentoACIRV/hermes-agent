@@ -122,3 +122,19 @@ Real Trello/HyperFrames/repetition baseline BLOCKED: installed native controller
 A new real local adoption regression exposed a remaining lifetime gap: revoking the qualification after the first reused item did not stop the three later items in the same checkpoint. Valid RED: four items executed instead of one (29.1s runner; initial fixture-error attempt is not counted as security evidence). Runtime now re-queries qualified offers at every item boundary, records denial and halts the checkpoint. The independently verified first item remains completed; no blind rollback/retry.
 GREEN: complete online safety file, 38 passed, zero failed, 149.0s. Config/expiry/scope changes apply at item boundaries; this is not an atomic distributed revocation guarantee for an effect already in progress. No Trello write or production trust provisioning.
 Native regression at bb1888976e: existing headless-load contract passed with four real Electron/Chromium BrowserTasks (8.5s test; 1.6m including bootstrap under concurrent tests). Inference and pages are fixtures: native lifecycle/IPC evidence only, not E1 completion or measured product latency/cost. Broader Workstation regression still running; CI remains skipped by maintainer.
+## Operational speed P1 continuation — development evidence (2026-10-11)
+
+H-079 PASS_WITH_AUTHORIZATION per maintainer; no main merge, no release
+qualification. Branch `feat/workstation-browser-optimization-c2c@bade7bb38`,
+origin/main `1de5beb28`, upstream pin `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Seams 21 classified / 0 unclassified / 0 budget regressions (FPS-WS-PREFAB-003).
+GREEN focused: attestation 9, online safety 38, resolution provider 10, current
+command 4 (incl. Hyperframe safe-fallback lock), prefabs 27+14 subtests,
+concurrent-edit 5, batch/route/e2e 29, router wiring GREEN. OPC-04 mutation
+planning via work_execute; OPC-05 run-local browser primitives + OBSERVE_ACTIVE;
+OPC-06 vertical matchers/admission with HANDOFF not-implemented resolvers.
+P1.5 composed `creative.hyperframes.open` execution pending; fresh Hyperframe
+falls back to System-2 safely (no zero-LLM studio open yet). Product latency,
+tokens, model calls and monetary savings remain UNKNOWN; native E1/E2/E3
+PENDING_USER_VALIDATION. Evidence:
+workstation/context/engineering-journal/operational-speed-p1-2026-10-11.md.
