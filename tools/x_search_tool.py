@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
+from tools.effects import ToolEffect
 from tools.registry import registry, tool_error
 from tools.xai_http import DEFAULT_XAI_BASE_URL, hermes_xai_user_agent, resolve_xai_http_credentials
 
@@ -339,5 +340,5 @@ def _handle_x_search(args, **kw):
 registry.register(
     name="x_search", toolset="x_search", schema=X_SEARCH_SCHEMA, handler=_handle_x_search,
     check_fn=check_x_search_requirements, requires_env=["XAI_API_KEY"], emoji="🐦",
-    max_result_size_chars=100_000,
+    effect=ToolEffect.PURE_READ, max_result_size_chars=100_000,
 )

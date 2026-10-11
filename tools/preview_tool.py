@@ -9,6 +9,7 @@ Lives in the ``desktop_ui`` toolset — desktop-app sessions only.
 
 from tools import desktop_ui
 from tools.open_preview_tool import _normalize_target, open_preview_tool
+from tools.effects import ToolEffect
 from tools.registry import registry, tool_error
 
 
@@ -69,10 +70,18 @@ PREVIEW_SCHEMA = {
 }
 
 
+def _preview_effect(args: dict) -> ToolEffect:
+    if not isinstance(args, dict):
+        return ToolEffect.MUTATION
+    return ToolEffect.PURE_READ if args.get("action") == "read" else ToolEffect.INTERACTIVE
+
+
 registry.register(
     name="desktop_preview",
     toolset="desktop_ui",
     schema=PREVIEW_SCHEMA,
     handler=_handle_preview,
+    effect=ToolEffect.INTERACTIVE,
+    effect_resolver=_preview_effect,
     emoji="🖼️",
 )

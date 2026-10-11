@@ -10,6 +10,7 @@ renderer resolves refs and owns the overlay). ``desktop_ui`` toolset only.
 import json
 from typing import Callable, Optional
 
+from tools.effects import ToolEffect
 from tools.registry import registry, tool_error
 
 ACTIONS = ("add", "hold", "remove", "clear")
@@ -99,4 +100,5 @@ registry.register(
         callback=kw.get("callback"),
     ),
     emoji="🔖",
+    effect=ToolEffect.INTERACTIVE,
 )

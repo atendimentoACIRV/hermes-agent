@@ -12,6 +12,7 @@ import json
 import logging
 from typing import Any
 
+from tools.effects import ToolEffect
 from tools.registry import registry
 _TOOLSET = "desktop_ui"
 _log = logging.getLogger(__name__)
@@ -209,6 +210,6 @@ def _schema(description: str, properties: dict[str, Any], required: list[str] | 
 
 
 registry.register("browser_extension_install", _TOOLSET, _schema("Install a Chrome Web Store extension only when it is needed. Hermes inspects its manifest, applies policy and asks for approval when permissions are sensitive; success means Electron loaded and verified it.", {"extension": {"type": "string", "description": "Chrome Web Store URL or 32-character extension ID."}}, ["extension"]), _install, check_fn=lambda: False, emoji="🧩")
-registry.register("browser_extension_list", _TOOLSET, _schema("List Hermes Workstation Chrome extensions with their current Electron loaded state.", {}), _list, check_fn=lambda: False, emoji="🧩")
+registry.register("browser_extension_list", _TOOLSET, _schema("List Hermes Workstation Chrome extensions with their current Electron loaded state.", {}), _list, check_fn=lambda: False, emoji="🧩", effect=ToolEffect.PURE_READ)
 registry.register("browser_extension_uninstall", _TOOLSET, _schema("Remove an installed Hermes Workstation Chrome extension after human approval.", {"extension": {"type": "string", "description": "Chrome Web Store URL or 32-character extension ID."}}, ["extension"]), _uninstall, check_fn=lambda: False, emoji="🧩")
 registry.register("browser_extension_open_options", _TOOLSET, _schema("Open the options page of an already loaded Hermes Workstation Chrome extension in the task-owned internal browser.", {"extension": {"type": "string", "description": "Chrome Web Store URL or 32-character extension ID."}}, ["extension"]), _open_options, check_fn=lambda: False, emoji="🧩")

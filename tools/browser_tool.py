@@ -1005,7 +1005,7 @@ def browser_type(
     text: Optional[str] = None,
     task_id: Optional[str] = None,
     mode: str = "insert_text",
-    semantic_anchor: Optional[Dict[str, Any]] = None,
+    semantic_anchor: Optional[dict[str, Any]] = None,
     clear: bool = True,
     append: bool = False,
     text_ref: Optional[str] = None,
@@ -1438,6 +1438,7 @@ def browser_vision(question: str, annotate: bool = False, task_id: Optional[str]
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+from tools.effects import ToolEffect
 from tools.registry import registry, tool_error
 from tools.browser_extension_router import extension_controller_available, routed_browser_handler
 
@@ -1464,7 +1465,7 @@ def _fallback_call(fn_name: str, arg_defaults: dict[str, Any], extra_kw: tuple =
 def browser_read_http(
     url: str,
     method: str = "GET",
-    headers: Optional[Dict[str, str]] = None,
+    headers: Optional[dict[str, str]] = None,
     task_id: Optional[str] = None,
     session_id: Optional[str] = None,
     **kwargs,
@@ -1577,9 +1578,43 @@ def _routed_handler(name: str, fallback):
     return handler
 
 
+# Browser navigation/interaction is never itself a destructive local mutation.
+# Page JavaScript remains arbitrary execution even when its text looks like a read.
+_BROWSER_INTERACTIVE = frozenset({
+    "browser_navigate", "browser_click", "browser_type", "browser_scroll",
+    "browser_back", "browser_press", "browser_batch_actions",
+})
+
+
+def _browser_console_effect(args: dict) -> ToolEffect:
+    if not isinstance(args, dict):
+        return ToolEffect.MUTATION
+    if "expression" in args:  # even empty expressions are not proved read-only
+        return ToolEffect.MUTATION
+    return ToolEffect.INTERACTIVE if args.get("clear") else ToolEffect.PURE_READ
+
+
+def _browser_http_effect(args: dict) -> ToolEffect:
+    if not isinstance(args, dict):
+        return ToolEffect.MUTATION
+    method = str(args.get("method", "GET") or "").upper()
+    return ToolEffect.PURE_READ if method in {"GET", "HEAD"} else ToolEffect.MUTATION
+
+
+_BROWSER_EFFECT_RESOLVERS = {
+    "browser_console": _browser_console_effect,
+    "browser_read_http": _browser_http_effect,
+}
+
+
 for _name, _emoji, _check_fn, _defaults, *_extra in _BROWSER_TOOL_TABLE:
     if _check_fn is None:  # also binds the legacy check_browser_<x>_requirements globals (tests + callers)
         _check_fn = globals()[f"check_{_name}_requirements"] = _routed_check_fn(_name)
     registry.register(name=_name, toolset="browser", schema=_BROWSER_SCHEMA_MAP[_name],
                       handler=_routed_handler(_name, _fallback_call(_name, _defaults, *_extra)),
-                      check_fn=_check_fn, emoji=_emoji)
+                      check_fn=_check_fn, emoji=_emoji,
+                      effect=(ToolEffect.INTERACTIVE if _name in _BROWSER_INTERACTIVE else
+                              ToolEffect.COGNITIVE if _name == "browser_vision" else
+                              ToolEffect.MUTATION if _name in {"browser_console", "browser_read_http"} else
+                              ToolEffect.PURE_READ),
+                      effect_resolver=_BROWSER_EFFECT_RESOLVERS.get(_name))
