@@ -1,7 +1,7 @@
 """Per-turn structural fan-out detector; scalar item values do not affect shape."""
 import hashlib
 import json
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 from tools.effects import WRITE_EFFECTS, tool_effect, unwrap_call
 from agent.tool_guardrails import classify_tool_failure
@@ -183,20 +183,27 @@ def prepare_mutation(agent, name, args):
         try:
             task = kanban_db.get_task(conn, task_id)
             from workstation.authority_supersession import (
+                MutationAuthorityFenceError,
                 classify_run_authority,
                 checkpoint_superseded_execution,
             )
             auth_eval = classify_run_authority(task, run_id, connection=conn)
             if auth_eval is not None:
-                checkpoint_superseded_execution(
+                # No tool I/O has crossed the fence. Preserve the unconfirmed
+                # operation identity without persisting payloads or secrets.
+                checkpoint = checkpoint_superseded_execution(
                     task_id=task_id,
                     stale_run_id=run_id or "",
                     current_run_id=auth_eval.current_run_id,
                     completed_results=[],
-                    pending_items=[],
+                    pending_items=[{
+                        "operation_id": call_key(name, args),
+                        "tool": name,
+                        "status": "not_dispatched",
+                    }],
                     termination_kind=auth_eval.termination_kind,
                 )
-                raise RuntimeError('AUTHORITY_SUPERSEDED: continue pending work in canonical run' if auth_eval.continuation_allowed else auth_eval.termination_kind.value)
+                raise MutationAuthorityFenceError(checkpoint)
         finally:
             conn.close()
     from workstation.artifacts import ArtifactStore
