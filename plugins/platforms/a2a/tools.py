@@ -357,5 +357,6 @@ def register_tools(ctx) -> None:
         if required:
             parameters["required"] = required
         ctx.register_tool(name=name, toolset="a2a", handler=handler, description=description,
-                          schema={"name": name, "description": description, "parameters": parameters},
+                          schema={"name": name, "description": description, "parameters": parameters,
+                                  "effect": "PURE_READ" if name in {"a2a_history", "a2a_list"} else "MUTATION"},
                           emoji="\U0001f9e9", check_fn=_a2a_tools_available)  # puzzle piece

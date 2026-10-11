@@ -720,12 +720,14 @@ def _handle_vault_fill(args: dict[str, Any], **kwargs) -> str:
     return _fenced_page_op(tid, lambda: browser_vault_fill(handle=str(args.get("handle") or ""), task_id=tid))
 
 
+from tools.effects import ToolEffect
 from tools.registry import no_cache_check_fn, registry
 
 _check_vault_available = no_cache_check_fn(_check_vault_available)
 
 registry.register(
     name="browser_vault_list",
+    effect=ToolEffect.PURE_READ,
     toolset="browser",
     schema=BROWSER_VAULT_LIST_SCHEMA,
     handler=_handle_vault_list,

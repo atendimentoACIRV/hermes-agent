@@ -327,10 +327,17 @@ def is_todo_tool_call(tool_call: Any) -> bool:
     return not error and len(entries) == 1 and is_todo_tool_name(entries[0]["name"])
 
 
+from tools.effects import ToolEffect
 from tools.registry import registry, tool_error
+
+def _todo_effect(args: dict) -> ToolEffect:
+    if not isinstance(args, dict):
+        return ToolEffect.MUTATION
+    return ToolEffect.PURE_READ if args.get("todos") is None else ToolEffect.MUTATION
+
 
 registry.register(
     name="todo_list", toolset="todo", schema=TODO_SCHEMA, check_fn=check_todo_requirements,
     handler=lambda args, **kw: todo_tool(
         todos=args.get("todos"), merge=args.get("merge", False), store=kw.get("store")),
-    emoji="📋")
+    emoji="📋", effect=ToolEffect.MUTATION, effect_resolver=_todo_effect)

@@ -14,6 +14,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Tuple
 
+from tools.effects import ToolEffect
 from tools.registry import registry, tool_result
 
 logger = logging.getLogger(__name__)
@@ -492,4 +493,7 @@ for _schema, _handler, _emoji in _TOOLS:
     registry.register(
         name=_schema["name"], toolset="hermes-yuanbao", schema=_schema, handler=_handler,
         check_fn=_check_yuanbao, is_async=True, emoji=_emoji,
+        effect=(ToolEffect.PURE_READ if _schema["name"] in {
+            "yb_query_group_info", "yb_query_group_members", "yb_search_sticker"
+        } else ToolEffect.MUTATION),
     )

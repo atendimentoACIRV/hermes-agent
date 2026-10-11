@@ -9,6 +9,7 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
+from tools.effects import ToolEffect
 from tools.registry import registry, tool_error
 logger = logging.getLogger(__name__)
 
@@ -217,6 +218,7 @@ VAULT_GRAPH_SCHEMA = {
 
 registry.register(
     name="vault_search",
+    effect=ToolEffect.PURE_READ,
     toolset="vault",
     schema=VAULT_SEARCH_SCHEMA,
     handler=_handle_vault_search,
@@ -225,6 +227,7 @@ registry.register(
 
 registry.register(
     name="vault_read",
+    effect=ToolEffect.PURE_READ,
     toolset="vault",
     schema=VAULT_READ_SCHEMA,
     handler=_handle_vault_read,

@@ -13,6 +13,7 @@ from tools.feishu_lark import (
     get_client,
     lark_call,
     set_client)
+from tools.effects import ToolEffect
 from tools.registry import registry, tool_error, tool_result
 
 logger = logging.getLogger(__name__)
@@ -191,4 +192,7 @@ for _schema, _handler, _desc, _emoji in (
 ):
     registry.register(
         name=_schema["name"], toolset="feishu_drive", schema=_schema, handler=_handler,
-        check_fn=_check_feishu, requires_env=[], is_async=False, description=_desc, emoji=_emoji)
+        check_fn=_check_feishu, requires_env=[], is_async=False, description=_desc, emoji=_emoji,
+        effect=(ToolEffect.PURE_READ if _schema["name"] in {
+            "feishu_drive_list_comments", "feishu_drive_list_comment_replies"
+        } else ToolEffect.MUTATION))
