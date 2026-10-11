@@ -8,7 +8,9 @@ import logging
 import uuid
 from typing import Any
 
-from .catalog import Destination, get_destination, match_navigation, match_trello_read
+from .catalog import (Destination, get_destination, match_navigation, match_trello_read,
+                      match_instagram_read, match_whatsapp_read, match_chatgpt_read,
+                      InstagramReadIntent, WhatsAppReadIntent, ChatGPTReadIntent)
 from .engine import navigate
 
 _LOG = logging.getLogger(__name__)
@@ -39,6 +41,42 @@ def prepare_user_trello_read(envelope: Any):
     return match_trello_read(getattr(envelope, "content", ""))
 
 
+def prepare_user_instagram_read(envelope: Any):
+    """Parse only an authenticated human-origin direct read of Instagram."""
+    if envelope is None:
+        return None
+    origin = getattr(getattr(envelope, "origin", None), "value", getattr(envelope, "origin", None))
+    authority = getattr(getattr(envelope, "intent_authority", None), "value",
+                        getattr(envelope, "intent_authority", None))
+    if str(origin).lower() != "human" or str(authority).lower() not in {"create_work", "update_work"}:
+        return None
+    return match_instagram_read(getattr(envelope, "content", ""))
+
+
+def prepare_user_whatsapp_read(envelope: Any):
+    """Parse only an authenticated human-origin direct read of WhatsApp."""
+    if envelope is None:
+        return None
+    origin = getattr(getattr(envelope, "origin", None), "value", getattr(envelope, "origin", None))
+    authority = getattr(getattr(envelope, "intent_authority", None), "value",
+                        getattr(envelope, "intent_authority", None))
+    if str(origin).lower() != "human" or str(authority).lower() not in {"create_work", "update_work"}:
+        return None
+    return match_whatsapp_read(getattr(envelope, "content", ""))
+
+
+def prepare_user_chatgpt_read(envelope: Any):
+    """Parse only an authenticated human-origin direct read of ChatGPT."""
+    if envelope is None:
+        return None
+    origin = getattr(getattr(envelope, "origin", None), "value", getattr(envelope, "origin", None))
+    authority = getattr(getattr(envelope, "intent_authority", None), "value",
+                        getattr(envelope, "intent_authority", None))
+    if str(origin).lower() != "human" or str(authority).lower() not in {"create_work", "update_work"}:
+        return None
+    return match_chatgpt_read(getattr(envelope, "content", ""))
+
+
 def _resolve_trello_read(intent: Any):
     """GET only; the authenticated API read *is* the result, without LLM."""
     from agent.operational_resolution import OperationalOutcome, OperationalResolution
@@ -53,7 +91,7 @@ def _resolve_trello_read(intent: Any):
                             "Nenhuma altera\u00e7\u00e3o foi realizada."),
             reason=f"prefab_trello_read_failed:{type(exc).__name__}", provider="hermes_prefabs")
     cards = data["cards"]
-    default_name = "(sem título)"
+    default_name = "(sem t\u00edtulo)"
     items = [f"- {row.get('name') or default_name} — {row.get('shortUrl') or row.get('id')}"
              for row in cards]
     suffix = " (mostrando os 30 primeiros)" if data["truncated"] else ""
@@ -63,6 +101,57 @@ def _resolve_trello_read(intent: Any):
         outcome=OperationalOutcome.SATISFIED, final_response=response,
         reason="prefab_trello_read_verified", provider="hermes_prefabs",
         details={"board": intent.board, "matched": data["total_matches"], "read_only": True})
+
+
+def _resolve_instagram_read(intent: InstagramReadIntent):
+    """Instagram reads via official API when authorized; browser fallback for profile."""
+    from agent.operational_resolution import OperationalOutcome, OperationalResolution
+    if intent.target == "feed":
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response="Instagram feed leitura requer API oficial autorizada. Navegacao via browser nao implementada.",
+            reason="prefab_instagram_feed_requires_api", provider="hermes_prefabs")
+    if intent.target == "profile":
+        # Browser navigation to profile
+        return None  # Let navigation handle it
+    if intent.target == "insights":
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response="Instagram insights requerem API Graph autorizada (Business/Creator account). Nao implementado.",
+            reason="prefab_instagram_insights_requires_api", provider="hermes_prefabs")
+    return None
+
+
+def _resolve_whatsapp_read(intent: WhatsAppReadIntent):
+    """WhatsApp reads - authorized conversation scope only."""
+    from agent.operational_resolution import OperationalOutcome, OperationalResolution
+    if intent.scope == "conversation_list":
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response="WhatsApp lista de conversas requer navegacao via browser autorizada. Nao implementado.",
+            reason="prefab_whatsapp_conversation_list_not_implemented", provider="hermes_prefabs")
+    if intent.scope == "conversation":
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response=f"WhatsApp conversa com {intent.contact} requer navegacao autorizada. Nao implementado.",
+            reason="prefab_whatsapp_conversation_not_implemented", provider="hermes_prefabs")
+    return None
+
+
+def _resolve_chatgpt_read(intent: ChatGPTReadIntent):
+    """ChatGPT reads - semantic editor location, no auto-send."""
+    from agent.operational_resolution import OperationalOutcome, OperationalResolution
+    if intent.scope == "history":
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response="ChatGPT historico requer navegacao via browser. Nao implementado.",
+            reason="prefab_chatgpt_history_not_implemented", provider="hermes_prefabs")
+    if intent.scope == "search":
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response=f"ChatGPT busca por '{intent.query}' requer navegacao via browser. Nao implementado.",
+            reason="prefab_chatgpt_search_not_implemented", provider="hermes_prefabs")
+    return None
 
 
 def maybe_resolve_navigation(context: Any):
@@ -76,16 +165,36 @@ def maybe_resolve_navigation(context: Any):
         return None
     key = getattr(agent, "_prefab_navigation_intent", None)
     trello_intent = getattr(agent, "_prefab_trello_read_intent", None)
-    agent._prefab_trello_read_intent = None
+    instagram_intent = getattr(agent, "_prefab_instagram_read_intent", None)
+    whatsapp_intent = getattr(agent, "_prefab_whatsapp_read_intent", None)
+    chatgpt_intent = getattr(agent, "_prefab_chatgpt_read_intent", None)
     # Consume before touching IO, including on exceptions, so a second
     # resolution iteration cannot cause a duplicate browser dispatch.
+    agent._prefab_trello_read_intent = None
+    agent._prefab_instagram_read_intent = None
+    agent._prefab_whatsapp_read_intent = None
+    agent._prefab_chatgpt_read_intent = None
     agent._prefab_navigation_intent = None
-    if not key and trello_intent is None:
+    if not key and not any([trello_intent, instagram_intent, whatsapp_intent, chatgpt_intent]):
         return None
     if getattr(agent, "_interrupt_requested", False) or getattr(agent, "_tool_guardrail_halt_decision", None):
         return None
+    # Handle read intents first (API-based, no browser dispatch)
     if trello_intent is not None and not key:
         return _resolve_trello_read(trello_intent)
+    if instagram_intent is not None and not key:
+        result = _resolve_instagram_read(instagram_intent)
+        if result is not None:
+            return result
+    if whatsapp_intent is not None and not key:
+        result = _resolve_whatsapp_read(whatsapp_intent)
+        if result is not None:
+            return result
+    if chatgpt_intent is not None and not key:
+        result = _resolve_chatgpt_read(chatgpt_intent)
+        if result is not None:
+            return result
+    # Handle navigation
     try:
         target = get_destination(key)
     except ValueError:

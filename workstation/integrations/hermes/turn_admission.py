@@ -6,7 +6,9 @@ from agent.turn_ingress import TurnIngress, TurnOrigin, TurnTrustClass
 from agent.turn_route_policy import TurnRoutePolicy, set_current_turn_route_policy
 from workstation.contracts import IntentAuthority, MessageEnvelope, MessageOrigin
 from workstation.work_intent import prepare_turn_work
-from workstation.prefabs.integration import prepare_user_navigation, prepare_user_trello_read
+from workstation.prefabs.integration import (prepare_user_navigation, prepare_user_trello_read,
+                                              prepare_user_instagram_read, prepare_user_whatsapp_read,
+                                              prepare_user_chatgpt_read)
 
 
 def workstation_turn_admission(
@@ -110,6 +112,24 @@ def workstation_turn_admission(
         trello_intent = prepare_user_trello_read(envelope)
         if trello_intent:
             agent._prefab_trello_read_intent = trello_intent
+        instagram_intent = prepare_user_instagram_read(envelope)
+        if instagram_intent:
+            agent._prefab_instagram_read_intent = instagram_intent
+        whatsapp_intent = prepare_user_whatsapp_read(envelope)
+        if whatsapp_intent:
+            agent._prefab_whatsapp_read_intent = whatsapp_intent
+        chatgpt_intent = prepare_user_chatgpt_read(envelope)
+        if chatgpt_intent:
+            agent._prefab_chatgpt_read_intent = chatgpt_intent
+        instagram_intent = prepare_user_instagram_read(envelope)
+        if instagram_intent:
+            agent._prefab_instagram_read_intent = instagram_intent
+        whatsapp_intent = prepare_user_whatsapp_read(envelope)
+        if whatsapp_intent:
+            agent._prefab_whatsapp_read_intent = whatsapp_intent
+        chatgpt_intent = prepare_user_chatgpt_read(envelope)
+        if chatgpt_intent:
+            agent._prefab_chatgpt_read_intent = chatgpt_intent
 
     intent = prepare_turn_work(agent, envelope.content, envelope=envelope)
     from workstation.telemetry import TelemetryEventType, emit_event

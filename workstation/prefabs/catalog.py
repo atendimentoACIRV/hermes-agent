@@ -96,6 +96,71 @@ class TrelloReadIntent:
     search: str = ""
 
 
+@dataclass(frozen=True)
+class InstagramReadIntent:
+    target: str  # "feed", "profile", "insights"
+    username: str = ""
+    metric: str = ""
+
+
+@dataclass(frozen=True)
+class WhatsAppReadIntent:
+    scope: str  # "conversation", "contact_list", "message"
+    contact: str = ""
+
+
+@dataclass(frozen=True)
+class ChatGPTReadIntent:
+    scope: str  # "conversation", "editor", "history"
+    query: str = ""
+
+
+def match_instagram_read(text: str) -> InstagramReadIntent | None:
+    """Literal, human-origin command grammar for Instagram reads."""
+    if not isinstance(text, str) or len(text) > 200 or "\n" in text:
+        return None
+    sentence = normalize(text)
+    # Feed/profile reads
+    if sentence in {"mostre o feed do instagram", "abra o instagram", "instagram feed", "perfil do instagram"}:
+        return InstagramReadIntent(target="feed")
+    if sentence in {"mostre o perfil da acirv no instagram", "instagram da acirv", "perfil acirvoficial"}:
+        return InstagramReadIntent(target="profile", username="acirvoficial")
+    # Insights reads
+    for prefix in ("colete insights", "mostre metricas", "metricas de"):
+        if sentence.startswith(prefix):
+            metric = sentence[len(prefix):].strip()
+            return InstagramReadIntent(target="insights", metric=metric or "overview")
+    return None
+
+
+def match_whatsapp_read(text: str) -> WhatsAppReadIntent | None:
+    """Literal, human-origin command grammar for WhatsApp reads."""
+    if not isinstance(text, str) or len(text) > 200 or "\n" in text:
+        return None
+    sentence = normalize(text)
+    if sentence in {"mostre conversas whatsapp", "lista contatos whatsapp", "whatsapp conversas"}:
+        return WhatsAppReadIntent(scope="conversation_list")
+    if sentence.startswith("leia conversa "):
+        contact = sentence[len("leia conversa "):].strip()
+        if 2 <= len(contact) <= 100:
+            return WhatsAppReadIntent(scope="conversation", contact=contact)
+    return None
+
+
+def match_chatgpt_read(text: str) -> ChatGPTReadIntent | None:
+    """Literal, human-origin command grammar for ChatGPT reads."""
+    if not isinstance(text, str) or len(text) > 200 or "\n" in text:
+        return None
+    sentence = normalize(text)
+    if sentence in {"mostre historico chatgpt", "historico do chatgpt", "chatgpt conversas"}:
+        return ChatGPTReadIntent(scope="history")
+    if sentence.startswith("encontre no chatgpt "):
+        query = sentence[len("encontre no chatgpt "):].strip()
+        if 2 <= len(query) <= 150:
+            return ChatGPTReadIntent(scope="search", query=query)
+    return None
+
+
 def match_trello_read(text: str) -> TrelloReadIntent | None:
     """Literal, human-origin command grammar, never an open-ended NL parser."""
     if not isinstance(text, str) or len(text) > 190 or "\n" in text:

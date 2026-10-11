@@ -9,6 +9,7 @@
 - **Resiliência e Idempotência:** Deduplicação de requisições de mutação via chave `operation_id`, tratamento limpo de crashes em `render-process-gone` e recuperação de abas sem perda de identidade de `BrowserTask`.
 - **Transição Humano/Agente na UX:** Botões dedicados no painel do chat para tomar/liberar controle manual, indicadores de progresso e acesso direto ao diário de execução (`TaskJournalDrawer`).
 - **OPT-05 (Importação de Sessões Chrome):** Mantido em HOLD com avaliação de risco e requisitos mandatórios documentados em `workstation/context/OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`.
+- **OPT-07/OPT-11 (Drift & Backends — DIAGNOSED, sem runtime):** 32 arquivos Python classificados (2 runtimes legítimos + drivers opcionais/roteadores/fachadas/guardas); drift e quarentena inventariados sem auto-reparo. Detalhe em `workstation/context/OPT_07_11_DRIFT_BACKEND_CLASSIFICATION_2026-10-11.md`.
 
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — Creative Workstation D-043: inteligência arquitetura + evidências

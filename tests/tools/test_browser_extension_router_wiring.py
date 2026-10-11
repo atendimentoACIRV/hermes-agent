@@ -19,7 +19,7 @@ def _route_spy(monkeypatch):
     exercising real routing or a real browser backend."""
     calls = []
 
-    def spy(action, args, *, fallback, task_id=None, session_id=None, tool_call_id=None):
+    def spy(action, args, *, fallback, task_id=None, session_id=None, tool_call_id=None, run_id=None):
         calls.append(
             {
                 "action": action,
@@ -27,6 +27,7 @@ def _route_spy(monkeypatch):
                 "task_id": task_id,
                 "session_id": session_id,
                 "tool_call_id": tool_call_id,
+                "run_id": run_id,
             }
         )
         return fallback()
@@ -36,8 +37,8 @@ def _route_spy(monkeypatch):
 
     monkeypatch.setattr(browser_tool, "routed_browser_handler", spy)
     # This suite exercises extension-router plumbing. Workstation fail-closed
-    # routing has its own controller tests; do not require a live controller.
-    monkeypatch.setattr(browser_tool, "_workstation_or_legacy", lambda action, args, kw, fallback: fallback())
+    # routing lives behind the control broker (f948da2462) and has its own
+    # controller tests; do not require a live controller here.
     monkeypatch.setattr(browser_cdp_tool, "routed_browser_handler", spy)
     monkeypatch.setattr(
         browser_tool,
