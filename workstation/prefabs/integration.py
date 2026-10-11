@@ -1,0 +1,130 @@
+"""Two conservative lifecycle adapters for the existing Workstation boundary.
+
+No independent browser, agent, session or authority owner is created here.
+"""
+from __future__ import annotations
+
+import logging
+import uuid
+from typing import Any
+
+from .catalog import Destination, get_destination, match_navigation, match_trello_read
+from .engine import navigate
+
+_LOG = logging.getLogger(__name__)
+
+
+def prepare_user_navigation(envelope: Any) -> str | None:
+    """Only an authenticated user-origin turn may enter the automatic fast path."""
+    if envelope is None:
+        return None
+    origin = getattr(getattr(envelope, "origin", None), "value", getattr(envelope, "origin", None))
+    authority = getattr(getattr(envelope, "intent_authority", None), "value",
+                        getattr(envelope, "intent_authority", None))
+    if str(origin).lower() != "human" or str(authority).lower() not in {"create_work", "update_work"}:
+        return None
+    destination = match_navigation(getattr(envelope, "content", ""))
+    return destination.key if destination is not None else None
+
+
+def prepare_user_trello_read(envelope: Any):
+    """Parse only an authenticated human-origin direct read of known ACIRV boards."""
+    if envelope is None:
+        return None
+    origin = getattr(getattr(envelope, "origin", None), "value", getattr(envelope, "origin", None))
+    authority = getattr(getattr(envelope, "intent_authority", None), "value",
+                        getattr(envelope, "intent_authority", None))
+    if str(origin).lower() != "human" or str(authority).lower() not in {"create_work", "update_work"}:
+        return None
+    return match_trello_read(getattr(envelope, "content", ""))
+
+
+def _resolve_trello_read(intent: Any):
+    """GET only; the authenticated API read *is* the result, without LLM."""
+    from agent.operational_resolution import OperationalOutcome, OperationalResolution
+    from workstation.prefabs.trello import TrelloClient
+    try:
+        data = TrelloClient().board_cards(intent.board, search=intent.search, limit=30)
+    except Exception as exc:
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response=("N\u00e3o consegui consultar o Trello com a API autorizada. "
+                            "Verifique TRELLO_API_KEY, TRELLO_TOKEN e permiss\u00f5es do quadro. "
+                            "Nenhuma altera\u00e7\u00e3o foi realizada."),
+            reason=f"prefab_trello_read_failed:{type(exc).__name__}", provider="hermes_prefabs")
+    cards = data["cards"]
+    default_name = "(sem título)"
+    items = [f"- {row.get('name') or default_name} — {row.get('shortUrl') or row.get('id')}"
+             for row in cards]
+    suffix = " (mostrando os 30 primeiros)" if data["truncated"] else ""
+    response = (f"Consulta conclu\u00edda: {data['total_matches']} cards correspondentes no quadro "
+                f"{intent.board}{suffix}." + ("\n" + "\n".join(items) if items else ""))
+    return OperationalResolution(
+        outcome=OperationalOutcome.SATISFIED, final_response=response,
+        reason="prefab_trello_read_verified", provider="hermes_prefabs",
+        details={"board": intent.board, "matched": data["total_matches"], "read_only": True})
+
+
+def maybe_resolve_navigation(context: Any):
+    """One-shot fast path before System-2; uncertain dispatch NEVER falls through.
+
+    The caller invokes this from workstation_operational_resolution. A stopped,
+    untrusted, unsupported, or ambiguous request returns None without IO.
+    """
+    agent = getattr(context, "agent", None)
+    if agent is None:
+        return None
+    key = getattr(agent, "_prefab_navigation_intent", None)
+    trello_intent = getattr(agent, "_prefab_trello_read_intent", None)
+    agent._prefab_trello_read_intent = None
+    # Consume before touching IO, including on exceptions, so a second
+    # resolution iteration cannot cause a duplicate browser dispatch.
+    agent._prefab_navigation_intent = None
+    if not key and trello_intent is None:
+        return None
+    if getattr(agent, "_interrupt_requested", False) or getattr(agent, "_tool_guardrail_halt_decision", None):
+        return None
+    if trello_intent is not None and not key:
+        return _resolve_trello_read(trello_intent)
+    try:
+        target = get_destination(key)
+    except ValueError:
+        return None
+    session = str(getattr(context, "session_id", "") or "")
+    task = str(getattr(context, "task_id", "") or getattr(agent, "_canonical_work_task_id", "") or session)
+    if not task or not session:
+        return None
+    # If tools are not available in this agent session, skip; don't invent a
+    # privilege bypass or launch an unscoped HTTP/browser client.
+    valid = getattr(agent, "valid_tool_names", set())
+    if "browser_navigate" not in valid or "browser_snapshot" not in valid:
+        return None
+    from agent.operational_resolution import OperationalOutcome, OperationalResolution
+    try:
+        from workstation.integrations.hermes.scoped_execution import (
+            workstation_scoped_execution, workstation_durable_dispatch)
+        scoped = workstation_durable_dispatch(agent)
+        with workstation_scoped_execution(agent, task, None):
+            def dispatch(name: str, args: dict):
+                return scoped(name, args, task, "prefab_" + uuid.uuid4().hex[:16])
+            receipt = navigate(target, dispatch)
+    except Exception as exc:
+        _LOG.warning("Prefabricated navigation dispatcher returned uncertain: %s", type(exc).__name__)
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response="Navega\u00e7\u00e3o solicitada, mas n\u00e3o foi poss\u00edvel confirmar o resultado. Confira a aba antes de tentar novamente.",
+            reason="prefab_dispatch_uncertain", provider="hermes_prefabs")
+    if receipt.status == "verified":
+        return OperationalResolution(
+            outcome=OperationalOutcome.EXECUTED,
+            final_response=f"P\u00e1gina aberta e endere\u00e7o confirmado: {target.title} ({target.url}).",
+            reason="prefab_navigation_verified", provider="hermes_prefabs",
+            details={"target_key": key, "verification": "independent_browser_snapshot"})
+    if receipt.dispatch_attempted:
+        return OperationalResolution(
+            outcome=OperationalOutcome.HANDOFF,
+            final_response=(f"Solicitei a abertura de {target.title}, mas o estado final n\u00e3o foi confirmado. "
+                            "Confira a aba antes de repetir a opera\u00e7\u00e3o."),
+            reason=receipt.reason, provider="hermes_prefabs",
+            details={"target_key": key, "verified": False})
+    return None
