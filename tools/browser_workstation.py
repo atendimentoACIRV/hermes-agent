@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import socket
 import sys
 import threading
@@ -722,6 +723,7 @@ def _dispatch(
     kanban_card_id: Optional[str] = None,
     run_id: Optional[str] = None,
     operation_id: Optional[str] = None,
+    model_facing: bool = False,
 ) -> str:
     if action == "browser_navigate":
         _validate_navigation(args)
@@ -833,7 +835,95 @@ def _dispatch(
             pass
     if isinstance(result, str):
         return result
-    return json.dumps(result, ensure_ascii=False)
+    return json.dumps(project_model_browser_payload(result) if model_facing else result, ensure_ascii=False)
+
+
+_INVENTORY_SECTION = "Interactive elements:\n"
+_INVENTORY_SECTION_END = "\nPage text:"
+_INVENTORY_REF = re.compile(r"^- \[(@e\d+)\]")
+# Fields ``formatInventory`` already prints as `- [@eN] role "label" value disabled`.
+_TEXT_EXPRESSED_KEYS = frozenset({"ref", "role", "label", "value", "disabled"})
+
+
+def _refs_listed_in_snapshot_text(snapshot_text: str) -> Optional[list[str]]:
+    """Refs the snapshot TEXT enumerates, or ``None`` when the grammar differs."""
+    section = snapshot_text.partition(_INVENTORY_SECTION)[2]
+    if not section:
+        return None
+    inventory = section.partition(_INVENTORY_SECTION_END)[0]
+    inventory = inventory.partition("\n[Snapshot truncated by Hermes Workstation budget]")[0]
+    lines = [line for line in inventory.splitlines() if line.strip()]
+    matches = [_INVENTORY_REF.match(line) for line in lines]
+    if not matches or any(match is None for match in matches):
+        return None
+    refs = [match.group(1) for match in matches]
+    return refs if len(refs) == len(set(refs)) else None
+
+
+def project_model_browser_payload(result: Any) -> Any:
+    """Drop the element list the snapshot text already carries, losslessly.
+
+    ``formatInventory`` prints ``- [@eN] role "label" value disabled`` for every
+    element, so the ``elements`` array repeats that same inventory in structured
+    form: the model receives one list twice per call. Only the fields the text
+    cannot express (``tag`` when it differs from ``role``, ``testid``, ``name``)
+    survive, under ``element_index``.
+
+    The model-facing contract stays ``snapshot`` + ``element_count``, matching the
+    legacy lane (``tools/browser_tool.py``: ``_snapshot_fields``).
+
+    Fails open: a missing ``elements`` list, an unrecognized inventory grammar or a
+    ref mismatch returns ``result`` untouched, so an addressable target is never
+    dropped silently.
+    """
+    if not isinstance(result, dict):
+        return result
+    elements = result.get("elements")
+    snapshot = result.get("snapshot")
+    if not isinstance(elements, list) or not elements or not isinstance(snapshot, str):
+        return result
+    if not all(isinstance(element, dict) and element.get("ref") for element in elements):
+        return result
+    listed = _refs_listed_in_snapshot_text(snapshot)
+    if not listed or len(listed) != len(elements):
+        return result
+    if listed != [str(element["ref"]) for element in elements]:
+        return result
+
+    # Ref equality alone is insufficient: stale/redacted labels, values, or roles
+    # could otherwise be represented by inaccurate snapshot text.
+    inventory = snapshot.partition(_INVENTORY_SECTION)[2].partition(_INVENTORY_SECTION_END)[0]
+    inventory = inventory.partition("\n[Snapshot truncated by Hermes Workstation budget]")[0]
+    lines = [line for line in inventory.splitlines() if line.strip()]
+    for line, element in zip(lines, elements):
+        ref, role, tag = element["ref"], element.get("role"), element.get("tag")
+        label, value, disabled = element.get("label") or "", element.get("value") or "", element.get("disabled")
+        if not (isinstance(ref, str) and isinstance(role, str) and role
+                and isinstance(tag, str) and tag and isinstance(label, str)
+                and isinstance(value, str) and isinstance(disabled, bool)):
+            return result
+        label_part = ' "' + label.replace('"', r'\"') + '"' if label else ""
+        value_part = ' value="' + value.replace('"', r'\"') + '"' if value else ""
+        expected = f'- [{ref}] {role}{label_part}{value_part}' + (" disabled" if disabled else "")
+        if line != expected:
+            return result
+
+    index: dict[str, dict[str, Any]] = {}
+    for element in elements:
+        extras = {
+            key: value
+            for key, value in element.items()
+            if key not in _TEXT_EXPRESSED_KEYS
+            and not (key == "tag" and value == element["role"])
+        }
+        if extras:
+            index[str(element["ref"])] = extras
+
+    projected = {key: value for key, value in result.items() if key != "elements"}
+    projected["elements_projected"] = True
+    if index:
+        projected["element_index"] = index
+    return projected
 
 
 call_workstation_browser = _dispatch
@@ -904,4 +994,5 @@ def workstation_routed_browser_handler(
         action, args, task_id=task_id, session_id=session_id,
         kanban_card_id=kanban_card_id, run_id=run_id,
         operation_id=operation_id,
+        model_facing=True,
     )
