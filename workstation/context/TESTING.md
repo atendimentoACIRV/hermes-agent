@@ -1,9 +1,23 @@
 # Workstation Testing
 
 
-## Operational speed Stage A — 2026-10-10 (NOT QUALIFIED)
+## Operational speed P0–P2 Implementation Testing — 2026-10-10 / 2026-10-11
+Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Status: **43 TESTES PYTHON + 20 TESTES VITEST GREEN.**
+- `workstation/tests/test_operational_telemetry.py` (10 passed): Medição de latência até resultado verificado, tempo por subsistema, deduplicação por `call_id`, contagem de tokens reais e cálculo econômico.
+- `workstation/tests/test_direct_qualification_attestation.py` (9 passed): Atestação HMAC autenticada; forjas rejeitadas falham closed em SHADOW.
+- `workstation/tests/test_current_command_resolution.py` (4 passed): Resolução pre-LLM determinística de novos comandos sem System-2.
+- `workstation/tests/test_browser_batch_actions.py` (3 passed): Roteamento e execução de `browser_batch_actions`.
+- `workstation/tests/test_creative_studio_service.py` (6 passed): Alocação de portas, verificação de saúde e abertura de HyperFrames.
+- `workstation/tests/test_trello_concurrent_edit_protection.py` (5 passed): Detecção de divergência do baseline remoto (2.567 -> 2.480 chars preservados intactos, retorno `CONFLICT` / `HANDOFF`), supressão de escritas redundantes, fail-closed em 403 CSRF e respeito a lease humano.
+- `workstation/tests/test_in_flight_handoff.py` (6 passed): Transferência in-flight para `DurableBatchRunner` com zero chamadas à LLM entre itens subsequentes.
+- `apps/desktop/electron/workstation-browser-batch.test.ts` (11 passed): Validação de passos individuais, lease, receipts e fail-closed no Electron.
+- `apps/desktop/electron/workstation-browser-extract-cache.test.ts` (9 passed): Cache bounded com invalidação por `documentFingerprint`, redação de segredos.
+- Auditoria de Seams: `python workstation/scripts/audit_hermes_seams.py` -> 21 classified, 0 unclassified, 0 budget regressions.
+Evidence: `workstation/context/engineering-journal/CURRENT.md`.
 
-Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`; audited branch reconciled in merge `88a6166`. Candidate `749e2f92785fbc9bb84c0737d6cd730f55aa9aa6`: Workstation 970 passed / 4 skipped; Desktop typecheck/build pass. Full UI run had 3 failures (10,753 passed); all 3 repaired with 87 focused tests passing. Desktop native regression still has open failures. GitHub rejected both workflow dispatches with HTTP 422, “Actions has been disabled for this repository.” H-079 remains red; P0–P3 runtime stays blocked. No measured product savings. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
+## Operational speed Stage A — 2026-10-10 (Stage A Baseline)
+Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`; audited branch reconciled in merge `88a6166`. Candidate `749e2f92785fbc9bb84c0737d6cd730f55aa9aa6`. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
 
 ## 2026-10-08 H-081 clean-profile and timeout qualification
 

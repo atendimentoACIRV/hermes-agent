@@ -16,8 +16,20 @@
 **Síntese:** Creative Document com IDs e rational media map; Command Bus + transações, histórico/Undo; split/trim/ripple/slip/slide/roll verificáveis; Semantic Edit Plan com diff/revisões, real preview e aprovação parcial; camada freeform com parâmetros ou opacidade explícita; adaptadores de renderização qualificados por métricas; UX contextual que permite cortar, animar e fazer design/3D sobre o mesmo projeto; Experience Compiler existente pode compilar procedimentos criativos com prova real. Não criar outro BrowserTask, TaskRun, ArtifactStore, Control Plane ou registry de aprendizagem.
 **Gates:** D-038/D-039, H-079, D-042/PR #63, licenças, opt-in, sandbox e exact-HEAD CI. Ordem CWN-00..09 em [arquitetura](../creative-workstation/ENGINE_NEUTRAL_ARCHITECTURE_2026-10-10.md); [prompt executável](../creative-workstation/ENGINE_NEUTRAL_IMPLEMENTER_HANDOFF_2026-10-10.md).
 
-## Operational speed Stage A — 2026-10-10
-Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`; audited branch reconciled in merge `88a6166`. Candidate `749e2f92785fbc9bb84c0737d6cd730f55aa9aa6`: Workstation 970 passed / 4 skipped; Desktop typecheck/build pass. Full UI run had 3 failures (10,753 passed); all 3 repaired with 87 focused tests passing. Desktop native regression still has open failures. GitHub rejected both workflow dispatches with HTTP 422. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
+## 2026-10-11 — Aceleração Operacional, Redução de Redundância e Proteção Humana (P0–P2)
+**Síntese de Inteligência Operacional:**
+- **Zero Redescoberta:** Comandos conhecidos inequívocos ("Abre o Trello", "Abre o Hyperframe") são resolvidos pre-LLM via matchers determinísticos e `workstation/prefabs/`, sem gastar raciocínio, ferramentas de inspeção ou chamadas de modelo.
+- **Zero Fragmentação de Browser:** `browser_batch_actions` executa pipelines de interação (clique, tipo, espera, scroll) em uma única transação IPC no Electron, com assert de lease a cada passo e emissão de receipts tipados (`BrowserOwnerReceipt`).
+- **Eliminação de Loops de Re-verificação:** Contratos de prontidão por condição e timeout substituem consultas cegas e repetidas de console; grandes corpos de texto trafegam por referência (`text_ref`, `artifact_ref`) na fronteira confiável em `tools/browser_workstation.py`.
+- **Invariante de Proteção Humana (Incidente Cartão 012):** Nenhuma alteração automatizada pode sobrescrever edições humanas detectadas no readback ou divergências de baseline remoto (2.567 -> 2.480 chars protegidos com retorno de `CONFLICT` / `HANDOFF`). Escritas redundantes são suprimidas via `already_satisfied`, mutações são bloqueadas sob assunção de controle humano e requisições CSRF 403 falham closed.
+- **Autenticidade DIRECT Criptográfica:** HMAC autenticado com âncora de confiança do operador vinculada a emissor, código, família e ambiente. Atestações inválidas mantêm SHADOW e bloqueiam efeitos DIRECT não qualificados.
+- **In-Flight Learning & Handoff:** Transferência no próprio TaskRun de itens canários verificados para `DurableBatchRunner` com zero chamadas à LLM entre itens subsequentes equivalentes.
+- **Auditoria de Seams:** 21 costuras diretas classificadas, 0 unclassified, 0 regressões de orçamento.
+
+## Operational speed Stage A & P0–P2 Implementation — 2026-10-10 / 2026-10-11
+Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Status: **IMPLEMENTAÇÃO RUNTIME P0–P2 COMPLETA.** 43 testes de aceleração operacional + 20 Vitest green.
+Evidence: `workstation/context/engineering-journal/CURRENT.md`.
 <!-- dogfood-gate:2026-10-09 -->
 ## 2026-10-09 — D-042: Dogfood is the product's executable acceptance contract
 

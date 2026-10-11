@@ -19,8 +19,19 @@ Branch de trabalho: `feat/workstation-browser-optimization-c2c`.
 **Ordem executiva (CWN-00→CWN-09):** CWN-00 inventário/PRs/baseline e licença → CWN-01 Creative Document com IDs estáveis, racional timecode/source map → CWN-02 Command Bus, transações e Undo comuns à UI/IA/headless → CWN-03 NLE split/trim/ripple/slip/slide/roll com linked A/V → CWN-04 Semantic Edit Plan e preview de revisão/rebase/aceitação parcial → CWN-05 autoria freeform SVG/Canvas/WebGL/Three.js com seek determinístico → CWN-06 renderizadores intercambiáveis, paridade preview/export e áudio → CWN-07 Graph Editor e workspaces adaptativos → CWN-08 Experience Compiler com reuso verificado → CWN-09 efeitos/engines especializados conforme benchmark.
 **Autoridade do trabalho criativo:** [Arquitetura D-043](creative-workstation/ENGINE_NEUTRAL_ARCHITECTURE_2026-10-10.md), [prompt integral de implementação](creative-workstation/ENGINE_NEUTRAL_IMPLEMENTER_HANDOFF_2026-10-10.md), [journal](context/engineering-journal/creative-engine-neutral-2026-10-10.md). Sequências antigas CW-01..07 abaixo são contexto histórico/salvage, não a ordem atual.
 
-## Operational speed Stage A — 2026-10-10
-Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`; audited branch reconciled in merge `88a6166`. Candidate `749e2f92785fbc9bb84c0737d6cd730f55aa9aa6`: Workstation 970 passed / 4 skipped; Desktop typecheck/build pass. Full UI run had 3 failures (10,753 passed); all 3 repaired with 87 focused tests passing. Desktop native regression still has open failures. GitHub rejected both workflow dispatches with HTTP 422, “Actions has been disabled for this repository.” H-079 remains red; P0–P3 runtime stays blocked. No measured product savings. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
+## Operational speed Stage A & P0–P2 Implementation — 2026-10-10 / 2026-10-11
+Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Status: **IMPLEMENTAÇÃO P0–P2 COMPLETA E QUALIFICADA LOCALMENTE.**
+- **P0.1 Telemetria & Deduplicação:** Métricas `admission_to_verified_ms` (mediana/p95), tempo segregado System-2/System-1/Browser, deduplicação por `call_id`, contagem de tokens de entrada/saída/cache e cálculo de custo econômico (`cost_per_verified_outcome_usd`).
+- **P0.2 Autenticidade DIRECT com Âncora de Confiança:** Substituição de hash não autenticado por HMAC com âncora de confiança escopada do operador; atestações forjadas falham closed para SHADOW.
+- **P1.1 Resolução de Intenções Pre-LLM:** Roteamento determinístico antes da LLM principal para novos comandos sem histórico ("Abre o Trello", "Abre o Hyperframe") via `OperationIntent`, `TaskCompiler` e `CapabilityRouter`. Fast path Trello READ sem System-2.
+- **P1.2 Ações Compostas de Browser:** `browser_batch_actions` nativo em Electron e Python com validação de lease por passo, receipts tipados e interrupção segura no primeiro erro/incerteza.
+- **P1.3 / P1.4 Prontidão por Condição e Payloads por Referência:** Contratos de prontidão eliminando loops de console; resolução de `text_ref` e `artifact_ref` na fronteira confiável em `tools/browser_workstation.py`.
+- **P1.5 Abertura Controlada do HyperFrames:** `creative.hyperframes.open` via `creative_studio_service.py` com alocação e verificação de saúde da porta, sem varredura de terminal.
+- **P2.1 Proteção Permanente de Edições Humanas (Incidente do Cartão 012 Solucionado):** Detecção de divergência do baseline remoto (2.567 -> 2.480 chars protegidos intactos com retorno de `CONFLICT` / `HANDOFF`). Supressão de escritas redundantes (`already_satisfied`), parada fail-closed em CSRF 403 e respeito estrito a lease de controle humano.
+- **P2.2 In-Flight Learning & Handoff:** Transferência de canários verificados para `DurableBatchRunner` com zero chamadas à LLM entre itens equivalentes.
+- **Auditoria de Seams:** 21 costuras diretas classificadas no `audit_hermes_seams.py`, 0 não classificadas, 0 regressões de orçamento.
+Evidence: `workstation/context/engineering-journal/CURRENT.md` e `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
 <!-- dogfood-gate:2026-10-09 -->
 ## 2026-10-09 — D-042 Dogfood-first product acceptance, native learning and HyperFrames qualification
 

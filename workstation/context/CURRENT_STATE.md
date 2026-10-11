@@ -4,10 +4,21 @@
 ## 2026-10-10 — D-043 Creative Workstation: arquitetura e implementação engine-neutral
 **Decisão:** HyperFrames não é motor canônico mandatório; D-043 projeta Creative Document, Command Bus comum UI/IA/headless, timebase racional, NLE linked A/V, Semantic Edit Plan, freeform seek e adapters. [Arquitetura](../creative-workstation/ENGINE_NEUTRAL_ARCHITECTURE_2026-10-10.md) · [Handoff](../creative-workstation/ENGINE_NEUTRAL_IMPLEMENTER_HANDOFF_2026-10-10.md).
 
-## 2026-10-10 — explicit development exception and operational speed
-The maintainer instructed: “Pode pular os CI e continue o trabalho”. Runtime work
-continues with upstream pin `66605471e9f0b0832abbefaf625ce08e948ca540`.
-Stage A reconciles upstream baseline, qualification, and current command resolution. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
+## 2026-10-10 / 2026-10-11 — Hermes Work: Aceleração Operacional, Redução de Redundâncias e Custo (P0–P2 Implementados)
+Status: **IMPLEMENTAÇÃO RUNTIME COMPLETA E QUALIFICADA LOCALMENTE.**
+Upstream Pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Seam Audit: 21 costuras diretas (todas classificadas, 0 não-classificadas, 0 regressões de orçamento).
+Entregas:
+- **P0.1 Telemetria & Deduplicação:** Medição de latência até resultado verificado (`admission_to_verified_ms`), tempo por subsistema (System-2, System-1, Browser), deduplicação por `call_id`, rastreamento de tokens (in, out, cache) e custo monetário (`cost_per_verified_outcome_usd`).
+- **P0.2 Autenticidade DIRECT:** Atestação HMAC autenticada por operador para transição a DIRECT em `compilability_monitor.py`. Atestações inválidas/forjadas caem com segurança em SHADOW.
+- **P1.1 Resolução Pre-LLM:** Roteamento determinístico antes da LLM de comandos novos ("Abre o Trello", "Abre o Hyperframe") via `workstation/prefabs/` e `TaskCompiler`.
+- **P1.2 Ações em Lote de Browser:** `browser_batch_actions` nativo com lease assertion por passo, receipts tipados e parada imediata em incerteza.
+- **P1.3 / P1.4 Readiness por Condição & Payloads por Referência:** Contratos de prontidão com timeouts eliminando loops de console; resolução de `text_ref`/`artifact_ref` antes de IPC em `tools/browser_workstation.py`.
+- **P1.5 Abertura Controlada de HyperFrames:** `creative.hyperframes.open` via `creative_studio_service.py` sem chamadas redundantes a terminal.
+- **P2.1 Proteção Permanente de Edições Humanas:** Resolução definitiva do Incidente do Cartão 012 (2.567 -> 2.480 caracteres preservados intactos, retorno `CONFLICT` / `HANDOFF`). Supressão de escritas redundantes, bloqueio por lease humano e fail-closed em 403 CSRF.
+- **P2.2 Reutilização e Aprendizado no TaskRun:** In-flight handoff transferindo canários verificados para `DurableBatchRunner` com zero chamadas à LLM entre itens subsequentes equivalentes.
+Suíte de Testes: 43 testes de aceleração operacional + 20 testes Vitest green.
+Evidence: `workstation/context/engineering-journal/CURRENT.md`.
 <!-- dogfood-gate:2026-10-09 -->
 ## 2026-10-09 Dogfood-first independent audit — DOCUMENTED / NO NEW CODE
 

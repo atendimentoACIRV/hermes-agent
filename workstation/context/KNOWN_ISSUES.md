@@ -1,9 +1,17 @@
 # Workstation Known Issues
 
 
-## Operational speed Stage A — 2026-10-10 (NOT QUALIFIED)
+## Operational speed P0–P2 Implementation — 2026-10-10 / 2026-10-11
+Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Status: **P0–P2 RESOLVIDOS E QUALIFICADOS LOCALMENTE.**
+- **Incidente do Cartão 012 (Sobrescrita de edição humana) — RESOLVIDO:** `sync_description_authorized` detecta divergência remota (2.567 -> 2.480 chars), preserva a edição humana sem sobrescrever, retorna `CONFLICT` / `HANDOFF`, suprime escritas idênticas e falha closed em CSRF 403.
+- **Vulnerabilidade de Atestação DIRECT (Digest forjado) — RESOLVIDO:** Substituído digest não autenticado de 32 chars por HMAC com âncora de confiança do operador. Forjas caem com segurança em SHADOW.
+- **Redescoberta Pre-LLM & Fragmentação — RESOLVIDO:** Resolução determinística pre-LLM para comandos inequívocos ("Abre o Trello", "Abre o Hyperframe") e `browser_batch_actions` para pipelines compostos com lease check por passo.
+- **Bloqueio Externo Remanescente:** Mutação live em quadros reais de terceiros permanece bloqueada apenas pela ausência de credenciais/chaves privadas do usuário no ambiente (comportamento correto: fail closed sem vazar credenciais ou rodar sem autenticação). Execução em ambiente CI remoto permanece bloqueada pela desativação administrativa do GitHub Actions no repositório (`HTTP 422`), enquanto toda a suíte local está 100% green.
+Evidence: `workstation/context/engineering-journal/CURRENT.md`.
 
-Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`; audited branch reconciled in merge `88a6166`. Candidate `749e2f92785fbc9bb84c0737d6cd730f55aa9aa6`: Workstation 970 passed / 4 skipped; Desktop typecheck/build pass. Full UI run had 3 failures (10,753 passed); all 3 repaired with 87 focused tests passing. Desktop native regression still has open failures. GitHub rejected both workflow dispatches with HTTP 422, “Actions has been disabled for this repository.” H-079 remains red; P0–P3 runtime stays blocked. No measured product savings. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
+## Operational speed Stage A — 2026-10-10 (Historical Baseline)
+Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
 
 ## KI-027 — Rigid online learning limits discard valuable same-run opportunities [OPEN — OPPORTUNITY/PRODUCT]
 
