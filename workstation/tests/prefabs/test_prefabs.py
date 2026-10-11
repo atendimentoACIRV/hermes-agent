@@ -262,6 +262,70 @@ class IntegrationTests(unittest.TestCase):
             self.assertIsNone(maybe_resolve_navigation(SimpleNamespace(agent=agent, session_id="s", task_id="t")))
 
 
+class VerticalReadIntentTests(unittest.TestCase):
+    def test_instagram_whatsapp_chatgpt_matchers(self):
+        from workstation.prefabs.catalog import (
+            match_instagram_read, match_whatsapp_read, match_chatgpt_read)
+        self.assertEqual(match_instagram_read("mostre o feed do instagram").target, "feed")
+        self.assertEqual(
+            match_instagram_read("mostre o perfil da acirv no instagram").username, "acirvoficial")
+        self.assertIsNone(match_instagram_read("Abra Trello e delete os cards"))
+        self.assertEqual(match_whatsapp_read("mostre conversas whatsapp").scope, "conversation_list")
+        self.assertEqual(match_whatsapp_read("leia conversa Maria").contact, "maria")
+        self.assertIsNone(match_whatsapp_read("envie mensagem para Maria"))
+        self.assertEqual(match_chatgpt_read("mostre historico chatgpt").scope, "history")
+        self.assertEqual(match_chatgpt_read("encontre no chatgpt orcamento").query, "orcamento")
+        self.assertIsNone(match_chatgpt_read("escreva um texto no chatgpt"))
+
+    def test_vertical_intents_resolve_without_llm_or_browser(self):
+        import types
+        from workstation.prefabs.integration import maybe_resolve_navigation
+        from workstation.prefabs.catalog import (
+            InstagramReadIntent, WhatsAppReadIntent, ChatGPTReadIntent)
+        outcomes = types.ModuleType("agent.operational_resolution")
+        outcomes.OperationalOutcome = SimpleNamespace(HANDOFF="HANDOFF")
+        outcomes.OperationalResolution = lambda **kw: SimpleNamespace(**kw)
+        for intent_attr, intent in (
+                ("_prefab_instagram_read_intent", InstagramReadIntent(target="feed")),
+                ("_prefab_whatsapp_read_intent", WhatsAppReadIntent(scope="conversation_list")),
+                ("_prefab_chatgpt_read_intent", ChatGPTReadIntent(scope="history"))):
+            agent = SimpleNamespace(_prefab_navigation_intent=None,
+                                    _prefab_trello_read_intent=None,
+                                    _prefab_instagram_read_intent=None,
+                                    _prefab_whatsapp_read_intent=None,
+                                    _prefab_chatgpt_read_intent=None,
+                                    _interrupt_requested=False,
+                                    _tool_guardrail_halt_decision=None)
+            setattr(agent, intent_attr, intent)
+            with patch.dict(sys.modules, {"agent.operational_resolution": outcomes}):
+                first = maybe_resolve_navigation(
+                    SimpleNamespace(agent=agent, session_id="s", task_id="t"))
+                self.assertEqual(first.outcome, "HANDOFF")
+                # Consumed: no duplicate dispatch on second resolution.
+                second = maybe_resolve_navigation(
+                    SimpleNamespace(agent=agent, session_id="s", task_id="t"))
+                self.assertIsNone(second)
+
+    def test_vertical_admission_human_only(self):
+        from workstation.prefabs.integration import (
+            prepare_user_instagram_read, prepare_user_whatsapp_read, prepare_user_chatgpt_read)
+        e = lambda origin, authority, content: SimpleNamespace(
+            origin=SimpleNamespace(value=origin),
+            intent_authority=SimpleNamespace(value=authority), content=content)
+        self.assertIsNotNone(prepare_user_instagram_read(
+            e("human", "CREATE_WORK", "mostre o feed do instagram")))
+        self.assertIsNone(prepare_user_instagram_read(
+            e("agent", "CREATE_WORK", "mostre o feed do instagram")))
+        self.assertIsNotNone(prepare_user_whatsapp_read(
+            e("human", "UPDATE_WORK", "mostre conversas whatsapp")))
+        self.assertIsNone(prepare_user_whatsapp_read(
+            e("human", "OBSERVATION_ONLY", "mostre conversas whatsapp")))
+        self.assertIsNotNone(prepare_user_chatgpt_read(
+            e("human", "CREATE_WORK", "mostre historico chatgpt")))
+        self.assertIsNone(prepare_user_chatgpt_read(
+            e("connector", "UPDATE_WORK", "mostre historico chatgpt")))
+
+
 class NativeSnapshotRegressionTests(unittest.TestCase):
     def test_wrapped_native_snapshot_metadata(self):
         from workstation.prefabs.engine import _extract_known_url
