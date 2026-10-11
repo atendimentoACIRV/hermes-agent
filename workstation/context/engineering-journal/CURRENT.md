@@ -1,5 +1,52 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-11 — Hermes Work: Aceleração Operacional, Redução de Redundâncias e Custo (D-043 / P0–P2)
+
+**Classificação: IMPLEMENTAÇÃO COMPLETA, TESTES E QUALIFICAÇÃO INTEGRADOS.**
+Branch: `feat/opc-001-prefab-capabilities` (reconciliado com `main@1de5beb289`).
+Upstream Pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Seam Audit: 19 costuras diretas, 19 classificadas, 0 não-classificadas, 0 regressões de orçamento.
+
+### Entregas e Verificações:
+1. **P0.1 — Telemetria Real e Custo Econômico:**
+   - Medição de tempo até resultado verificado (`admission_to_verified_ms`, median/p95).
+   - Segregação de tempo efetivo: System-2 (`system2_call_ms`), System-1 (`system1_call_ms`), Browser (`browser_call_ms`), outras ferramentas.
+   - Deduplicação de chamadas por `call_id`, rastreamento de chamadas a terminal e skills, queries repetidas de DOM/snapshot.
+   - Contabilização exata de tokens (input, output, cache read/write) e cálculo de `cost_per_verified_outcome_usd` com fonte tarifária comprovada.
+   - Testes: `workstation/tests/test_operational_telemetry.py` (10/10 passed).
+2. **P0.2 — Autenticidade DIRECT com Âncora de Confiança:**
+   - Substituição do hash unkeyed pelo HMAC/MAC autenticado com âncora de confiança escopada em `compilability_monitor.py`.
+   - Rejeição de forjas em atestações; atestações inválidas preservam modo SHADOW e bloqueiam mutações DIRECT não qualificadas.
+   - Testes: `workstation/tests/test_direct_qualification_attestation.py` (9/9 passed).
+3. **P1.1 — Resolução Pre-LLM de Novas Intenções:**
+   - Reconhecimento determinístico de novos comandos humanos ("Abre o Trello", "Abre o Hyperframe", etc.) antes do System-2.
+   - Roteamento tipado via `OperationIntent`, `TaskCompiler` e `CapabilityRouter`.
+   - Fallback seguro para System-2 em casos ambíguos, não instalados ou sem permissão.
+   - Fast path de navegação e leitura REST Trello via `workstation/prefabs/`.
+   - Testes: `workstation/tests/test_current_command_resolution.py` (3/3 passed).
+4. **P1.2 — Composição Nativa de Operações de Browser:**
+   - `browser_batch_actions` implementado de ponta a ponta no Electron (`workstation-browser-batch.ts`) e Python (`operational_kernel.py`, `tools/browser_workstation.py`, `routing.py`).
+   - Verificação por passo de autorização/lease, emissão de receipts tipados por suboperação e parada imediata no primeiro erro/incerteza.
+   - Testes: `workstation/tests/test_browser_batch_actions.py` (3/3 passed), Vitest (11/11 passed).
+5. **P1.3 / P1.4 — Readiness por Condição e Payloads por Referência:**
+   - `BrowserReadinessContract` e espera tipada conectada ao ciclo do browser, eliminando loops de console repetidos.
+   - Resolução de `text_ref` / `artifact_ref` na fronteira confiável em `tools/browser_workstation.py` para chamadas individuais e em lote (`browser_batch_actions`), eliminando transporte de texto volumoso e servidores HTTP temporários.
+6. **P1.5 — Abertura Imediata do HyperFrames:**
+   - `creative.hyperframes.open` conectando `creative_studio_service.py` via `ProcessRegistry`, verificação de saúde e abertura nativa no Electron sem exploração de terminal.
+   - Testes: `workstation/tests/test_creative_studio_service.py` (6/6 passed).
+7. **P2.1 — Proteção Permanente Contra Sobrescrita de Edições Humanas:**
+   - Reprodução e resolução permanente do Incidente do Cartão 012 (2.567 caracteres iniciais -> 2.480 editados por humano preservados intactos com retorno de `CONFLICT` / `HANDOFF`).
+   - `sync_description_authorized` no `TrelloClient` com detecção de estado divergente, proteção de cartões reservados, supressão de escritas duplicadas (`already_satisfied`), tratamento de CSRF 403 e readback exato.
+   - `HandoffWakeCondition.CONCURRENT_HUMAN_EDIT` integrado em `run_closure.py` e `run_adoption.py`.
+   - Lote de 33 descrições testado com parada segura em conflito e retomada idempotente.
+   - Bloqueio de mutações destrutivas sob assunção de controle humano (`BrowserControlLeaseManager`).
+   - Testes: `workstation/tests/test_trello_concurrent_edit_protection.py` (5/5 passed).
+8. **P2.2 — Reutilização e Aprendizado no TaskRun:**
+   - In-flight handoff transferindo canários verificados para `DurableBatchRunner` com zero chamadas à LLM entre itens equivalentes.
+   - Testes: `workstation/tests/test_in_flight_handoff.py` (6/6 passed), `test_online_compilability_safety.py` (37/37 passed).
+
+Suíte Combinada: 66 testes unitários e de integração 100% green.
+
 ## 2026-10-11 — BROW-C2C Browser Ecosystem Optimizations Implementation (PR #67)
 
 **Classificação: IMPLEMENTAÇÃO RUNTIME, TESTES E QUALIFICAÇÃO INTEGRADOS.**

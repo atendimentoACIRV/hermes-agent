@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { CreativeWorkspaceProvider, useCreativeWorkspace } from '@/app/creative-workspace'
 import type { CreativeProject } from '@/app/creative-workspace'

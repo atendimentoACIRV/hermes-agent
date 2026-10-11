@@ -41,6 +41,7 @@ def test_browser_batch_actions_dispatches_to_routed_handler():
 
         # Invoke tool function directly
         res_str = browser_batch_actions(steps=steps, task_id="test-task")
+        assert "verified" in res_str
         assert mock_routed.called
         call_args = mock_routed.call_args
         assert call_args[0][0] == "browser_batch_actions"
