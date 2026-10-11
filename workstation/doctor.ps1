@@ -72,7 +72,7 @@ function Resolve-Python {
     if ($candidate) { return $candidate }
   }
   if (Get-Command py -ErrorAction SilentlyContinue) {
-    foreach ($selector in @("-3.13", "-3.12", "-3.11")) {
+    foreach ($selector in @("-3.14")) {
       $candidate = Test-PythonCandidate "py" @($selector)
       if ($candidate) { return $candidate }
     }
@@ -107,11 +107,11 @@ Show-CommandVersion -Name "npm" -CommandArgs @("--version")
 $Python = Resolve-Python
 if ($Python) {
   Write-Host ("[OK] Bootstrap Python: {0} {1} ({2})" -f $Python.Command, ($Python.Prefix -join ' '), $Python.Version) -ForegroundColor Green
-  if ($Python.Version -ge [version]"3.14.0") {
-    Write-Host "[WARN] Python 3.14 can run bootstrap scripts, but Hermes dependency installation requires <3.14." -ForegroundColor Yellow
+  if ($Python.Version -lt [version]"3.14.0" -or $Python.Version -ge [version]"3.15.0") {
+    Write-Host "[FAIL] Bootstrap Python $($Python.Version) is unsupported; requires >=3.14,<3.15." -ForegroundColor Red; Register-DoctorFailure
   }
 } else {
-  Write-Host "[MISSING] Bootstrap Python. Install Python 3.13, 3.12, or 3.11." -ForegroundColor Yellow
+  Write-Host "[MISSING] Bootstrap Python. Install Python 3.14." -ForegroundColor Yellow
   Register-DoctorFailure
 }
 

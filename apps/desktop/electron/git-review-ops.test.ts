@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import simpleGit from 'simple-git'
+import { simpleGit } from 'simple-git'
 import { afterEach, test, vi } from 'vitest'
 
 import {
@@ -118,16 +118,16 @@ test('gitFor suppresses only the known custom-binary warning and restores consol
 
     assert.equal(console.warn, recordingWarn)
 
-    // The escape hatch used directly still warns: the message gitFor filters is a
-    // live emission of the installed simple-git, so the filter cannot go stale
-    // silently (an upgrade that rewords it fails this test, not production).
+    // Exercise the escape hatch directly: simple-git 4.0.2 no longer emits
+    // the older 3.x warning when allowUnsafeCustomBinary is enabled.
     simpleGit({ baseDir: process.cwd(), binary: spacedBin, unsafe: { allowUnsafeCustomBinary: true } })
     console.warn('unrelated warning')
   } finally {
     console.warn = originalWarn
   }
 
-  assert.deepEqual(warnings, [[SIMPLE_GIT_UNSAFE_BINARY_WARN], ['unrelated warning']])
+  assert.deepEqual(warnings, [['unrelated warning']])
+  assert.ok(!warnings.some(([message]) => message === SIMPLE_GIT_UNSAFE_BINARY_WARN))
 })
 
 test('resolveRenamePath: simple rename resolves to the new path', () => {
