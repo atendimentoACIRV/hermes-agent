@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react'
+import { applyCreativeEdit, assertCreativeProject } from './creative-mvp-model'
+import type { CreativeEdit } from './creative-mvp-model'
 import { atom } from 'nanostores'
 import { $workspaceIsPage } from '@/app/routes'
 import type {
@@ -39,6 +41,10 @@ export function useCreativeWorkspace() {
 
 export function CreativeWorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [project, setProjectState] = useState<CreativeProject | null>(null)
+  const projectRef = useRef<CreativeProject | null>(null)
+  const undoHistory = useRef<CreativeProject[]>([])
+  const redoHistory = useRef<CreativeProject[]>([])
+  const [historyStamp, setHistoryStamp] = useState(0)
   const [selection, setSelectionState] = useState<SelectionState>({
     selectedTrackIds: new Set(),
     selectedClipIds: new Set(),
@@ -52,8 +58,46 @@ export function CreativeWorkspaceProvider({ children }: { children: React.ReactN
   const [pinnedPanels, setPinnedPanelsState] = useState<Set<string>>(new Set())
 
   const setProject = useCallback((p: CreativeProject | null) => {
+    if (p) assertCreativeProject(p)
+    projectRef.current = p
+    undoHistory.current = []
+    redoHistory.current = []
     setProjectState(p)
     $creativeProject.set(p)
+    setHistoryStamp(v => v + 1)
+  }, [])
+
+  const applyEdit = useCallback((edit: CreativeEdit) => {
+    const current = projectRef.current
+    if (!current) throw new Error('Open a project before editing')
+    const next = applyCreativeEdit(current, edit)
+    undoHistory.current.push(current)
+    if (undoHistory.current.length > 100) undoHistory.current.shift()
+    redoHistory.current = []
+    projectRef.current = next
+    setProjectState(next)
+    $creativeProject.set(next)
+    setHistoryStamp(v => v + 1)
+  }, [])
+
+  const undo = useCallback(() => {
+    const previous = undoHistory.current.pop()
+    if (!previous) return
+    if (projectRef.current) redoHistory.current.push(projectRef.current)
+    projectRef.current = previous
+    setProjectState(previous)
+    $creativeProject.set(previous)
+    setHistoryStamp(v => v + 1)
+  }, [])
+
+  const redo = useCallback(() => {
+    const next = redoHistory.current.pop()
+    if (!next) return
+    if (projectRef.current) undoHistory.current.push(projectRef.current)
+    projectRef.current = next
+    setProjectState(next)
+    $creativeProject.set(next)
+    setHistoryStamp(v => v + 1)
   }, [])
 
   const setSelection = useCallback((partial: Partial<SelectionState>) => {
@@ -177,6 +221,9 @@ export function CreativeWorkspaceProvider({ children }: { children: React.ReactN
   }, [])
 
   const value = useMemo(() => ({
+    applyEdit, undo, redo,
+    canUndo: undoHistory.current.length > 0,
+    canRedo: redoHistory.current.length > 0,
     project,
     selection,
     workspaceMode,
@@ -194,7 +241,9 @@ export function CreativeWorkspaceProvider({ children }: { children: React.ReactN
     selectLayer,
     selectKeyframe,
     clearSelection,
-  }), [project, selection, workspaceMode, playheadTime, isPlaying, pinnedPanels])
+  }), [project, selection, workspaceMode, playheadTime, isPlaying, pinnedPanels, historyStamp,
+    applyEdit, undo, redo, setProject, setSelection, setWorkspaceMode, setPlayheadTime, setIsPlaying,
+    togglePinPanel, selectClip, selectTrack, selectLayer, selectKeyframe, clearSelection])
 
   return (
     <CreativeWorkspaceContext.Provider value={value}>

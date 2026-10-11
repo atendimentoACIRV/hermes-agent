@@ -5689,3 +5689,9 @@ unclassified / 0 budget regressions. Exact-head CI remains not GREEN (Actions
 HTTP 422 history + Desktop failures open); this authorization does not relabel
 those gates VERIFIED and does not authorize main merge. Target runtime work
 continues on this branch with RED->GREEN per phase and separate upstream sync.
+
+## 2026-10-11 — Renderer-first creative MVP isolated draft
+- Baseline `origin/main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`; upstream pin `66605471` retained; H-079 exception authorizes isolated code only.
+- Critical UI defect: `CreativeWorkspacePage` read `useCreativeWorkspace()` without any mounted provider; added explicit provider around existing page. Previously blank-project route showed a static welcome with no create/open action, and toolbar/Inspector/Graph buttons logged or did nothing.
+- Implemented limited editable vector sandbox in existing renderer context: typed edits, bounded undo, keyframe interpolation, human controls, explicit JSON import/export, SVG frame, fail-closed script/media input validation. This is **not** the shared canonical creative project owner. Full details: `creative-workstation/MVP_EDITOR_DELIVERY_2026-10-11.md`.
+- Focused Vitest model+context 7 passed; page 3 passed on rerun; renderer TypeScript `tsc -p . --noEmit` succeeded. Full Electron typecheck from unintegrated main showed the known simple-git mismatch; PR #70 provides independent lock repair. No native packaged UI/AI parity proof, video export, GLB or exact SHA CI; draft only.

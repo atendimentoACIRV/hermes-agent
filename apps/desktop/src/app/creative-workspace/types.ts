@@ -79,6 +79,12 @@ export interface SelectionState {
 }
 
 export interface CreativeWorkspaceContextValue {
+  applyEdit: (edit: import('./creative-mvp-model').CreativeEdit) => void
+  undo: () => void
+  redo: () => void
+  canUndo: boolean
+  canRedo: boolean
+
   project: CreativeProject | null
   selection: SelectionState
   workspaceMode: WorkspaceMode

@@ -3,7 +3,7 @@ import { useMemo, useCallback, useState } from 'react'
 import type { CreativeLayer, CreativeKeyframe } from './types'
 
 export function CreativeGraphEditor() {
-  const { project, selection, workspaceMode } = useCreativeWorkspace()
+  const { project, selection, applyEdit } = useCreativeWorkspace()
   const composition = project?.compositions[0]
   const selectedLayer = useMemo(() => {
     if (selection.selectedLayerIds.size === 0) return null
@@ -13,6 +13,26 @@ export function CreativeGraphEditor() {
 
   const [graphType, setGraphType] = useState<'value' | 'velocity'>('value')
 
+  const propertiesWithKeyframes = useMemo(() => {
+    const propMap = new Map<string, CreativeKeyframe[]>()
+    for (const kf of selectedLayer?.keyframes ?? []) {
+      if (!propMap.has(kf.propertyPath)) propMap.set(kf.propertyPath, [])
+      propMap.get(kf.propertyPath)!.push(kf)
+    }
+    return Array.from(propMap.entries()).map(([propertyPath, keyframes]) => ({
+      propertyPath,
+      keyframes: keyframes.slice().sort((a: CreativeKeyframe, b: CreativeKeyframe) => a.time - b.time),
+    }))
+  }, [selectedLayer])
+
+  const handleKeyframeDrag = useCallback((keyframeId: string, newTime: number, newValue: number) => {
+    applyEdit({ type: 'editKeyframe', keyframeId, time: newTime, value: newValue })
+  }, [applyEdit])
+
+  const handleEasingChange = useCallback((keyframeId: string, easing: string) => {
+    applyEdit({ type: 'editKeyframe', keyframeId, easing })
+  }, [applyEdit])
+
   if (!selectedLayer || selectedLayer.keyframes.length === 0) {
     return (
       <div className="creative-graph-editor empty">
@@ -21,26 +41,6 @@ export function CreativeGraphEditor() {
       </div>
     )
   }
-
-  const propertiesWithKeyframes = useMemo(() => {
-    const propMap = new Map<string, typeof selectedLayer.keyframes>()
-    for (const kf of selectedLayer.keyframes) {
-      if (!propMap.has(kf.propertyPath)) propMap.set(kf.propertyPath, [])
-      propMap.get(kf.propertyPath)!.push(kf)
-    }
-    return Array.from(propMap.entries()).map(([propertyPath, keyframes]) => ({
-      propertyPath,
-      keyframes: keyframes.sort((a: CreativeKeyframe, b: CreativeKeyframe) => a.time - b.time),
-    }))
-  }, [selectedLayer.keyframes])
-
-  const handleKeyframeDrag = useCallback((keyframeId: string, newTime: number, newValue: number) => {
-    console.log('Drag keyframe:', keyframeId, newTime, newValue)
-  }, [])
-
-  const handleEasingChange = useCallback((keyframeId: string, easing: string) => {
-    console.log('Change easing:', keyframeId, easing)
-  }, [])
 
   return (
     <div className="creative-graph-editor" role="region" aria-label="Graph Editor">
@@ -122,8 +122,8 @@ function CreativeGraphCurve({
   const xScale = (time: number) => padding + ((time - minTime) / timeRange) * (width - 2 * padding)
   const yScale = (value: number) => height - padding - ((value - minValue) / valueRange) * (height - 2 * padding)
 
-  const pathData = keyframes
-    .sort((a, b) => a.time - b.time)
+  const ordered = keyframes.slice().sort((a, b) => a.time - b.time)
+  const pathData = ordered
     .map((kf, i) => {
       const x = xScale(kf.time)
       const y = yScale(Number(kf.value))

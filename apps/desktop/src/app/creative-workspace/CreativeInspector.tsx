@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import type { CreativeTrack, CreativeClip, CreativeLayer, CreativeKeyframe } from './types'
 
 export function CreativeInspector() {
-  const { project, selection } = useCreativeWorkspace()
+  const { project, selection, applyEdit } = useCreativeWorkspace()
   const composition = project?.compositions[0]
 
   const selectedClip = useMemo(() => {
@@ -179,7 +179,7 @@ export function CreativeInspector() {
               max="1"
               step="0.01"
               value={selectedLayer.transform.opacity}
-              onChange={e => console.log('Opacity change:', e.target.value)}
+              onChange={e => applyEdit({ type: 'setTransform', id: selectedLayer.layerId, property: 'opacity', value: Number(e.target.value) })}
             />
           </div>
           <div className="creative-inspector-field">
@@ -188,7 +188,7 @@ export function CreativeInspector() {
               type="number"
               step="1"
               value={selectedLayer.transform.x}
-              onChange={e => console.log('X change:', e.target.value)}
+              onChange={e => applyEdit({ type: 'setTransform', id: selectedLayer.layerId, property: 'x', value: Number(e.target.value) })}
             />
           </div>
           <div className="creative-inspector-field">
@@ -197,10 +197,37 @@ export function CreativeInspector() {
               type="number"
               step="1"
               value={selectedLayer.transform.y}
-              onChange={e => console.log('Y change:', e.target.value)}
+              onChange={e => applyEdit({ type: 'setTransform', id: selectedLayer.layerId, property: 'y', value: Number(e.target.value) })}
             />
           </div>
 
+          {selectedLayer.kind === 'text' && (
+            <div className="creative-inspector-field">
+              <label htmlFor="creative-text-value">Text</label>
+              <input id="creative-text-value" type="text"
+                value={String(selectedLayer.declaredParameters.text ?? '')}
+                onChange={e => applyEdit({ type: 'setParameter', id: selectedLayer.layerId,
+                  property: 'text', value: e.target.value })} />
+            </div>
+          )}
+          {(selectedLayer.kind === 'text' || selectedLayer.kind === 'shape') && (
+            <div className="creative-inspector-field">
+              <label htmlFor="creative-color-value">Color</label>
+              <input id="creative-color-value" type="color"
+                value={String(selectedLayer.declaredParameters.color ?? '#ffffff')}
+                onChange={e => applyEdit({ type: 'setParameter', id: selectedLayer.layerId,
+                  property: 'color', value: e.target.value })} />
+            </div>
+          )}
+          {selectedLayer.kind === 'shape' && (['width', 'height'] as const).map(property => (
+            <div className="creative-inspector-field" key={property}>
+              <label htmlFor={'creative-' + property}>{property}</label>
+              <input id={'creative-' + property} type="number" min={0} max={8192}
+                value={Number(selectedLayer.declaredParameters[property] ?? 0)}
+                onChange={e => applyEdit({ type: 'setParameter', id: selectedLayer.layerId,
+                  property, value: Number(e.target.value) })} />
+            </div>
+          ))}
           {Object.keys(selectedLayer.declaredParameters).length > 0 && (
             <div className="creative-inspector-field">
               <label>Declared Parameters</label>
@@ -258,7 +285,7 @@ export function CreativeInspector() {
               type="number"
               step="0.001"
               value={selectedKeyframe.keyframe.time}
-              onChange={e => console.log('Keyframe time change:', e.target.value)}
+              onChange={e => applyEdit({ type: 'editKeyframe', keyframeId: selectedKeyframe.keyframe.keyframeId, time: Number(e.target.value) })}
             />
           </div>
           <div className="creative-inspector-field">
@@ -266,14 +293,14 @@ export function CreativeInspector() {
             <input
               type="text"
               value={String(selectedKeyframe.keyframe.value)}
-              onChange={e => console.log('Keyframe value change:', e.target.value)}
+              onChange={e => applyEdit({ type: 'editKeyframe', keyframeId: selectedKeyframe.keyframe.keyframeId, value: Number(e.target.value) })}
             />
           </div>
           <div className="creative-inspector-field">
             <label>Easing</label>
             <select
               value={selectedKeyframe.keyframe.easing}
-              onChange={e => console.log('Easing change:', e.target.value)}
+              onChange={e => applyEdit({ type: 'editKeyframe', keyframeId: selectedKeyframe.keyframe.keyframeId, easing: e.target.value })}
             >
               <option value="linear">Linear</option>
               <option value="ease_in">Ease In</option>
