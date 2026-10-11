@@ -282,13 +282,30 @@ class TaskCompiler:
             from hermes_cli import kanban_db
             from workstation.kanban import WorkstationKanbanBridge
             bridge = WorkstationKanbanBridge()
-            with bridge.get_connection() as conn:
-                pending_task = kanban_db.get_task(conn, canonical_task_id)
+            # The canonical task owner may be an injected SQLite connection
+            # (tests, CLI or an embedded durable store), not the default board.
+            # Never consult a different Kanban database for that task identity.
+            owner_conn = getattr(self.store, "_external_conn", None)
+            if owner_conn is not None:
+                pending_task = kanban_db.get_task(owner_conn, canonical_task_id)
+            else:
+                with bridge.get_connection() as conn:
+                    pending_task = kanban_db.get_task(conn, canonical_task_id)
             if pending_task is None or pending_task.session_id != session_id:
                 raise PermissionError("canonical_task_session_mismatch")
             if pending_task.status in {"triage", "ready"}:
-                self.canonical_run_id = bridge.start_triaged_task(
-                    canonical_task_id, session_id=session_id, objective=pending_task.body)
+                if owner_conn is None:
+                    self.canonical_run_id = bridge.start_triaged_task(
+                        canonical_task_id, session_id=session_id, objective=pending_task.body)
+                else:
+                    if pending_task.status == "triage":
+                        if not kanban_db.specify_triage_task(owner_conn, canonical_task_id):
+                            raise RuntimeError("triage_transition_lost")
+                    claimed = kanban_db.claim_task(
+                        owner_conn, canonical_task_id, claimer=f"workstation:{session_id}")
+                    if not claimed or not claimed.current_run_id:
+                        raise RuntimeError("canonical_run_claim_lost")
+                    self.canonical_run_id = str(claimed.current_run_id)
         if request.get("action") == "route" or request.get("operation_intent"):
             return self._execute_route(request, task_id=task_id, session_id=session_id,
                 dispatch=dispatch, progress=progress, provider_usage=provider_usage,
