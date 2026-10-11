@@ -1,13 +1,37 @@
 # Workstation roadmap
 
+## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser (PR #67)
+**STATUS: IMPLEMENTAÇÃO COMPLETA / QUALIFICADA LOCALMENTE.**
+Branch de trabalho: `feat/workstation-browser-optimization-c2c`.
+- **BROW-00 / BROW-01:** Baseline qualificada no pin upstream `66605471e9f0b0832abbefaf625ce08e948ca540`. 0 regressões de orçamento de seams (14 costuras classificadas, 0 não-classificadas). Benchmark local estabelecido para formulários, SPAs de hidratação lenta, tabelas, editores ricos, navegação e concorrência humano-agente.
+- **OPT-01 (Browser Batch Actions):** `apps/desktop/electron/workstation-browser-batch.ts` implementado e conectado ao `executeControlRequest()`. Execução serial tipada, revalidação de lease por passo, emissão de receipts por suboperação (`BrowserOwnerReceipt`), interrupção imediata no primeiro efeito incerto. Suporte completo no Python via `tools/browser_workstation.py` e `tools/browser_tool.py`.
+- **OPT-02 (Accessibility Tree Hybrid Snapshot):** `apps/desktop/electron/workstation-browser-snapshot.ts` implementando CDP `Accessibility.getFullAXTree` com mapeamento híbrido para `window.__hermesWorkstationRefs`. Feature flag default-off (`HERMES_BROWSER_AXTREE_ENABLED`) com fallback seguro para `inventoryScript()`.
+- **OPT-03 (Extração Estruturada com Cache Bounded):** `apps/desktop/electron/workstation-browser-extract-cache.ts` com `BoundedExtractCache` indexado por `documentFingerprint`, `documentEpoch`, `mutationRevision` e `queryDigest`. Redação e sanitização automática de segredos e normalização tipada por schema.
+- **OPT-04 (Snapshot Delta Projection):** `apps/desktop/electron/workstation-browser-snapshot-diff.ts` com `diffSnapshot` e `applySnapshotDelta`. Reconstrução exata e fallback conservador para snapshot full em casos de divergência ou economia < 20%.
+- **OPT-06 / OPT-09 / OPT-12 (Estabilidade & Resiliência):** Deduplicação idempotente de mutações via `operation_id`, tratamento e recuperação limpa de renderer crashes (`render-process-gone`), detecção e espera de hidratação SPA.
+- **UX (Melhorias de Experiência):** `apps/desktop/src/app/chat/right-rail/workstation-browser-pane.tsx` com botões de transição segura de controle (Take Control / Release Control), indicador discreto de progresso, contador de tarefas em segundo plano e gaveta de histórico de auditoria (`TaskJournalDrawer`).
+- **OPT-07 / OPT-11 (Arquitetura Python & Backends — DIAGNOSED 2026-10-11):** 32 arquivos `tools/browser*.py` + `workstation/browser*.py` classificados por responsabilidade — 2 runtimes legítimos sempre presentes (agent-browser local; Electron Workstation), demais = drivers opcionais sob demanda, roteadores, fachadas, guardas de política e suporte; nada removível com segurança, drift/quarentena inventariados sem auto-reparo. Evidência: `workstation/context/OPT_07_11_DRIFT_BACKEND_CLASSIFICATION_2026-10-11.md`.
+- **OPT-05 (Importação de Sessões Chrome):** Mantido formalmente em HOLD por segurança e privacidade (§2 do `SECURITY.md`), com requisitos de consentimento granular e isolamento especificados em `workstation/context/OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`.
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — NOVA PRIORIDADE CW: D-043, engine-neutral
 **STATUS: DECISÃO DE ARQUITETURA / IMPLEMENTAÇÃO.** O usuário retirou a preferência arquitetural por HyperFrames. A decisão HyperFrames-first no [PR #62](https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/62) D-041 é substituída para seleção de motor, projeto e UX; preservar código/ativos úteis, mas não tomar HyperFrames como núcleo obrigatório. D-042/PR #63 dogfood e gates D-038/D-039, H-079/H-081/H-082 continuam. PRs #57–#61 são drafts, não código de `main` (snapshot main `f21e803b`).
 **Ordem executiva (CWN-00→CWN-09):** CWN-00 inventário/PRs/baseline e licença → CWN-01 Creative Document com IDs estáveis, racional timecode/source map → CWN-02 Command Bus, transações e Undo comuns à UI/IA/headless → CWN-03 NLE split/trim/ripple/slip/slide/roll com linked A/V → CWN-04 Semantic Edit Plan e preview de revisão/rebase/aceitação parcial → CWN-05 autoria freeform SVG/Canvas/WebGL/Three.js com seek determinístico → CWN-06 renderizadores intercambiáveis, paridade preview/export e áudio → CWN-07 Graph Editor e workspaces adaptativos → CWN-08 Experience Compiler com reuso verificado → CWN-09 efeitos/engines especializados conforme benchmark.
 **Autoridade do trabalho criativo:** [Arquitetura D-043](creative-workstation/ENGINE_NEUTRAL_ARCHITECTURE_2026-10-10.md), [prompt integral de implementação](creative-workstation/ENGINE_NEUTRAL_IMPLEMENTER_HANDOFF_2026-10-10.md), [journal](context/engineering-journal/creative-engine-neutral-2026-10-10.md). Sequências antigas CW-01..07 abaixo são contexto histórico/salvage, não a ordem atual.
 
-## Operational speed Stage A — 2026-10-10
-Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`; audited branch reconciled in merge `88a6166`. Candidate `749e2f92785fbc9bb84c0737d6cd730f55aa9aa6`: Workstation 970 passed / 4 skipped; Desktop typecheck/build pass. Full UI run had 3 failures (10,753 passed); all 3 repaired with 87 focused tests passing. Desktop native regression still has open failures. GitHub rejected both workflow dispatches with HTTP 422, “Actions has been disabled for this repository.” H-079 remains red; P0–P3 runtime stays blocked. No measured product savings. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
+## Operational speed Stage A & P0–P2 Implementation — 2026-10-10 / 2026-10-11
+Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Status: **IMPLEMENTAÇÃO P0–P2 COMPLETA E QUALIFICADA LOCALMENTE.**
+- **P0.1 Telemetria & Deduplicação:** Métricas `admission_to_verified_ms` (mediana/p95), tempo segregado System-2/System-1/Browser, deduplicação por `call_id`, contagem de tokens de entrada/saída/cache e cálculo de custo econômico (`cost_per_verified_outcome_usd`).
+- **P0.2 Autenticidade DIRECT com Âncora de Confiança:** Substituição de hash não autenticado por HMAC com âncora de confiança escopada do operador; atestações forjadas falham closed para SHADOW.
+- **P1.1 Resolução de Intenções Pre-LLM:** Roteamento determinístico antes da LLM principal para novos comandos sem histórico ("Abre o Trello", "Abre o Hyperframe") via `OperationIntent`, `TaskCompiler` e `CapabilityRouter`. Fast path Trello READ sem System-2.
+- **P1.2 Ações Compostas de Browser:** `browser_batch_actions` nativo em Electron e Python com validação de lease por passo, receipts tipados e interrupção segura no primeiro erro/incerteza.
+- **P1.3 / P1.4 Prontidão por Condição e Payloads por Referência:** Contratos de prontidão eliminando loops de console; resolução de `text_ref` e `artifact_ref` na fronteira confiável em `tools/browser_workstation.py`.
+- **P1.5 Abertura Controlada do HyperFrames:** `creative.hyperframes.open` via `creative_studio_service.py` com alocação e verificação de saúde da porta, sem varredura de terminal.
+- **P2.1 Proteção Permanente de Edições Humanas (Incidente do Cartão 012 Solucionado):** Detecção de divergência do baseline remoto (2.567 -> 2.480 chars protegidos intactos com retorno de `CONFLICT` / `HANDOFF`). Supressão de escritas redundantes (`already_satisfied`), parada fail-closed em CSRF 403 e respeito estrito a lease de controle humano.
+- **P2.2 In-Flight Learning & Handoff:** Transferência de canários verificados para `DurableBatchRunner` com zero chamadas à LLM entre itens equivalentes.
+- **Auditoria de Seams:** 21 costuras diretas classificadas no `audit_hermes_seams.py`, 0 não classificadas, 0 regressões de orçamento.
+Evidence: `workstation/context/engineering-journal/CURRENT.md` e `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
 <!-- dogfood-gate:2026-10-09 -->
 ## 2026-10-09 — D-042 Dogfood-first product acceptance, native learning and HyperFrames qualification
 
@@ -2780,6 +2804,14 @@ Evolved from real dogfood observation across complex web properties (Google Maps
 4. **Batch Structured Extraction (`browser_extract_items`)**:
    - First-class structured extraction tool/primitive that collects repetitive items (cards, products, issues, articles) with selectors, attributes, text, and URLs in a single agent step.
    - Eliminates excessive token consumption and 10+ consecutive `browser_console` JS injection cycles for table/grid scraping.
+
+5. **Browser Ecosystem Optimizations & Deterministic Batching (BROW-C2C)**:
+   - **Batch Execution (`browser_batch_actions`)**: Serialized execution with step-level `BrowserHumanControlLease` revalidation, per-substep `BrowserOwnerReceipt`, and fail-stop on first uncertain effect or human takeover.
+   - **Accessibility Tree Snapshotting**: Experimental CDP `Accessibility.getFullAXTree` integration with hybrid ref mapping and canonical inventory fallback.
+   - **Bounded Extraction Cache**: Cache keyed by full document fingerprint, epoch, mutation revision, and query digest; strict redaction of sensitive credentials.
+   - **Snapshot Delta Projection**: Line-level reversible diffing with lossless verification and conservative fallback to full snapshot.
+   - **Duplicate Mutation Prevention**: Idempotent replay on duplicate `operation_id` requests preventing duplicated external mutations.
+   - **Chrome Import Isolation**: Evaluated and placed in formal HOLD status (`OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`) to protect user credentials and boundaries.
 
 ## V4 radar — optional / evidence-gated explorations
 

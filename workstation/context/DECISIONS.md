@@ -11,8 +11,19 @@
 6. Experience Compiler existente só reutiliza transformações verificadas; segurança e admissões já estabelecidas são preservadas.
 **Execução:** [D-043 arquitetura](../creative-workstation/ENGINE_NEUTRAL_ARCHITECTURE_2026-10-10.md) e [handoff CWN-00..09](../creative-workstation/ENGINE_NEUTRAL_IMPLEMENTER_HANDOFF_2026-10-10.md).
 
-## Operational speed Stage A — 2026-10-10
-Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`; audited branch reconciled in merge `88a6166`. Candidate `749e2f92785fbc9bb84c0737d6cd730f55aa9aa6`: Workstation 970 passed / 4 skipped; Desktop typecheck/build pass. Full UI run had 3 failures (10,753 passed); all 3 repaired with 87 focused tests passing. Evidence: `workstation/context/engineering-journal/operational-speed-stage-a-2026-10-10.md`.
+## D-044 — Aceleração operacional, redução de redundância e proteção permanente de edições humanas (2026-10-11)
+**Status: DECISÃO E IMPLEMENTAÇÃO RUNTIME QUALIFICADAS LOCALMENTE.**
+1. **Redução de Decisões Desnecessárias:** Comandos determinísticos inequívocos ("Abre o Trello", "Abre o Hyperframe") são resolvidos pre-LLM via `workstation/prefabs/` e `TaskCompiler` sem invocar System-2.
+2. **Composição Atômica de Browser:** Eliminar chamadas fragmentadas através de `browser_batch_actions` com lease assertion por passo e receipts tipados.
+3. **Prontidão Condicional & Payloads por Referência:** Substituir loops de polling por contratos com timeouts; grandes payloads transitam via `text_ref`/`artifact_ref` resolvidos na fronteira confiável em `tools/browser_workstation.py`.
+4. **Proteção Absoluta de Conteúdo Humano (Incidente Cartão 012):** Nenhuma mutação automatizada pode sobrescrever edições humanas detectadas no readback ou divergências de baseline remoto (2.567 -> 2.480 chars preservados intactos com retorno `CONFLICT` / `HANDOFF`). Supressão de escritas redundantes via `already_satisfied`, bloqueio estrito em tomada de controle humano e fail-closed em 403 CSRF.
+5. **Autenticidade DIRECT Estrita:** Transição de SHADOW para DIRECT exige atestação HMAC assinada com âncora de confiança do operador com verificação de família operacional, versão e ambiente.
+6. **In-Flight Learning & Handoff:** Transferência no próprio TaskRun de itens canários verificados para `DurableBatchRunner` sem re-entrada de LLM entre itens subsequentes equivalentes.
+
+## Operational speed Stage A & P0–P2 Implementation — 2026-10-10 / 2026-10-11
+Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Status: **IMPLEMENTAÇÃO RUNTIME P0–P2 COMPLETA.** 43 testes de aceleração operacional + 20 Vitest green. Seams: 21/21 classificadas, 0 unclassified.
+Evidence: `workstation/context/engineering-journal/CURRENT.md`.
 <!-- dogfood-gate:2026-10-09 -->
 ## D-042 — Dogfood is a first-class, empirical product gate (2026-10-09)
 

@@ -14,6 +14,7 @@ NATIVE_BROWSER_TOOLS = frozenset({
     'browser_navigate', 'browser_snapshot', 'browser_click', 'browser_type',
     'browser_press', 'browser_scroll', 'browser_extract_items', 'browser_console',
     'browser_get_images', 'browser_back', 'browser_close', 'browser_tab',
+    'browser_batch_actions',
 })
 
 

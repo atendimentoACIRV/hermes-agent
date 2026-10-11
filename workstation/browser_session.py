@@ -55,6 +55,7 @@ DESTRUCTIVE_ACTIONS = frozenset({
     "submit",
     "browser_fill",
     "fill",
+    "browser_batch_actions",
 })
 
 

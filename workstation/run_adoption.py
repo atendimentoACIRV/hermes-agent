@@ -128,7 +128,7 @@ _READ_ONLY_PRIMITIVES = {
     "browser_snapshot", "snapshot", "browser_navigate", "navigate", "browser_scroll", "scroll",
     "browser_extract_items", "wait",
 }
-_BROWSER_MUTATIONS = {"browser_click", "browser_type", "browser_press", "click", "fill", "press"}
+_BROWSER_MUTATIONS = {"browser_click", "browser_type", "browser_press", "click", "fill", "press", "browser_batch_actions"}
 
 
 def effects_for_step(primitive: str, args: dict[str, Any], scope: dict[str, Any]) -> Optional[list[Effect]]:

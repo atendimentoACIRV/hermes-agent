@@ -1,5 +1,6 @@
 import { atom, onMount } from 'nanostores'
 import type { ReactNode } from 'react'
+import { CreativeWorkspacePage } from '@/app/creative-workspace'
 
 import { noteActiveTreeGroup, revealTreePane } from '@/components/pane-shell/tree/store'
 import { registry } from '@/contrib/registry'
@@ -22,6 +23,7 @@ export const CRON_ROUTE = '/cron'
 export const PROFILES_ROUTE = '/profiles'
 export const AGENTS_ROUTE = '/agents'
 export const STARMAP_ROUTE = '/starmap'
+export const CREATIVE_WORKSPACE_ROUTE = '/creative'
 
 export type AppView =
   | 'session-import'
@@ -31,6 +33,7 @@ export type AppView =
   | 'capabilities'
   | 'chat'
   | 'command-center'
+  | 'creative-workspace'
   | 'cron'
   // A contributed (plugin) full page at its own route — NOT chat. Without this
   // distinction contributed paths fell through appViewForPath's 'chat' default,
@@ -50,6 +53,7 @@ export type AppRouteId =
   | 'browser'
   | 'capabilities'
   | 'command-center'
+  | 'creative-workspace'
   | 'cron'
   | 'messaging'
   | 'new'
@@ -77,7 +81,8 @@ export const APP_ROUTES = [
   { id: 'cron', path: CRON_ROUTE, view: 'cron' },
   { id: 'profiles', path: PROFILES_ROUTE, view: 'profiles' },
   { id: 'agents', path: AGENTS_ROUTE, view: 'agents' },
-  { id: 'starmap', path: STARMAP_ROUTE, view: 'starmap' }
+  { id: 'starmap', path: STARMAP_ROUTE, view: 'starmap' },
+  { id: 'creative-workspace', path: CREATIVE_WORKSPACE_ROUTE, view: 'creative-workspace' },
 ] as const satisfies readonly AppRoute[]
 
 const APP_VIEW_BY_PATH = new Map<string, AppView>(APP_ROUTES.map(route => [route.path, route.view]))

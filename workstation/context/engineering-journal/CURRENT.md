@@ -1,5 +1,103 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-11 — Hermes Work: Aceleração Operacional, Redução de Redundâncias e Custo (D-043 / P0–P2)
+
+**Classificação: IMPLEMENTAÇÃO COMPLETA, TESTES E QUALIFICAÇÃO INTEGRADOS.**
+Branch: `feat/opc-001-prefab-capabilities` (reconciliado com `main@1de5beb289`).
+Upstream Pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Seam Audit: 19 costuras diretas, 19 classificadas, 0 não-classificadas, 0 regressões de orçamento.
+
+### Entregas e Verificações:
+1. **P0.1 — Telemetria Real e Custo Econômico:**
+   - Medição de tempo até resultado verificado (`admission_to_verified_ms`, median/p95).
+   - Segregação de tempo efetivo: System-2 (`system2_call_ms`), System-1 (`system1_call_ms`), Browser (`browser_call_ms`), outras ferramentas.
+   - Deduplicação de chamadas por `call_id`, rastreamento de chamadas a terminal e skills, queries repetidas de DOM/snapshot.
+   - Contabilização exata de tokens (input, output, cache read/write) e cálculo de `cost_per_verified_outcome_usd` com fonte tarifária comprovada.
+   - Testes: `workstation/tests/test_operational_telemetry.py` (10/10 passed).
+2. **P0.2 — Autenticidade DIRECT com Âncora de Confiança:**
+   - Substituição do hash unkeyed pelo HMAC/MAC autenticado com âncora de confiança escopada em `compilability_monitor.py`.
+   - Rejeição de forjas em atestações; atestações inválidas preservam modo SHADOW e bloqueiam mutações DIRECT não qualificadas.
+   - Testes: `workstation/tests/test_direct_qualification_attestation.py` (9/9 passed).
+3. **P1.1 — Resolução Pre-LLM de Novas Intenções:**
+   - Reconhecimento determinístico de novos comandos humanos ("Abre o Trello", "Abre o Hyperframe", etc.) antes do System-2.
+   - Roteamento tipado via `OperationIntent`, `TaskCompiler` e `CapabilityRouter`.
+   - Fallback seguro para System-2 em casos ambíguos, não instalados ou sem permissão.
+   - Fast path de navegação e leitura REST Trello via `workstation/prefabs/`.
+   - Testes: `workstation/tests/test_current_command_resolution.py` (3/3 passed).
+4. **P1.2 — Composição Nativa de Operações de Browser:**
+   - `browser_batch_actions` implementado de ponta a ponta no Electron (`workstation-browser-batch.ts`) e Python (`operational_kernel.py`, `tools/browser_workstation.py`, `routing.py`).
+   - Verificação por passo de autorização/lease, emissão de receipts tipados por suboperação e parada imediata no primeiro erro/incerteza.
+   - Testes: `workstation/tests/test_browser_batch_actions.py` (3/3 passed), Vitest (11/11 passed).
+5. **P1.3 / P1.4 — Readiness por Condição e Payloads por Referência:**
+   - `BrowserReadinessContract` e espera tipada conectada ao ciclo do browser, eliminando loops de console repetidos.
+   - Resolução de `text_ref` / `artifact_ref` na fronteira confiável em `tools/browser_workstation.py` para chamadas individuais e em lote (`browser_batch_actions`), eliminando transporte de texto volumoso e servidores HTTP temporários.
+6. **P1.5 — Abertura Imediata do HyperFrames:**
+   - `creative.hyperframes.open` conectando `creative_studio_service.py` via `ProcessRegistry`, verificação de saúde e abertura nativa no Electron sem exploração de terminal.
+   - Testes: `workstation/tests/test_creative_studio_service.py` (6/6 passed).
+7. **P2.1 — Proteção Permanente Contra Sobrescrita de Edições Humanas:**
+   - Reprodução e resolução permanente do Incidente do Cartão 012 (2.567 caracteres iniciais -> 2.480 editados por humano preservados intactos com retorno de `CONFLICT` / `HANDOFF`).
+   - `sync_description_authorized` no `TrelloClient` com detecção de estado divergente, proteção de cartões reservados, supressão de escritas duplicadas (`already_satisfied`), tratamento de CSRF 403 e readback exato.
+   - `HandoffWakeCondition.CONCURRENT_HUMAN_EDIT` integrado em `run_closure.py` e `run_adoption.py`.
+   - Lote de 33 descrições testado com parada segura em conflito e retomada idempotente.
+   - Bloqueio de mutações destrutivas sob assunção de controle humano (`BrowserControlLeaseManager`).
+   - Testes: `workstation/tests/test_trello_concurrent_edit_protection.py` (5/5 passed).
+8. **P2.2 — Reutilização e Aprendizado no TaskRun:**
+   - In-flight handoff transferindo canários verificados para `DurableBatchRunner` com zero chamadas à LLM entre itens equivalentes.
+   - Testes: `workstation/tests/test_in_flight_handoff.py` (6/6 passed), `test_online_compilability_safety.py` (37/37 passed).
+
+Suíte Combinada: 66 testes unitários e de integração 100% green.
+
+## 2026-10-11 — BROW-C2C Browser Ecosystem Optimizations Implementation (PR #67)
+
+**Classificação: IMPLEMENTAÇÃO RUNTIME, TESTES E QUALIFICAÇÃO INTEGRADOS.**
+Branch: `feat/workstation-browser-optimization-c2c`.
+Base/Pin Upstream: `66605471e9f0b0832abbefaf625ce08e948ca540` verificado como ancestral do HEAD. Seams audit: 14 classificados, 0 não classificados, 0 regressões de orçamento.
+
+### Unidades Concluídas e Verificadas:
+1. **BROW-00 / BROW-01 (Baseline & Benchmark):**
+   - Qualificação da baseline com suíte completa de referência (Vitest patch-kit: 24 passed, Node benchmark: 12 passed, Pytest rotas: 16 passed, Electron runtime: 89 passed).
+   - Fixtures cobrindo 7 cenários: forms, delayed hydration, tables/lists, rich editor, navigation, tab recovery, human takeover.
+2. **OPT-01 (Browser Batch Actions):**
+   - `apps/desktop/electron/workstation-browser-batch.ts` implementado com tipagem estrita de ações serializadas (`click`, `type`, `press`, `scroll`).
+   - Integrado em `executeControlRequest()` com validação por passo do lease (`BrowserHumanControlLease`), receipts por suboperação (`BrowserOwnerReceipt`), persistência de progresso e halt imediato no primeiro efeito incerto ou intervenção humana (`409 USER_CONTROL_ACTIVE`).
+   - Registrado de ponta a ponta na camada Python: `tools/browser_workstation.py`, `tools/browser_tool.py`, `workstation/integrations/hermes/browser_controller.py`, `workstation/routing.py`, `workstation/operational_kernel.py`, `workstation/run_adoption.py`.
+   - Testes: 11 unitários Vitest, 4 de integração Electron, 3 de integração pytest (`test_browser_batch_actions.py`).
+3. **OPT-02 (Snapshot com Accessibility Tree):**
+   - `apps/desktop/electron/workstation-browser-snapshot.ts` implementando leitura experimental de CDP `Accessibility.getFullAXTree` com mapeamento híbrido para `window.__hermesWorkstationRefs`.
+   - Feature flag `HERMES_BROWSER_AXTREE_ENABLED` (padrão desligada); fallback canônico preservado em `inventoryScript()`.
+   - 8 testes Vitest cobrindo shadow DOM, iframe, editable content, canvas/SPA e WebContents destruído.
+4. **OPT-03 (Extração Estruturada Aprimorada):**
+   - `apps/desktop/electron/workstation-browser-extract-cache.ts` com `BoundedExtractCache` indexado por estado completo do documento (`documentFingerprint`, `documentEpoch`, `mutationRevision`, `queryDigest`, `taskId`, `tabId`, `profileId`).
+   - Normalização tipada por schema e sanitização/isolamento estrito de dados sensíveis (tokens, JWT, passwords, cartões de crédito).
+   - Invalidação automática em mutações, navegações (`did-navigate`, `did-navigate-in-page`), crashes e assunção de controle humano.
+   - 9 testes unitários Vitest e validação com `test_browser_extract_items.py` (2 passed).
+5. **OPT-04 (Snapshot Delta):**
+   - `apps/desktop/electron/workstation-browser-snapshot-diff.ts` conectado como projeção opcional de `snapshotForEntry()`.
+   - Reconstrução exata e verificação de conservadorismo (fallback para snapshot completo em truncamento, mismatch de baseline ou economia < 20%).
+   - 9 testes Vitest cobrindo documentos extensos (2.000+ linhas), caracteres Unicode e corrupção de hunks.
+6. **OPT-06 / OPT-09 / OPT-12 (Estabilidade & Resiliência):**
+   - Prevenção de execução duplicada via idempotência de `operation_id` em mutações na fila de controle.
+   - Resiliência em `render-process-gone` com reset de `loading`, marcação de `stale` e retenção no `pendingSessionTabs`.
+   - 12 testes de resiliência Vitest passando (100% green).
+7. **UX (Melhorias inspiradas no BrowserOS):**
+   - Painel `workstation-browser-pane.tsx` atualizado com banner de transição segura para controle humano, barra de progresso para carregamento/execução, identificador de tarefas em segundo plano e acesso integrado ao `TaskJournalDrawer`.
+8. **OPT-05 (Importação de Sessões Chrome - HOLD):**
+   - Mantido estritamente em HOLD por motivos de privacidade e conformidade com §2 do `SECURITY.md`.
+   - Documento de análise de risco e requisitos mandatórios registrado em `workstation/context/OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`.
+9. **OPT-07 / OPT-11 (Drift & Backends Python — DIAGNOSED, sem mudança de runtime):**
+   - 32 arquivos `tools/browser*.py` + `workstation/browser*.py` classificados por responsabilidade em `workstation/context/OPT_07_11_DRIFT_BACKEND_CLASSIFICATION_2026-10-11.md`: 2 runtimes sempre presentes (agent-browser local; Electron Workstation), demais = drivers opcionais sob demanda, roteadores, fachadas, guardas de política e suporte. Nada removível com segurança.
+   - Drift/quarentena inventariados sem alteração (`operational_capabilities.record_drift`, router `drift_state`, `verification.verifier_fingerprint_drift`, `browser_readiness` dom_drift, supervisor `DESCRIPTOR_STALE`); nenhum reparo automático instalado, nenhuma operação bloqueada promovida.
+
+Suíte Electron Browser: 15 arquivos, 140 testes 100% green.
+Pytest Browser: 19 testes em `test_browser_workstation_route.py` e `test_browser_batch_actions.py` 100% green.
+
+### Sessão de verificação e continuação — 2026-10-11 (pós-`dd16f47d83`):
+- Reverificados de forma independente nesta sessão: OPT-01/02/03/04 (código + integração + schemas Python), OPT-06/09/12 (idempotência `operation_id`, `render-process-gone`), UX-01 (journal drawer, takeover, progresso, indicador background).
+- TS: 140/140 green (46 módulos + 16 batch/resilience + 78 runtime/sessão/admissão/recovery).
+- Python: 41/41 green (batch, rota workstation, admissão operacional, extract, lease) + 32/34 rotas/tools; 2 erros em `test_browser_extension_router_wiring.py` eram dívida pré-existente da `main` (seam `_workstation_or_legacy` removida por `f948da2462`, spy sem `run_id`).
+- Reparo mínimo test-only (sem mudança de comportamento): removido patch obsoleto + `run_id` no spy → 34/34 green. O reparo valida a ponte OPT-01 (`browser_batch_actions` roteia pelo wrapper com `run_id`).
+- Alterações não commitadas de outra trilha (OPC-001: `workstation/prefabs/seeding.py`, `CreativeWorkspaceContext.test.tsx`, `tools/prefab_trello_mutate.py`) preservadas intactas; fora do escopo desta missão.
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — D-043: EffectCraft/OpenReel/HyperFrames -> CW engine-neutral
 **CLASSIFICAÇÃO: DESIGN E IMPLEMENTAÇÃO ENGINE-NEUTRAL.** Fontes EffectCraft, OpenReel, HyperFrames; Creative Document, Command Bus, NLE, Semantic Edit Plan, Freeform scene adapters, Video Export pipeline (CWN-00..06). [Jornal completo](creative-engine-neutral-2026-10-10.md).
@@ -5576,3 +5674,18 @@ portable read-only liveness primitive. Test only an owned disposable child
 waiting on stdin: a contending canonical writer must time out fail-closed,
 leave lock/state unchanged, and the owner must ACK ping afterward. No product
 edit until this native behavioral reproduction fails on BASE_SHA.
+
+## 2026-10-11 — H-079 PASS_WITH_AUTHORIZATION (operational speed continuation)
+
+Maintainer authorized H-079 skip: "Sobre o H-079 Gate, pode passar ele, marca
+PASS_WITH_AUTHORIZATION (Pulado com autorização) e continua o trabalho".
+Recorded gate facts on feat/workstation-browser-optimization-c2c@80e3a0724b:
+DOWNSTREAM_MAIN_SHA=1de5beb2890772261fff2a26608b03c416efb949,
+UPSTREAM_MAIN_SHA_OBSERVED=9e827685f2ff9e76579418fadd090fb0407f15e4,
+CURRENT_PIN_SHA=66605471e9f0b0832abbefaf625ce08e948ca540,
+merge-base(HEAD,upstream/main)=66605471e9f0b0832abbefaf625ce08e948ca540,
+downstream ahead 3 / behind 0 vs origin/main, seams 19 classified / 0
+unclassified / 0 budget regressions. Exact-head CI remains not GREEN (Actions
+HTTP 422 history + Desktop failures open); this authorization does not relabel
+those gates VERIFIED and does not authorize main merge. Target runtime work
+continues on this branch with RED->GREEN per phase and separate upstream sync.

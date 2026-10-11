@@ -559,6 +559,75 @@
       "current_direct_imports": 2
     },
     {
+      "id": "FPS-WS-PREFAB-001",
+      "path": "tools/workstation_prefabs.py",
+      "disposition": "PRESERVE_FIRST_PARTY",
+      "target": "Workstation prefabs tool",
+      "rationale": "First-party Workstation prefabs tool providing read-only prefab operations under desktop_ui toolset.",
+      "concerns": [
+        {
+          "id": "SEAM-WS-PREFAB",
+          "symbol_or_concern": "workstation.config, workstation.prefabs",
+          "semantic_owner": "workstation.prefabs",
+          "current_behavior": "Provides read-only prefabricated operations.",
+          "required_ordering": "Tool execution time.",
+          "disposition": "PRESERVE_FIRST_PARTY",
+          "replacement": "preserve first-party tool surface",
+          "parity_tests": [
+            "prefabs read-only actions"
+          ],
+          "sunset_condition": "none"
+        }
+      ],
+      "current_direct_imports": 3
+    },
+    {
+      "id": "FPS-WS-PREFAB-002",
+      "path": "tools/hermes_prefab_catalog.py",
+      "disposition": "PRESERVE_FIRST_PARTY",
+      "target": "Hermes prefab catalog discovery tool",
+      "rationale": "First-party read-only catalog discovery tool for prefabricated capabilities.",
+      "concerns": [
+        {
+          "id": "SEAM-HERMES-PREFAB-CATALOG",
+          "symbol_or_concern": "workstation.config, workstation.prefabs.catalog",
+          "semantic_owner": "workstation.prefabs.catalog",
+          "current_behavior": "Provides catalog listing and intent matching without side effects.",
+          "required_ordering": "Tool execution time.",
+          "disposition": "PRESERVE_FIRST_PARTY",
+          "replacement": "preserve first-party tool surface",
+          "parity_tests": [
+            "prefab catalog discovery"
+          ],
+          "sunset_condition": "none"
+        }
+      ],
+      "current_direct_imports": 2
+    },
+    {
+      "id": "FPS-WS-PREFAB-003",
+      "path": "tools/prefab_trello_mutate.py",
+      "disposition": "PRESERVE_FIRST_PARTY",
+      "target": "Workstation prefab Trello mutation planning tool",
+      "rationale": "First-party Workstation prefab tool constructing work_execute plans for Trello mutations; never writes directly.",
+      "concerns": [
+        {
+          "id": "SEAM-WS-PREFAB-MUTATE",
+          "symbol_or_concern": "workstation.config, workstation.prefabs.trello",
+          "semantic_owner": "workstation.prefabs",
+          "current_behavior": "Plans Trello description syncs via TrelloClient read-only diff plus work_execute plan.",
+          "required_ordering": "Tool execution time.",
+          "disposition": "PRESERVE_FIRST_PARTY",
+          "replacement": "preserve first-party tool surface",
+          "parity_tests": [
+            "prefab Trello mutation planning"
+          ],
+          "sunset_condition": "none"
+        }
+      ],
+      "current_direct_imports": 2
+    },
+    {
       "id": "FPS-DESKTOP-MAIN",
       "path": "apps/desktop/electron/main.ts",
       "disposition": "PRESERVE_FIRST_PARTY",

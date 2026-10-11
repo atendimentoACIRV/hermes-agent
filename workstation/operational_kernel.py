@@ -233,20 +233,17 @@ class OperationalKernel:
             return {"tool": "browser_click", "args": {"ref": inputs.get("ref", "@e1")}}
         if primitive in {"browser_navigate", "navigate"}:
             return {"tool": "browser_navigate", "args": {"url": inputs.get("url", "")}}
+        if primitive in {"browser_batch_actions", "batch_actions"}:
+            return {"tool": "browser_batch_actions", "args": {"steps": inputs.get("steps", [])}}
         return {"tool": primitive, "args": inputs}
 
-    def execute_primitive(
-        self,
-        primitive: str,
-        inputs: dict[str, Any],
-        *,
-        dispatch: Callable | None = None,
-        context: dict[str, Any] | None = None,
-    ) -> Any:
-        ctx = context or {}
-        inputs = interpolate_variables(inputs, ctx)
+    _FS_PRIMITIVES = {
+        "fs_stat", "stat", "fs_read", "read_file", "read", "fs_write", "write_file", "write",
+        "fs_patch", "patch", "fs_copy", "copy", "fs_move", "move", "fs_hash", "hash_file",
+        "fs_list_dir", "list_dir", "fs_mkdir", "mkdir",
+    }
 
-        # 1. Filesystem primitives
+    def _execute_fs_primitive(self, primitive: str, inputs: dict[str, Any]) -> Any:
         if primitive in {"fs_stat", "stat"}:
             return self.fs_stat(inputs["path"], base_dir=inputs.get("base_dir"))
         if primitive in {"fs_read", "read_file", "read"}:
@@ -265,6 +262,22 @@ class OperationalKernel:
             return self.fs_list_dir(inputs["path"], recursive=inputs.get("recursive", False), base_dir=inputs.get("base_dir"))
         if primitive in {"fs_mkdir", "mkdir"}:
             return self.fs_mkdir(inputs["path"], parents=inputs.get("parents", True), base_dir=inputs.get("base_dir"))
+        raise ValueError(f"Unknown filesystem primitive: {primitive}")
+
+    def execute_primitive(
+        self,
+        primitive: str,
+        inputs: dict[str, Any],
+        *,
+        dispatch: Callable | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> Any:
+        ctx = context or {}
+        inputs = interpolate_variables(inputs, ctx)
+
+        # 1. Filesystem primitives
+        if primitive in self._FS_PRIMITIVES:
+            return self._execute_fs_primitive(primitive, inputs)
 
         # 2. Browser primitives (dispatched through agent scoped dispatcher or loopback)
         if primitive in {"browser_navigate", "navigate"}:
@@ -331,6 +344,10 @@ class OperationalKernel:
             if not dispatch:
                 raise RuntimeError("Browser primitive requires dispatch function")
             return dispatch("browser_extract_items", inputs)
+        if primitive in {"browser_batch_actions", "batch_actions"}:
+            if not dispatch:
+                raise RuntimeError("Browser primitive requires dispatch function")
+            return dispatch("browser_batch_actions", {"steps": inputs.get("steps", [])})
 
         # 3. Control primitives
         if primitive == 'process_observe':

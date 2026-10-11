@@ -52,6 +52,27 @@ import {
   BrowserTaskLifecycle,
   type BrowserTaskSeed
 } from './workstation-browser-task'
+import {
+  executeAuthorizedBatch,
+  type BrowserBatchAdapter,
+  type BrowserBatchContext,
+  type BrowserBatchResult,
+  type BrowserBatchStep,
+  type StepEvidence
+} from './workstation-browser-batch'
+import { isAccessibilitySnapshotEnabled, tryAccessibilitySnapshot } from './workstation-browser-snapshot'
+import {
+  BoundedExtractCache,
+  type ExtractScope,
+  computeQueryDigest,
+  normalizeExtractedItem
+} from './workstation-browser-extract-cache'
+import {
+  applySnapshotDelta,
+  diffSnapshot,
+  type SnapshotFrame,
+  type SnapshotUpdate
+} from './workstation-browser-snapshot-diff'
 
 const CACHE_CHECK_INTERVAL_MS = 30 * 60 * 1000
 const DEFAULT_CACHE_MAX_MB = 512
@@ -148,6 +169,8 @@ interface BrowserEntry {
   safeTitle: string | null
   recoveryState: BrowserSessionTabRecoveryState
   recoveryReason: BrowserSessionTabRecoveryReason
+  mutationRevision: number
+  documentEpoch: string
 }
 
 export interface WorkstationControllerError {
@@ -1119,6 +1142,8 @@ export class WorkstationBrowserRuntime {
   private restoredTabOrder: string[] = []
   private restoredLogicalActiveTabId: string | null = null
   private readonly lastReceipts = new Map<string, BrowserOwnerReceipt>()
+  private readonly extractCache = new BoundedExtractCache<Record<string, unknown>>()
+  private readonly lastSnapshotFrames = new Map<string, SnapshotFrame>()
 
   constructor(browserSessionState: BrowserSessionStateFilePersistence | null = null) {
     this.browserSessionState = browserSessionState
@@ -1413,7 +1438,9 @@ export class WorkstationBrowserRuntime {
       safeUrl,
       safeTitle,
       recoveryState: restoredTab?.recoveryState ?? 'live',
-      recoveryReason: restoredTab?.recoveryReason ?? (safeUrl !== url ? 'unsafe-metadata' : null)
+      recoveryReason: restoredTab?.recoveryReason ?? (safeUrl !== url ? 'unsafe-metadata' : null),
+      mutationRevision: 0,
+      documentEpoch: `${Date.now()}-${id.slice(0, 8)}`
     }
 
     this.entries.set(id, entry)
@@ -1853,6 +1880,7 @@ export class WorkstationBrowserRuntime {
   }
 
   takeControl(taskId?: string, sessionId?: string): WorkstationBrowserState {
+    this.extractCache.clear()
     this.ensureBrowserSessionStateRestored()
     const scopedTaskId = this.resolveControlTaskId(taskId)
 
@@ -2175,6 +2203,7 @@ export class WorkstationBrowserRuntime {
       'browser_scroll',
       'browser_back',
       'browser_press',
+      'browser_batch_actions',
       'browser_extension_open_options',
       'browser_creative_render',
       'browser_creative_studio_open'
@@ -2182,6 +2211,21 @@ export class WorkstationBrowserRuntime {
 
     if (mutating.has(action)) {
       this.assertAgentControl(taskId)
+    }
+
+    if (operationId && mutating.has(action)) {
+      const lastReceipt = this.lastReceipts.get(taskId)
+      if (lastReceipt && lastReceipt.operationId === operationId && lastReceipt.action === action) {
+        const entry = this.entryForTask(taskId, false, sessionHost, kanbanCardId, runId)
+        const snap = entry ? await this.snapshotForEntry(entry, false) : {}
+        return {
+          ...snap,
+          idempotent_replay: true,
+          operation_id: operationId,
+          ...(callKey ? { call_key: callKey } : {}),
+          receipt: lastReceipt
+        }
+      }
     }
 
     if (sessionHost || kanbanCardId || runId) {
@@ -2383,16 +2427,42 @@ export class WorkstationBrowserRuntime {
 
     switch (action) {
       case 'browser_snapshot':
-        return this.snapshotForEntry(entry, Boolean(args.full))
+        return this.snapshotForEntry(entry, Boolean(args.full), {
+          delta: Boolean(args.delta),
+          baselineRevision: typeof args.baseline_revision === 'number' ? args.baseline_revision : undefined,
+          baselineText: typeof args.baseline_text === 'string' ? args.baseline_text : undefined
+        })
 
       case 'browser_click': {
         const anchor = (args.semantic_anchor || args.anchor) as { type?: string; value?: string } | undefined
         const clickResult = await this.clickRef(entry, String(args.ref ?? ''), anchor)
         await delay(220)
 
+        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        const rawReceipt: BrowserOwnerReceipt = {
+          operationId: opId,
+          taskId,
+          runId: runId ?? '',
+          browserTaskId: taskId,
+          tabId: entry.id,
+          revision: entry.mutationRevision,
+          action,
+          safeUrl: entry.safeUrl,
+          executedAt: new Date().toISOString()
+        }
+        const updatedTask = this.taskLifecycle().recordReceipt(taskId, rawReceipt)
+        const receipt = updatedTask.lastReceipt
+        if (receipt) {
+          this.lastReceipts.set(taskId, receipt)
+        }
+        this.persistBrowserSessionState()
+
         const snap = await this.snapshotForEntry(entry, false)
         return {
           ...snap,
+          ...(operationId ? { operation_id: operationId } : {}),
+          ...(callKey ? { call_key: callKey } : {}),
+          receipt,
           target: clickResult?.target,
           semantic_effect: 'click'
         }
@@ -2405,10 +2475,32 @@ export class WorkstationBrowserRuntime {
         const typeResult = await this.typeRef(entry, String(args.ref ?? ''), String(args.text ?? ''), { clear, append, mode, anchor })
         await delay(160)
 
+        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        const rawReceipt: BrowserOwnerReceipt = {
+          operationId: opId,
+          taskId,
+          runId: runId ?? '',
+          browserTaskId: taskId,
+          tabId: entry.id,
+          revision: entry.mutationRevision,
+          action,
+          safeUrl: entry.safeUrl,
+          executedAt: new Date().toISOString()
+        }
+        const updatedTask = this.taskLifecycle().recordReceipt(taskId, rawReceipt)
+        const receipt = updatedTask.lastReceipt
+        if (receipt) {
+          this.lastReceipts.set(taskId, receipt)
+        }
+        this.persistBrowserSessionState()
+
         const snap = await this.snapshotForEntry(entry, false)
         const semanticEffect = mode === 'plain_text_paste' ? 'paste_text' : (args.mode === 'insert_text' ? 'insert_text' : 'type')
         return {
           ...snap,
+          ...(operationId ? { operation_id: operationId } : {}),
+          ...(callKey ? { call_key: callKey } : {}),
+          receipt,
           target: typeResult?.target,
           chars_inserted: String(args.text ?? '').length,
           semantic_effect: semanticEffect
@@ -2421,11 +2513,37 @@ export class WorkstationBrowserRuntime {
       case 'browser_extract_items':
         return this.extractItemsForEntry(entry, args)
 
-      case 'browser_scroll':
+      case 'browser_scroll': {
         await this.scrollEntry(entry, String(args.direction ?? 'down'))
         await delay(140)
 
-        return this.snapshotForEntry(entry, false)
+        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        const rawReceipt: BrowserOwnerReceipt = {
+          operationId: opId,
+          taskId,
+          runId: runId ?? '',
+          browserTaskId: taskId,
+          tabId: entry.id,
+          revision: entry.mutationRevision,
+          action,
+          safeUrl: entry.safeUrl,
+          executedAt: new Date().toISOString()
+        }
+        const updatedTask = this.taskLifecycle().recordReceipt(taskId, rawReceipt)
+        const receipt = updatedTask.lastReceipt
+        if (receipt) {
+          this.lastReceipts.set(taskId, receipt)
+        }
+        this.persistBrowserSessionState()
+
+        const snap = await this.snapshotForEntry(entry, false)
+        return {
+          ...snap,
+          ...(operationId ? { operation_id: operationId } : {}),
+          ...(callKey ? { call_key: callKey } : {}),
+          receipt
+        }
+      }
 
       case 'browser_back':
         if (entry.view.webContents.navigationHistory.canGoBack()) {
@@ -2436,11 +2554,138 @@ export class WorkstationBrowserRuntime {
 
         return this.snapshotForEntry(entry, false)
 
-      case 'browser_press':
+      case 'browser_press': {
         await this.pressKey(entry, String(args.key ?? ''))
         await delay(120)
 
-        return this.snapshotForEntry(entry, false)
+        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        const rawReceipt: BrowserOwnerReceipt = {
+          operationId: opId,
+          taskId,
+          runId: runId ?? '',
+          browserTaskId: taskId,
+          tabId: entry.id,
+          revision: entry.mutationRevision,
+          action,
+          safeUrl: entry.safeUrl,
+          executedAt: new Date().toISOString()
+        }
+        const updatedTask = this.taskLifecycle().recordReceipt(taskId, rawReceipt)
+        const receipt = updatedTask.lastReceipt
+        if (receipt) {
+          this.lastReceipts.set(taskId, receipt)
+        }
+        this.persistBrowserSessionState()
+
+        const snap = await this.snapshotForEntry(entry, false)
+        return {
+          ...snap,
+          ...(operationId ? { operation_id: operationId } : {}),
+          ...(callKey ? { call_key: callKey } : {}),
+          receipt
+        }
+      }
+
+      case 'browser_batch_actions': {
+        const rawSteps = args.steps
+        const batchContext: BrowserBatchContext = {
+          taskId,
+          runId: runId || `${taskId}-run` || 'default-run',
+          tabId: entry.id,
+          operationId: operationId ?? `op_batch_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        }
+
+        const adapter: BrowserBatchAdapter = {
+          checkBefore: async (step, context, _index) => {
+            this.assertAgentControl(context.taskId)
+            if (entry.view.webContents.isDestroyed() || entry.crashed) {
+              throw workstationControllerFault('CONTROLLER_DOWN', 'renderer_process_gone_or_crashed')
+            }
+            if (entry.ownerTaskId !== context.taskId) {
+              throw workstationControllerFault('NO_BOUND_TAB', 'browser_tab_owner_mismatch')
+            }
+          },
+          perform: async (step, _context, _index) => {
+            switch (step.kind) {
+              case 'click': {
+                const res = await this.clickRef(entry, step.ref, step.anchor)
+                await delay(120)
+                return res
+              }
+              case 'type': {
+                const clear = step.clear !== undefined ? Boolean(step.clear) : !step.append
+                const res = await this.typeRef(entry, step.ref, step.text, {
+                  clear,
+                  append: Boolean(step.append),
+                  anchor: step.anchor
+                })
+                await delay(120)
+                return res
+              }
+              case 'press': {
+                await this.pressKey(entry, step.key)
+                await delay(80)
+                return { key: step.key }
+              }
+              case 'scroll': {
+                await this.scrollEntry(entry, step.direction)
+                await delay(80)
+                return { direction: step.direction }
+              }
+            }
+          },
+          verifyAfter: async (step, context, index, _result) => {
+            if (entry.view.webContents.isDestroyed() || entry.crashed) {
+              return { verified: false, receiptRef: null, uncertaintyReason: 'renderer_crashed' }
+            }
+            const stepOpId = `${context.operationId}:${index}`
+            const rawReceipt: BrowserOwnerReceipt = {
+              operationId: stepOpId,
+              taskId: context.taskId,
+              runId: context.runId,
+              browserTaskId: context.taskId,
+              tabId: context.tabId,
+              revision: index + 1,
+              action: `browser_${step.kind}`,
+              safeUrl: entry.safeUrl,
+              executedAt: new Date().toISOString()
+            }
+            let receipt: BrowserOwnerReceipt | undefined
+            try {
+              const updatedTask = this.taskLifecycle().recordReceipt(context.taskId, rawReceipt)
+              receipt = updatedTask.lastReceipt
+              if (receipt) {
+                this.lastReceipts.set(context.taskId, receipt)
+              }
+            } catch {
+              // Best effort lifecycle receipt update
+            }
+            const receiptRef = receipt ? `${receipt.operationId}:${receipt.tabId}:${receipt.revision}` : null
+            return {
+              verified: Boolean(receiptRef),
+              receiptRef
+            }
+          },
+          checkpoint: async (_context, _index, _evidence) => {
+            this.persistBrowserSessionState()
+          }
+        }
+
+        const batchResult = await executeAuthorizedBatch(rawSteps, batchContext, adapter)
+        const snap = await this.snapshotForEntry(entry, false)
+        return {
+          ...snap,
+          batch_result: batchResult,
+          status: batchResult.status,
+          completed_steps: batchResult.completedSteps,
+          verified_steps: batchResult.verifiedSteps,
+          stopped_at: batchResult.stoppedAt,
+          receipts: batchResult.receipts,
+          ...(batchResult.reason ? { reason: batchResult.reason } : {}),
+          ...(operationId ? { operation_id: operationId } : {}),
+          ...(callKey ? { call_key: callKey } : {})
+        }
+      }
 
       case 'browser_get_images':
         return this.imagesForEntry(entry)
@@ -2765,17 +3010,74 @@ export class WorkstationBrowserRuntime {
     return entry
   }
 
-  private async snapshotForEntry(entry: BrowserEntry, full: boolean): Promise<Record<string, unknown>> {
+  private recordActionReceipt(
+    entry: BrowserEntry,
+    taskId: string,
+    runId: string | null,
+    action: string,
+    operationId: string | null
+  ): BrowserOwnerReceipt | undefined {
+    const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+    const rawReceipt: BrowserOwnerReceipt = {
+      operationId: opId,
+      taskId,
+      runId: runId ?? '',
+      browserTaskId: taskId,
+      tabId: entry.id,
+      revision: entry.mutationRevision,
+      action,
+      safeUrl: entry.safeUrl,
+      executedAt: new Date().toISOString()
+    }
+    let receipt: BrowserOwnerReceipt | undefined
+    try {
+      const updatedTask = this.taskLifecycle().recordReceipt(taskId, rawReceipt)
+      receipt = updatedTask.lastReceipt
+      if (receipt) {
+        this.lastReceipts.set(taskId, receipt)
+      }
+      this.persistBrowserSessionState()
+    } catch {
+      // Best-effort if task lifecycle not bound
+    }
+    return receipt
+  }
+
+  private async snapshotForEntry(
+    entry: BrowserEntry,
+    full: boolean,
+    diffOpts?: { baselineRevision?: number; baselineText?: string; delta?: boolean }
+  ): Promise<Record<string, unknown>> {
     const wc = entry.view.webContents
 
     if (wc.isDestroyed()) {
       throw new Error('browser_tab_destroyed')
     }
 
-    let inv = (await wc.executeJavaScript(
-      inventoryScript(full ? FULL_TEXT_CHARS : COMPACT_TEXT_CHARS, full ? FULL_ELEMENTS : COMPACT_ELEMENTS),
-      true
-    )) as PageInventory
+    const maxText = full ? FULL_TEXT_CHARS : COMPACT_TEXT_CHARS
+    const maxElements = full ? FULL_ELEMENTS : COMPACT_ELEMENTS
+
+    let inv: PageInventory | null = null
+    if (isAccessibilitySnapshotEnabled()) {
+      try {
+        inv = await tryAccessibilitySnapshot(
+          wc,
+          (method, params) => this.cdp(wc, method, params),
+          full,
+          maxText,
+          maxElements
+        )
+      } catch {
+        inv = null
+      }
+    }
+
+    if (!inv) {
+      inv = (await wc.executeJavaScript(
+        inventoryScript(maxText, maxElements),
+        true
+      )) as PageInventory
+    }
 
     // Canvas / WebGL SPA Settlement: if elements are sparse, check if canvas or heavy SPA is hydrating
     if (inv.elements.length <= 2) {
@@ -2865,6 +3167,52 @@ export class WorkstationBrowserRuntime {
       }
     }
 
+    const formattedSnapshot = formatInventory(inv, full)
+    const currentFrame: SnapshotFrame = {
+      taskId: entry.ownerTaskId ?? 'unbound',
+      tabId: entry.id,
+      url: inv.url,
+      revision: entry.mutationRevision,
+      text: formattedSnapshot,
+      truncated: inv.truncated
+    }
+
+    const frameKey = `${entry.ownerTaskId ?? 'unbound'}:${entry.id}`
+    const previousFrame = this.lastSnapshotFrames.get(frameKey) ?? null
+
+    let snapshotDelta: SnapshotUpdate | null = null
+    if (diffOpts?.delta || diffOpts?.baselineRevision !== undefined || diffOpts?.baselineText !== undefined) {
+      const baseline =
+        diffOpts.baselineText !== undefined
+          ? {
+              taskId: entry.ownerTaskId ?? 'unbound',
+              tabId: entry.id,
+              url: inv.url,
+              revision: diffOpts.baselineRevision ?? 0,
+              text: diffOpts.baselineText,
+              truncated: false
+            }
+          : previousFrame
+
+      if (baseline) {
+        const update = diffSnapshot(baseline, currentFrame)
+        if (update.kind === 'delta') {
+          try {
+            const reconstructed = applySnapshotDelta(baseline, update)
+            if (reconstructed.text === currentFrame.text) {
+              snapshotDelta = update
+            }
+          } catch {
+            snapshotDelta = null
+          }
+        } else {
+          snapshotDelta = update
+        }
+      }
+    }
+
+    this.lastSnapshotFrames.set(frameKey, currentFrame)
+
     return {
       success: true,
       runtime: 'electron-chromium',
@@ -2872,7 +3220,9 @@ export class WorkstationBrowserRuntime {
       tab_id: entry.id,
       url: inv.url,
       title: inv.title,
-      snapshot: formatInventory(inv, full),
+      snapshot: formattedSnapshot,
+      snapshot_delta: snapshotDelta,
+      revision: entry.mutationRevision,
       elements: inv.elements,
       truncated: inv.truncated,
       total_text_chars: inv.totalTextChars,
@@ -2940,6 +3290,8 @@ export class WorkstationBrowserRuntime {
     ref: string,
     anchor?: { type?: string; value?: string }
   ): Promise<{ target?: ElementTargetMetadata }> {
+    entry.mutationRevision++
+    this.extractCache.invalidateTab(entry.id)
     const wc = entry.view.webContents
     const point = await this.resolvePoint(entry, ref, true, anchor)
     await this.cdpClick(wc, point.x, point.y)
@@ -2957,6 +3309,8 @@ export class WorkstationBrowserRuntime {
       anchor?: { type?: string; value?: string }
     } = {}
   ): Promise<{ target?: ElementTargetMetadata; chars_inserted?: number; semantic_effect?: string }> {
+    entry.mutationRevision++
+    this.extractCache.invalidateTab(entry.id)
     const wc = entry.view.webContents
     const point = await this.resolvePoint(entry, ref, true, options.anchor)
     const shouldClear = options.clear !== false && !options.append
@@ -3296,6 +3650,8 @@ export class WorkstationBrowserRuntime {
   }
 
   private async scrollEntry(entry: BrowserEntry, direction: string): Promise<void> {
+    entry.mutationRevision++
+    this.extractCache.invalidateTab(entry.id)
     const wc = entry.view.webContents
     const sign = direction.toLowerCase() === 'up' ? -1 : 1
 
@@ -3320,6 +3676,8 @@ export class WorkstationBrowserRuntime {
       throw new Error('key_required')
     }
 
+    entry.mutationRevision++
+    this.extractCache.invalidateTab(entry.id)
     const wc = entry.view.webContents
     await this.cdp(wc, 'Input.dispatchKeyEvent', { type: 'rawKeyDown', key })
     await this.cdp(wc, 'Input.dispatchKeyEvent', { type: 'keyUp', key })
@@ -3371,6 +3729,50 @@ export class WorkstationBrowserRuntime {
     const limit =
       typeof args.limit === 'number' && Number.isFinite(args.limit) ? Math.min(100, Math.max(1, args.limit)) : 20
 
+    // Compute document fingerprint and query digest for safe caching
+    let documentFingerprint: string | null = null
+    try {
+      documentFingerprint = (await wc.executeJavaScript(
+        `(function() {
+          return [
+            document.title || '',
+            location.href || '',
+            document.readyState || '',
+            document.body ? document.body.childElementCount : 0,
+            document.lastModified || ''
+          ].join('::');
+        })()`,
+        true
+      )) as string
+    } catch {
+      documentFingerprint = null
+    }
+
+    const queryDigest = computeQueryDigest(args)
+    const scope: ExtractScope | null =
+      documentFingerprint && entry.ownerTaskId
+        ? {
+            profileId: this.browserSession?.storagePath || 'default',
+            taskId: entry.ownerTaskId,
+            tabId: entry.id,
+            url: wc.getURL(),
+            documentEpoch: entry.documentEpoch,
+            mutationRevision: entry.mutationRevision,
+            documentFingerprint: String(documentFingerprint),
+            queryDigest
+          }
+        : null
+
+    if (scope) {
+      const cached = this.extractCache.get(scope)
+      if (cached) {
+        return {
+          ...cached,
+          cached: true
+        }
+      }
+    }
+
     let result: Record<string, unknown>
     if (args.mode === 'inspect') {
       if (!selector) throw new Error('inspection_requires_selector')
@@ -3392,15 +3794,30 @@ export class WorkstationBrowserRuntime {
       result = (await wc.executeJavaScript(extractItemsScript(selector, limit), true)) as Record<string, unknown>
     }
 
-    return {
+    // Normalize and sanitize extracted items according to schema
+    const rawItems = Array.isArray(result.items) ? result.items : []
+    const schema = args.schema && typeof args.schema === 'object' ? (args.schema as any) : null
+    const normalizedItems = rawItems
+      .map(item => normalizeExtractedItem(item as Record<string, unknown>, schema))
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+
+    const finalResult = {
       success: true,
       runtime: 'electron-chromium',
       task_id: entry.ownerTaskId,
       tab_id: entry.id,
       url: wc.getURL(),
       title: wc.getTitle(),
-      ...result
+      ...result,
+      items: normalizedItems,
+      count: normalizedItems.length
     }
+
+    if (scope && finalResult.success) {
+      this.extractCache.set(scope, finalResult)
+    }
+
+    return finalResult
   }
 
   private async screenshotForEntry(entry: BrowserEntry): Promise<Record<string, unknown>> {
@@ -3645,6 +4062,9 @@ export class WorkstationBrowserRuntime {
     })
 
     const refreshStructuralMetadata = (): void => {
+      entry.documentEpoch = `${Date.now()}-${entry.id.slice(0, 8)}`
+      entry.mutationRevision = 0
+      this.extractCache.invalidateTab(entry.id)
       this.updateEntrySafeMetadata(entry, wc.getURL(), wc.getTitle())
       this.persistBrowserSessionState()
       this.emitState()
@@ -3654,15 +4074,21 @@ export class WorkstationBrowserRuntime {
     wc.on('did-navigate-in-page', refreshStructuralMetadata)
     wc.on('page-title-updated', refreshStructuralMetadata)
     wc.on('render-process-gone', (_event, details) => {
+      this.extractCache.invalidateTab(entry.id)
       this.updateEntrySafeMetadata(entry, wc.getURL(), wc.getTitle())
+      entry.loading = false
       entry.crashed = true
       entry.recoveryState = 'stale'
       entry.recoveryReason = 'page-gone'
+      if (entry.ownerTaskId && !this.pendingSessionTabs.has(entry.id)) {
+        this.rememberPendingSessionTab(entry, 'stale', 'page-gone')
+      }
       this.lastError = `Browser renderer exited: ${details.reason}`
       this.persistBrowserSessionState()
       this.emitState()
     })
     wc.on('destroyed', () => {
+      this.extractCache.invalidateTab(entry.id)
       if (this.entries.get(entry.id) === entry) {
         this.rememberPendingSessionTab(entry, 'stale', 'page-gone')
         this.entries.delete(entry.id)

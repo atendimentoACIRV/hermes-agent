@@ -52,6 +52,7 @@ from typing import Any, Optional
 
 from agent.operational_resolution import OperationalOutcome, OperationalResolution
 from workstation.integrations.hermes.effect_authority import trusted_effect_authority_from_agent
+from workstation.prefabs.integration import maybe_resolve_navigation
 
 logger = logging.getLogger(__name__)
 
@@ -276,6 +277,12 @@ def workstation_operational_resolution(context: Any) -> Optional[OperationalReso
     agent = getattr(context, "agent", None)
     if agent is None or getattr(agent, "_interrupt_requested", False):
         return None
+
+    # Prefab Fast Path: resolve exact-match navigation/read intents before System-2
+    # This runs before any durable task lookup, for zero-LLM known destinations.
+    prefab_result = maybe_resolve_navigation(context)
+    if prefab_result is not None:
+        return prefab_result
 
     # Run-local reuse of a just-learned, independently validated procedure. It acts only
     # on owner-verified pending items and never answers the turn: reasoning continues.

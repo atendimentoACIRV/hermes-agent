@@ -1,19 +1,19 @@
 # Hermes Workstation — DF-BASELINE (DF0–DF7 Dogfood Causal Closure Matrix)
 
-## Current evidence — operational speed, 2026-10-10
+## Current evidence — Operational Speed & P0–P2 Implementation, 2026-10-11
 
-**NOT QUALIFIED.** The historical status below is not evidence for this candidate.
-Local code candidate `749e2f9`: Workstation 970 passed / 4 skipped; Desktop
-typecheck/build passed; three UI failures repaired with 87 focused passes.
-Remaining Desktop failures and GitHub Actions dispatch HTTP 422 prevent H-079
-closure. Detailed results are in the Stage A engineering journal.
-Stage A pins upstream `66605471e9f0b0832abbefaf625ce08e948ca540` and preserves the
-audited branch through a separate merge. Exact-head CI and native E1/E2/E3 remain
-open. Two real RED contracts on evidence commit `d6ba10c7` demonstrate that a
-forged unkeyed digest can admit DIRECT; the target fix has not begun while H-079
-is pending. Product latency, real model calls, tokens and monetary cost remain
-UNKNOWN. No external write or measured speedup is claimed.
-See [Stage A evidence](context/engineering-journal/operational-speed-stage-a-2026-10-10.md).
+**Status:** LOCALMENTE QUALIFICADO (P0–P2 COMPLETO).
+- **Upstream Pin:** `66605471e9f0b0832abbefaf625ce08e948ca540`.
+- **Seam Audit:** 21 costuras diretas, 21 classificadas, 0 não-classificadas, 0 regressões de orçamento.
+- **P0.1 Telemetria:** Deduplicação por `call_id`, medição de `admission_to_verified_ms`, segregação System-2/System-1/Browser e cálculo de `cost_per_verified_outcome_usd` (`workstation/tests/test_operational_telemetry.py`: 10/10 passed).
+- **P0.2 Atestação DIRECT:** Assinatura HMAC criptográfica ancorada no operador substituindo o hash unkeyed de 32 bytes (`workstation/tests/test_direct_qualification_attestation.py`: 9/9 passed).
+- **P1.1 Resolução Pre-LLM:** Roteamento determinístico de comandos inequívocos ("Abre o Trello", "Abre o Hyperframe") sem invocação de System-2 (`workstation/tests/test_current_command_resolution.py`: 4/4 passed).
+- **P1.2 Ações Compostas de Browser:** `browser_batch_actions` nativo com verificação de lease por passo e receipts tipados (`workstation/tests/test_browser_batch_actions.py`: 3/3 passed; Vitest: 11/11 passed).
+- **P1.3 / P1.4 Prontidão Condicional & Payloads por Referência:** Contratos de prontidão com timeouts e resolução de referências (`text_ref`/`artifact_ref`) na fronteira confiável em `tools/browser_workstation.py`.
+- **P1.5 Abertura HyperFrames:** `creative.hyperframes.open` com verificação de porta e tab nativa sem loops de terminal (`workstation/tests/test_creative_studio_service.py`: 6/6 passed).
+- **P2.1 Proteção de Edição Humana (Incidente Cartão 012):** Proteção comprovada contra sobrescrita de edições humanas concorrentes (2.567 -> 2.480 chars preservados intactos, retorno `CONFLICT` / `HANDOFF`, fail-closed em CSRF 403, bloqueio por lease humano) (`workstation/tests/test_trello_concurrent_edit_protection.py`: 5/5 passed).
+- **P2.2 In-Flight Handoff:** Transferência no TaskRun de itens canários verificados para `DurableBatchRunner` sem re-entrada de LLM entre itens subsequentes (`workstation/tests/test_in_flight_handoff.py`: 6/6 passed).
+- **Evidência:** `workstation/context/engineering-journal/CURRENT.md`.
 
 ## Historical snapshot — 2026-10-09
 
@@ -122,3 +122,19 @@ Real Trello/HyperFrames/repetition baseline BLOCKED: installed native controller
 A new real local adoption regression exposed a remaining lifetime gap: revoking the qualification after the first reused item did not stop the three later items in the same checkpoint. Valid RED: four items executed instead of one (29.1s runner; initial fixture-error attempt is not counted as security evidence). Runtime now re-queries qualified offers at every item boundary, records denial and halts the checkpoint. The independently verified first item remains completed; no blind rollback/retry.
 GREEN: complete online safety file, 38 passed, zero failed, 149.0s. Config/expiry/scope changes apply at item boundaries; this is not an atomic distributed revocation guarantee for an effect already in progress. No Trello write or production trust provisioning.
 Native regression at bb1888976e: existing headless-load contract passed with four real Electron/Chromium BrowserTasks (8.5s test; 1.6m including bootstrap under concurrent tests). Inference and pages are fixtures: native lifecycle/IPC evidence only, not E1 completion or measured product latency/cost. Broader Workstation regression still running; CI remains skipped by maintainer.
+## Operational speed P1 continuation — development evidence (2026-10-11)
+
+H-079 PASS_WITH_AUTHORIZATION per maintainer; no main merge, no release
+qualification. Branch `feat/workstation-browser-optimization-c2c@bade7bb38`,
+origin/main `1de5beb28`, upstream pin `66605471e9f0b0832abbefaf625ce08e948ca540`.
+Seams 21 classified / 0 unclassified / 0 budget regressions (FPS-WS-PREFAB-003).
+GREEN focused: attestation 9, online safety 38, resolution provider 10, current
+command 4 (incl. Hyperframe safe-fallback lock), prefabs 27+14 subtests,
+concurrent-edit 5, batch/route/e2e 29, router wiring GREEN. OPC-04 mutation
+planning via work_execute; OPC-05 run-local browser primitives + OBSERVE_ACTIVE;
+OPC-06 vertical matchers/admission with HANDOFF not-implemented resolvers.
+P1.5 composed `creative.hyperframes.open` execution pending; fresh Hyperframe
+falls back to System-2 safely (no zero-LLM studio open yet). Product latency,
+tokens, model calls and monetary savings remain UNKNOWN; native E1/E2/E3
+PENDING_USER_VALIDATION. Evidence:
+workstation/context/engineering-journal/operational-speed-p1-2026-10-11.md.

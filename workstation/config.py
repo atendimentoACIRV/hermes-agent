@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import hermes_yaml as yaml
+except ImportError:
+    import yaml
 
 DEFAULT_PATH = Path(__file__).with_name("workstation.yaml")
 
