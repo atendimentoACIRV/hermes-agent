@@ -504,10 +504,21 @@ class OperationalKernel:
         exec_context["run_id"] = run_id
         exec_context["operation_id"] = operation_id
         from workstation.experience_compiler.progressive import capture_progressive
+        # The admitted capability, not the tool observer, supplies these labels.
+        formal = cap.formal_contract
+        def formal_value(name):
+            return formal.get(name, "") if isinstance(formal, dict) else getattr(formal, name, "")
+        operation_family = str(formal_value("operation_family") or "")
+        target_family = str(formal_value("target_family") or "")
+
         def capture(outcome, verification=None):
             ref = capture_progressive(self.artifacts, task_id=task_id, run_id=run_id,
                 operation_id=operation_id, primitive=cap.id, route=cap.route, outcome=outcome,
-                state=exec_context.get("semantic_state"), verification=verification)
+                state=exec_context.get("semantic_state"),
+                state_before=exec_context.get("semantic_state_before"),
+                state_before_ref=exec_context.get("semantic_state_before_ref"),
+                verification=verification, operation_family=operation_family,
+                target_family=target_family, effect_class=cap.effect, scope=cap.scope)
             if ref:
                 try:
                     from workstation.experience_compiler.compilability_monitor import notify_online_compilability
@@ -521,6 +532,7 @@ class OperationalKernel:
                         route=cap.route,
                         outcome=outcome,
                         event_kind="verified_transition" if outcome == "verified_success" else "state_changed",
+                        operation_family=operation_family, target_family=target_family,
                         evidence_refs=ev_refs,
                     )
                 except Exception:

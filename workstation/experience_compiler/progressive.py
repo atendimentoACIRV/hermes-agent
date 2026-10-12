@@ -3,7 +3,7 @@ import logging
 
 from workstation.execution_policy import EvidenceStrength
 
-from .models import TransitionSample, TransitionOutcome, Operation, Provenance, Verification
+from .models import TransitionSample, TransitionOutcome, Operation, Provenance, Verification, StateDelta
 from .corpus import ExperienceCorpus
 from .state_abstraction import abstract_state
 
@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 def capture_progressive(artifacts, *, task_id, run_id, operation_id, primitive, route, outcome,
-                        state=None, evidence_refs=(), verification=None):
+                        state=None, evidence_refs=(), verification=None,
+                        operation_family="", target_family="", effect_class="unknown", scope=None,
+                        state_before=None, state_before_ref=None):
     if not task_id or not run_id or not operation_id:
         return None
     if outcome == TransitionOutcome.VERIFIED_SUCCESS.value:
@@ -76,10 +78,44 @@ def capture_progressive(artifacts, *, task_id, run_id, operation_id, primitive, 
                             return None
             else:
                 return None
-    sample = TransitionSample(operation=Operation(primitive=primitive, canonical_route=route),
-        state_after=abstract_state(route, state or {}),
+    # Families and effect class come from the runtime-owned capability contract.
+    # Never infer replay arguments from raw tool output or free-form observations.
+    before = None
+    if outcome == TransitionOutcome.VERIFIED_SUCCESS.value and state_before_ref is not None:
+        # A caller-provided pre-state, even from the runtime's execution context,
+        # is not independent evidence that those predicates existed before I/O.
+        # Only a separately persisted owner read-before-write record qualifies.
+        if not isinstance(state_before, dict) or not isinstance(state_before_ref, str):
+            return None
+        try:
+            pre_proof = artifacts.resolve_structured(state_before_ref)
+        except (OSError, ValueError, KeyError):
+            return None
+        pre = pre_proof.get("content")
+        if (pre_proof.get("schema") != "workstation.operational_prestate_readback.v1"
+                or not isinstance(pre, dict)
+                or pre.get("task_id") != task_id
+                or str(pre.get("run_id")) != str(run_id)
+                or pre.get("operation_id") != operation_id
+                or pre.get("observer") != "workstation.operational_prestate"
+                or pre.get("read_before_write") is not True
+                or not isinstance(pre.get("state"), dict)):
+            return None
+        before = abstract_state(route, pre["state"], state_before_ref)
+        if before.semantic_predicates != abstract_state(route, state_before).semantic_predicates:
+            return None
+    after = abstract_state(route, state or {})
+    # Unknown or unproven pre-state must never generate inferred causal effects.
+    delta = StateDelta.between(before, after) if before is not None else StateDelta()
+    sample = TransitionSample(operation=Operation(
+            primitive=primitive, canonical_route=route,
+            operation_family=str(operation_family or ""), target_family=str(target_family or ""),
+            effect_class=str(effect_class or "unknown"), scope=scope if isinstance(scope, dict) else {},
+        ),
+        state_before=before if before is not None else abstract_state(route, {}),
+        state_after=after, delta=delta,
         outcome=TransitionOutcome(outcome), provenance=Provenance(task_id=task_id, run_id=str(run_id),
-            operation_id=operation_id, source="progressive_owner", trust_class="trusted_runtime"),
+            operation_id=operation_id, runtime=route, source="progressive_owner", trust_class="trusted_runtime"),
         verification=verification or Verification(evidence_refs=list(evidence_refs)))
     try:
         return ExperienceCorpus(artifacts).capture(sample)
