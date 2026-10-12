@@ -1,0 +1,54 @@
+{
+  "status": "PASS_NATIVE",
+  "scope": "isolated Three.js GLTFLoader + Chromium/WebGL pixel proof (NOT composite/TaskRun/production)",
+  "inputGLB": "C:\\Github\\hermes-agent-creative-quality-lab\\workstation\\creative-workstation\\quality-lab\\fixtures\\reference-3d\\cql-triangle.glb",
+  "inputSha256": "5e08c3c675d0247806ac50ee0bf8a9f1e038b9c55e2c4e073b4377f3ba1ad178",
+  "engine": "three.js GLTFLoader + Chromium WebGL",
+  "nativeFrames": [
+    {
+      "frame": 0,
+      "angle": 0,
+      "light": 1,
+      "png": "threejs-glb-frame-0.png",
+      "sha256": "1b7ed6809dcb06555daf5694257f588e86623f4c347a2e9c1672c5a3e4068710",
+      "changed": 7626,
+      "meshes": 1,
+      "animationCount": 1,
+      "backgroundRGB": [
+        16,
+        16,
+        24
+      ]
+    },
+    {
+      "frame": 1,
+      "angle": 0.55,
+      "light": 1,
+      "png": "threejs-glb-frame-1.png",
+      "sha256": "a3ccd4e85df6b76af466db56c5fb4cc2df44870e1198d22476b06ecd47e0aeef",
+      "changed": 6062,
+      "meshes": 1,
+      "animationCount": 1,
+      "backgroundRGB": [
+        16,
+        16,
+        24
+      ]
+    },
+    {
+      "frame": 2,
+      "angle": 0.55,
+      "light": 0.25,
+      "png": "threejs-glb-frame-2.png",
+      "sha256": "796d647e3090bb8c23ad8f5ec428eac4eb5be936247f6a8a1061e62b99d7b96f",
+      "changed": 6062,
+      "meshes": 1,
+      "animationCount": 1,
+      "backgroundRGB": [
+        16,
+        16,
+        24
+      ]
+    }
+  ]
+}

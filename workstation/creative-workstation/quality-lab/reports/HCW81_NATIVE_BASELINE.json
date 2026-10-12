@@ -1,0 +1,22 @@
+{
+  "status": "PASS_NATIVE",
+  "method": "independent ffprobe + full ffmpeg RGB decode",
+  "video": "C:\\Temp\\hcw-hybrid01-native-smoke\\effectcraft-enrichment\\hermes-hybrid-native.mp4",
+  "video_sha256": "9d9a264b256fba16a93faa9152c69a50470a18fe74eed7e299ebf3d0b4634c82",
+  "source": "C:\\Temp\\hcw-hybrid01-native-smoke\\effectcraft-enrichment\\05-blur20.ecproj",
+  "source_sha256": "98e9664f8c84c2f31ee0ead8175c343c58fdfe8b3916a206d13a491c51bede48",
+  "codec": "h264",
+  "width": 640,
+  "height": 360,
+  "fps": "30",
+  "decoded_frames": 60,
+  "unique_frame_hashes": 19,
+  "black_frames": 0,
+  "sample_rgb_sha256": {
+    "0": "08b75c30e50f13b9ab9033629c851b47db3b2aa714f3afc28f112fd1221bb1ba",
+    "30": "485d1ae04dc08c4d244a06c1498eced7da0f9f9acb85938765b950596d17e50c",
+    "59": "f248afb45811a8d172aaf5add442c8ca5bff5cb774663a63f474684e782f4ace"
+  },
+  "verification_seconds": 0.604,
+  "scope": "media decode and file integrity only; not native project reopen or UI E2E"
+}

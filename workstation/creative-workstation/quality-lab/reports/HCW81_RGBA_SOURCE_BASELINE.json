@@ -1,0 +1,16 @@
+{
+  "status": "PASS_NATIVE",
+  "method": "Pillow decoded RGBA pixel data",
+  "directory": "C:\\Temp\\hcw-hybrid01-native-smoke\\hf-official-motion",
+  "dimensions": [
+    640,
+    360
+  ],
+  "decoded_frames": 60,
+  "unique_pixel_frames": 7,
+  "alpha_min": 0,
+  "alpha_max": 255,
+  "first_pixel_sha256": "6493b4bee646280c12c1c6f9a232286b3aa9b48835cc42b56d0a4ab9bcf4f584",
+  "last_pixel_sha256": "b4400a0b9432d66196cb98a20397bf352b58cbf5a5e37ae4d4f33c76c410b02a",
+  "scope": "source PNG/alpha/motion only, not composite/export provenance"
+}
