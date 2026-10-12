@@ -1375,3 +1375,51 @@ test('CRASH-ID: generated navigation admission and receipt use the same stable o
   assert.equal(admission?.operationId, receipt.operationId)
   await runtime.destroy()
 })
+
+test('P0-03: ambiguous CDP mousePressed sends one cleanup release without blind press retry', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const events: string[] = []
+  ;(runtime as any).cdp = async (_wc: unknown, method: string, args: { type: string }) => {
+    assert.equal(method, 'Input.dispatchMouseEvent')
+    events.push(args.type)
+    if (args.type === 'mousePressed') throw new Error('timeout_after_possible_dispatch')
+    return {}
+  }
+  await assert.rejects((runtime as any).cdpClick({}, 14, 32), /browser_input_state_uncertain/)
+  assert.deepEqual(events, ['mouseMoved', 'mousePressed', 'mouseReleased'])
+  await runtime.destroy()
+})
+
+test('P0-03: failed mouseReleased never retries mousePressed', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const events: string[] = []
+  ;(runtime as any).cdp = async (_wc: unknown, _method: string, args: { type: string }) => {
+    events.push(args.type)
+    if (args.type === 'mouseReleased' && events.filter(event => event === 'mouseReleased').length === 1) {
+      throw new Error('release_response_lost')
+    }
+    return {}
+  }
+  await assert.rejects((runtime as any).cdpClick({}, 14, 32), /browser_input_state_uncertain/)
+  assert.deepEqual(events, ['mouseMoved', 'mousePressed', 'mouseReleased', 'mouseReleased'])
+  await runtime.destroy()
+})
+
+test('P0-03: takeover between mousePressed and mouseReleased fails closed and releases once', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const events: string[] = []
+  let userControlActive = false
+  ;(runtime as any).cdp = async (_wc: unknown, _method: string, args: { type: string }) => {
+    events.push(args.type)
+    if (args.type === 'mousePressed') userControlActive = true
+    return {}
+  }
+  await assert.rejects((runtime as any).cdpClick({}, 14, 32, () => {
+    if (userControlActive) throw new Error('USER_CONTROL_ACTIVE')
+  }), /browser_input_state_uncertain/)
+  assert.deepEqual(events, ['mouseMoved', 'mousePressed', 'mouseReleased'])
+  await runtime.destroy()
+})

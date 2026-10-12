@@ -3532,10 +3532,37 @@ export class WorkstationBrowserRuntime {
     return wc.debugger.sendCommand(method, params)
   }
 
-  private async cdpClick(wc: WebContents, x: number, y: number): Promise<void> {
+  private async cdpClick(wc: WebContents, x: number, y: number, revalidate?: () => void): Promise<void> {
+    revalidate?.()
     await this.cdp(wc, 'Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
-    await this.cdp(wc, 'Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 })
-    await this.cdp(wc, 'Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 })
+    revalidate?.()
+    const release = { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 }
+    let pressAttempted = false
+    let releaseCompleted = false
+    try {
+      // Once a press is attempted, even a rejected CDP promise can mean that
+      // Chromium received the press. Never retry press or classify as a safe
+      // pre-dispatch failure.
+      pressAttempted = true
+      await this.cdp(wc, 'Input.dispatchMouseEvent', {
+        type: 'mousePressed', x, y, button: 'left', clickCount: 1
+      })
+      revalidate?.()
+      await this.cdp(wc, 'Input.dispatchMouseEvent', release)
+      releaseCompleted = true
+      revalidate?.()
+    } catch (error) {
+      if (pressAttempted && !releaseCompleted && (typeof wc.isDestroyed !== 'function' || !wc.isDestroyed())) {
+        try {
+          // Best-effort release of a potentially held pointer; this may itself
+          // trigger page handlers. Outcome remains UNCERTAIN even if it succeeds.
+          await this.cdp(wc, 'Input.dispatchMouseEvent', release)
+        } catch {
+          // Renderer or CDP may be gone. Keep original uncertain classification.
+        }
+      }
+      throw new Error('browser_input_state_uncertain', { cause: error })
+    }
   }
 
   private async clickRef(
@@ -3556,7 +3583,13 @@ export class WorkstationBrowserRuntime {
     if (entry.documentEpoch !== expectedEpoch || wc.getURL() !== expectedUrl || wc.isDestroyed()) {
       throw new Error('browser_document_changed')
     }
-    await this.cdpClick(wc, point.x, point.y)
+    await this.cdpClick(wc, point.x, point.y, () => {
+      if (!entry.ownerTaskId) throw new Error('browser_task_owner_required')
+      this.assertAgentControl(entry.ownerTaskId)
+      if (entry.documentEpoch !== expectedEpoch || wc.getURL() !== expectedUrl || wc.isDestroyed()) {
+        throw new Error('browser_document_changed')
+      }
+    })
     return { target: point.target }
   }
 
@@ -3683,7 +3716,13 @@ export class WorkstationBrowserRuntime {
       }
     }
 
-    await this.cdpClick(wc, point.x, point.y)
+    await this.cdpClick(wc, point.x, point.y, () => {
+      if (!entry.ownerTaskId) throw new Error('browser_task_owner_required')
+      this.assertAgentControl(entry.ownerTaskId)
+      if (entry.documentEpoch !== expectedEpoch || wc.getURL() !== expectedUrl || wc.isDestroyed()) {
+        throw new Error('browser_document_changed')
+      }
+    })
 
     if (shouldClear) {
       // 1. Try DOM select() on active element
