@@ -1,5 +1,7 @@
 # 06 — PROMPT IMPLEMENTADOR: PLAYWRIGHT-C2C PATCH-KITS (usar em missão posterior)
 
+**Preflight real de 12/10/2026: BLOCKED.** Não iniciar os kits sem concluir o [Stage A corretivo](08-REMEDIACAO-STAGE-A.md), conforme [registro do gate](07-GATE-0-BLOCKED-2026-10-12.md). Nenhuma dispensa do gate está presumida.
+
 **INSTRUÇÃO PARA O IMPLEMENTADOR:** assumir implementação técnica APÓS satisfazer os gates. Este documento NÃO autoriza alterar o runtime na missão de auditoria. Você possui acesso ao checkout local Hermes e à referência Playwright.
 
 ## Contexto congelado

@@ -1,5 +1,9 @@
 # Workstation roadmap
 
+## 2026-10-12 — C2C-I01–I06: execução do Gate 0 — BLOCKED
+
+**RUNTIME NÃO MODIFICADO.** Local `main@a2b56db1`, upstream/main observado `835c3dd0`, merge-base/pin `66605471`, divergência **963 ahead / 245 behind**. O upstream alterou `tools/browser_tool.py`, o registry de seams ainda possui disposições REMOVE, e o CI required exact-head de `main@a2b56db1` não tem prova de GREEN (consulta de statuses e PR workflow runs sem resultados; não equivale a FAILURE). A checagem live do upstream via `ls-remote` foi bloqueada pela camada de segurança; sem pin fresco, Stage A qualificada ou exceção formal. A própria ordem do implementador obriga parar aqui. Registro: [Gate 0](research/playwright-code-to-code-2026-10-12/07-GATE-0-BLOCKED-2026-10-12.md) e [Remediação](research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md). Nenhum E2E, benchmark ou feature kit executado.
+
 ## 2026-10-12 — PLAYWRIGHT-C2C-01: auditoria profunda de código, documentação somente
 
 **AUDIT_COMPLETE / NO_RUNTIME_CHANGE / NOT_RELEASE_QUALIFIED.** Snapshot local Playwright `1.65.0-next` (Apache-2.0, sem `.git`) comparado símbolo a símbolo com Browser Nativo no baseline `c39739a187`, mantendo SHA-256 integrais no inventário. **16 oportunidades** e 5 patch-kits: prioridades actionability/hit-target (PW-01), harness Electron real (PW-05) e invalidação de cache SPA via MutationObserver (PW-06). Playwright não substitui TaskRun/BrowserTask/lease nem resolve exactly-once durable. Nenhuma fonte foi transplantada, 0 mudanças de runtime, 0 browser adicional, sem benchmarks nem CI/E2E. Gates H-079, upstream-first, Windows E2E e exact-head continuam pendentes. [Resumo e 7 entregas](research/playwright-code-to-code-2026-10-12/00-RESUMO-EXECUTIVO.md) · [Prompt implementador](research/playwright-code-to-code-2026-10-12/06-PROMPT-IMPLEMENTADOR.md).

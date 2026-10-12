@@ -1,5 +1,9 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-12 — Gate 0 Playwright: impedimento de qualificação upstream-first
+
+A implementação I01–I06 permanece suspensa pelos contratos canônicos: pin ancestral `66605471` com upstream local 245 commits à frente, Stage A true merge/reconciliação ainda não executada, `tools/browser_tool.py` alterado upstream, legacy Browser seam REMOVE pendente de paridade e GitHub required exact-head CI não comprovado. Não confundir ausência de recibo com falha concreta dos testes. O checkout principal continua dirty em Browser Hub/right rail sob responsabilidade de outros agentes. Entregue somente documentação do [diagnóstico Gate 0](../research/playwright-code-to-code-2026-10-12/07-GATE-0-BLOCKED-2026-10-12.md) e [remediação](../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md); 0 code runtime changes.
+
 ## 2026-10-12 — PLAYWRIGHT-C2C-01: lacunas e limites do código nativo
 
 Auditoria de 16 candidatos proveniente de snapshot Playwright `1.65.0-next` Apache-2.0 com hashes de arquivos e testes Electron próprios, sem qualquer cópia runtime. Playwright mais forte localmente em actionability, semantic selectors, iframe/OOPIF lifecycle, cancellation/deadline e DOM mutation-aware, mas seus retries não fornecem exactly-once externo, seu trace completo pode capturar conteúdo sensível e seu browser runtime não pode assumir autoridade sobre o Electron Hermes. Prioridades: PW-01 (actionability proof-bound), PW-05 (E2E WebContentsView real), PW-06 (cache SPA freshness). O verificador Hermes permanece owner, sem inferir VERIFIED do ACK. [Pacote de 7 arquivos](../research/playwright-code-to-code-2026-10-12/00-RESUMO-EXECUTIVO.md), [plano detalhado](../research/playwright-code-to-code-2026-10-12/05-PLANO-IMPLEMENTACAO.md). H-079/CI exact-head/native E2E ainda abertos; doc-only audit.

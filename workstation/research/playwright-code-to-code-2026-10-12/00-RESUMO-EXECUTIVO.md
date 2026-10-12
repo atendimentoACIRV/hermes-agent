@@ -1,5 +1,7 @@
 # 00 — RESUMO EXECUTIVO — PLAYWRIGHT-C2C-01
 
+**GATE 0 EXECUTADO EM 12/10:** **BLOCKED / NOT_RELEASE_QUALIFIED**; não foi iniciada implementação C2C-I01..I06 por ausência de baseline upstream-first e exact-head CI comprovados. Ver [07-GATE-0-BLOCKED-2026-10-12.md](07-GATE-0-BLOCKED-2026-10-12.md) e [08-REMEDIACAO-STAGE-A.md](08-REMEDIACAO-STAGE-A.md).
+
 **Data:** 12/10/2026. **Missão:** auditoria comparativa de código-fonte, documentação técnica e handoff de implementação, **sem modificação de runtime, sem push e sem merge**.
 
 **Origem:** `C:\Github\hermes-agent\referências\02-Browser-Automacao-Web\playwright-main`. O `package.json` diz **1.65.0-next**, `LICENSE` informa **Apache-2.0** e `NOTICE` inclui código derivado de Puppeteer. A cópia local não contém `.git`; os hashes SHA-256 integrais por arquivo estão em `01-INVENTARIO-E-LICENCAS.md`. **Nunca declarar SHA upstream para este snapshot local.**

@@ -1,5 +1,9 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-12 — Playwright C2C Stage A gate: BLOCKED (sem runtime edits)
+
+Preflight em worktree isolado `audit/playwright-c2c-20261012`: `main@a2b56db1`, `upstream/main@835c3dd0` local, merge-base `66605471`, 963 ahead/245 behind. `tools/browser_tool.py` mudou upstream, registry contém Browser legacy seam REMOVE sem comprovação de remoção/paridade, e exact-head CI required não estava comprovado (API combined statuses `[]`, PR-triggered runs `[]`, não é afirmação de red CI). Tentativa de ref remoto `ls-remote` bloqueada pela ferramenta; ausência de pin fresco/Stage A e qualificação exige **BLOCKED** por H-079.2. O prompt proíbe implementar I01..I06 nessas condições. Checkout principal e UI de outros agentes preservados. [Provas do gate](../../research/playwright-code-to-code-2026-10-12/07-GATE-0-BLOCKED-2026-10-12.md) · [Plano Stage A](../../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md).
+
 ## 2026-10-12 — PLAYWRIGHT-C2C-01: leitura código-a-código e decisões de reuso
 
 **Estado: auditoria documental concluída, NOT_RELEASE_QUALIFIED.** Playwright local `1.65.0-next`/Apache-2.0, hash por arquivo (sem `.git` local), 16 oportunidades comparadas com Hermes no worktree isolado `audit/playwright-c2c-20261012`. Evidências concretas: `dom.ts::_retryPointerAction` e injected `checkElementStates` rAF/hit target, `frames.ts`/`progress.ts` cancelamento e lifecycle, `snapshotterInjected.ts` MutationObserver/cache, `tests/electron/electron-webcontentsview.spec.ts` WebContentsView real. Classificado COPY somente como candidato de fixtures pequenas com notices, ADAPT behavior sob Hermes owner e REJECT browser paralelo/AR/HAR crus. 5 patch-kits e prompt. Nenhum runtime alterado, nenhuma medição nova de velocidade e nenhum E2E nativo executado. [Inventário e matriz](../../research/playwright-code-to-code-2026-10-12/02-MATRIZ-SIMBOLO-A-SIMBOLO.md).
