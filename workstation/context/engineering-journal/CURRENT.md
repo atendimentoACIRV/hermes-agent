@@ -1,5 +1,11 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-12 — Browser Native AXTree: CDP lifetime + SPA reference identity (branch-only)
+
+**Estado: PATCH LOCAL TESTADO / NOT_RELEASE_QUALIFIED.** Branch isolada `audit/browser-native-evidence-20261012`, base `main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. `workstation-browser-snapshot.ts`: objetos CDP liberados por `objectGroup` em `finally`; refs `@e` novas usam contador persistente da página, evitando colisão após mudança da lista em SPA. RED: 2 falhas de resource lifetime + 1 falha A→B→A; GREEN: 139/139 testes em 16 arquivos Browser/Electron. Typecheck bloqueado pelo pacote `electron` ausente no ambiente reutilizado; sem native E2E nem exact-head CI do `main` atual, e sem afirmação de ganho quantitativo. Próximo P0: investigar `browser_batch_actions::verifyAfter` que equipara receipt a `verified` sem readback independente. Nenhum merge ou push executado, nem alterações no checkout ativo de outra trilha.
+
+[Relatório e evidências](../../research/browser-native-followup-2026-10-12.md) · [Prompt implementador](../../research/browser-native-followup-2026-10-12-implementer-prompt.md).
+
 ## 2026-10-11 — Hermes Work: Aceleração Operacional, Redução de Redundâncias e Custo (D-043 / P0–P2)
 
 **Classificação: IMPLEMENTAÇÃO COMPLETA, TESTES E QUALIFICAÇÃO INTEGRADOS.**

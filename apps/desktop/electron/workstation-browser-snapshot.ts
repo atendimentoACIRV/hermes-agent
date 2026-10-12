@@ -6,6 +6,7 @@
  * Preserves @eN refs in window.__hermesWorkstationRefs for action continuity.
  */
 
+import crypto from 'node:crypto'
 import type { WebContents } from 'electron'
 
 export interface AXNode {
@@ -73,21 +74,15 @@ export function isInteractiveAXNode(node: AXNode): boolean {
   const role = String(node.role?.value || '').toLowerCase()
   if (INTERACTIVE_AX_ROLES.has(role)) return true
 
-  const isEditable = Boolean(
-    node.properties?.some(p => p.name === 'editable' && Boolean(p.value?.value))
-  )
-  const isFocusable = Boolean(
-    node.properties?.some(p => p.name === 'focusable' && p.value?.value === true)
-  )
+  const isEditable = Boolean(node.properties?.some(p => p.name === 'editable' && Boolean(p.value?.value)))
+  const isFocusable = Boolean(node.properties?.some(p => p.name === 'focusable' && p.value?.value === true))
 
   return isEditable || isFocusable
 }
 
 export function hasUsableAXTree(nodes: AXNode[]): boolean {
   if (!Array.isArray(nodes) || nodes.length === 0) return false
-  return nodes.some(
-    n => isInteractiveAXNode(n) && typeof n.backendDOMNodeId === 'number' && n.backendDOMNodeId > 0
-  )
+  return nodes.some(n => isInteractiveAXNode(n) && typeof n.backendDOMNodeId === 'number' && n.backendDOMNodeId > 0)
 }
 
 /**
@@ -121,21 +116,24 @@ export async function tryAccessibilitySnapshot(
     }
 
     const elements: AXInventoryElement[] = []
-    let counter = 1
+    // Collect CDP remote handles in a snapshot-scoped group, then release once.
+    const objectGroup = `hermes-ax-snapshot-${crypto.randomUUID()}`
 
-    for (const node of interactiveNodes) {
-      if (elements.length >= maxElements) break
-      try {
-        const resolved = (await cdp('DOM.resolveNode', {
-          backendNodeId: node.backendDOMNodeId
-        })) as { object?: { objectId?: string } }
+    try {
+      for (const node of interactiveNodes) {
+        if (elements.length >= maxElements) break
+        try {
+          const resolved = (await cdp('DOM.resolveNode', {
+            backendNodeId: node.backendDOMNodeId,
+            objectGroup
+          })) as { object?: { objectId?: string } }
 
-        const objectId = resolved?.object?.objectId
-        if (!objectId) continue
+          const objectId = resolved?.object?.objectId
+          if (!objectId) continue
 
-        const callRes = (await cdp('Runtime.callFunctionOn', {
-          objectId,
-          functionDeclaration: `function (refStr) {
+          const callRes = (await cdp('Runtime.callFunctionOn', {
+            objectId,
+            functionDeclaration: `function () {
             var el = this;
             var w = window;
             var state = w.__hermesWorkstationRefs;
@@ -144,7 +142,7 @@ export async function tryAccessibilitySnapshot(
               w.__hermesWorkstationRefs = state;
             }
             var existingRef = state.byElement.get(el);
-            var ref = existingRef || refStr;
+            var ref = existingRef || '@e' + (state.counter + 1);
             if (!existingRef) {
               state.byElement.set(el, ref);
               state.byRef.set(ref, el);
@@ -172,20 +170,25 @@ export async function tryAccessibilitySnapshot(
               name: (el.getAttribute && el.getAttribute('name')) || undefined
             };
           }`,
-          arguments: [{ value: `@e${counter}` }],
-          returnByValue: true
-        })) as { result?: { value?: AXInventoryElement } }
+            returnByValue: true
+          })) as { result?: { value?: AXInventoryElement } }
 
-        const val = callRes?.result?.value
-        if (val) {
-          elements.push({
-            ...val,
-            disabled: Boolean(val.disabled)
-          })
-          counter++
+          const val = callRes?.result?.value
+          if (val) {
+            elements.push({
+              ...val,
+              disabled: Boolean(val.disabled)
+            })
+          }
+        } catch {
+          // Individual node resolution error: continue to next node
         }
+      }
+    } finally {
+      try {
+        await cdp('Runtime.releaseObjectGroup', { objectGroup })
       } catch {
-        // Individual node resolution error: continue to next node
+        // Debugger can detach mid-snapshot; never block DOM fallback on cleanup.
       }
     }
 
