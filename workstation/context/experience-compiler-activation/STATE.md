@@ -55,3 +55,23 @@ Before ending update these files, git status, exact commit SHA, test outputs and
 - H080B rerun on published code: 2 passed / 24 deselected in 37.92s, verifying no regression in native reused capability routing after EC-03 cache fix.
 - EC-04 NEXT RED: exercise a real intermediate owner-verification event in an unfinished TaskRun; assert neither observed nor uncertain tool result becomes VERIFIED_SUCCESS, and that independently verified operation sample/provenance is offered to monitor before TaskRun completion. Inspect run_adoption.py:_execute_item and operational_kernel.py:capture, corpus.py and compilability_monitor.py:notify_online_compilability, plus current Kanban completion hook. Do not grant authority through observer notifications.
 - EC-05: environment must install qualified pinned Laya 0.3.23 and provenance subtree in isolated runtime; no fake DIRECT. EC-03 browser lease/restart and full authority negative E2E pending.
+
+## 2026-10-12 — EC-03/EC-04 continued after b113652ed0
+- Isolated branch feat/experience-compiler-real-reuse-20261011; PR #82 draft, no main merge. Use git rev-parse HEAD after further commits; root checkout remains untouched.
+- EC-03: run_adoption.py maps browser_navigate to HTTPS host/path-scoped external CALL effect, requiring readback, effect budget and authority; run_local_adoption.py denies stale owner dispatch/readback after canonical task/run changes. Additional two cancellation-window tests show owner rechecks canonical lease/authority/uncertainty at item start and before each step, without widening grants.
+- EC-04: progressive.py now rejects VERIFIED_SUCCESS without persisted independent owner evidence bound to task/run/operation; operational_kernel.py persists canonical verification proof and supplies its ref for progressive capture. Negative tests covered forged/missing proof, wrong run, canonical unlinked and failed downstream readbacks.
+- EC-03/04 tests: 7 owner factory PASS; 3 browser effect tests PASS; 10 progressive/browser PASS; previous full safety 49 PASS; H080B pair 2 PASS. Additional full regression after time-of-check/use race fix in .ec04_final_full_suite.log is not yet recorded here.
+- EC-05: vendored Laya 0.3.23 import and verify_laya_provenance PASS; 2 System-1 telemetry tests PASS when vendored source is on PYTHONPATH; locked source SHA 4aa6761be8173de4ce6d92c31b3e40b6eaf59a7c. Live checkpoint and DIRECT NOT QUALIFIED.
+- EC-03 production Browser lease/restart/readback H-082 and EC-04 actual early owner verification -> Laya -> offer -> reuse E2E remain open. EC-06 native effect budgets may need explicit authorized CALL migration before direct Browser adoption.
+- All release H-079/H-081/H-082 and exact-head CI remain HOLD; EC-13 conditional HOLD. Logs .ec*.log remain local and untracked, never stage.
+
+## Final regression gate for this implementation
+- Latest full targeted security+learning regression after both lease race fixes: 51 passed in 115.40s, exit 0, .ec04_final_full_suite.log (local only).
+- Latest owner factory regression: 7 unittest PASS. Ruff configured rules for 9 edited code/test files PASS; diff check PASS. H080B pair 2 PASS.
+- Next step after commit: explicit CALL effect authority budgeting and independent native Browser lease/readback E2E; then actual active-run owner-verified Laya adoption cycle. Release CI/gates HOLD.
+
+## Commit checkpoint — EC-03/04 code published to local branch
+- EC-03 code commit 065acd189b (exact full SHA via git rev-parse); native Lefthook lint PASS.
+- EC-04 code commit 3b9f18ac51528da329fb1fdfdaba5f98893b4e2a; native Lefthook lint PASS.
+- Both commits were authored on isolated feature worktree. Confirm remote push/PR HEAD after documentation commit; no merge was performed.
+- Latest full Python regression: 51 PASS, H080B pair 2 PASS, owner 7 PASS, System1 local Laya 2 PASS. Native qualified production/release HOLD.

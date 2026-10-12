@@ -2933,3 +2933,9 @@ Native regression at bb1888976e: existing headless-load contract passed with fou
 - EC-03: owner cache requires explicit TaskRun identity (focused tests passed); deeper lease/restart E2E pending.
 - EC-07: telemetry projects canonical EvidenceRef to URI only, avoiding JSON serialization failure; 13 focused pytest passed. System1 runtime lacks laya in this test environment.
 - Continue EC-03 to EC-14 using workstation/context/experience-compiler-activation documents; H-079/H-081/H-082 exact-head and main merge remain HOLD.
+
+### 2026-10-12 — Experience Compiler EC-03/EC-04 authority continuation (PR #82 DRAFT)
+- EC-03: Browser navigation now mapped to explicit HTTPS scoped external effect, lease/authority/budget/readback admission; stale owner bound per TaskRun and rechecked at call time. Item-start and pre-step lease/uncertainty rechecks implemented with race regressions. Native H-082 remains unqualified.
+- EC-04: progressive VERIFIED_SUCCESS guarded by real persisted task/run/operation-bound verifier receipt with independent underlying evidence; Kernel supplies canonical verification proof. Full active TaskRun -> Laya -> offer -> VERIFIED_REUSE E2E remains pending.
+- EC-05: vendored Laya 0.3.23 lock provenance validated; System-1 telemetry 2 PASS on vendored source, no live DIRECT checkpoint yet.
+- EC-06+: open, especially explicit approved CALL budget for Browser native reuse; EC-13 HOLD. Exact-head CI, H-079/H-081/H-082 HOLD. Details in workstation/context/experience-compiler-activation/.

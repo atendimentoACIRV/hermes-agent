@@ -5696,3 +5696,10 @@ continues on this branch with RED->GREEN per phase and separate upstream sync.
 - EC-03 RED to GREEN: cached run-local owner without _bound_task_run wrongly reused; explicit identity required; owner factory 5/5 PASS.
 - EC-07 RED to GREEN: EvidenceRef telemetry refs caused SQLite JSON serialization failure; URI-only projection avoids metadata leakage; telemetry + native intent suite 13/13 PASS. System1 telemetry suite still red due to unavailable laya module.
 - EC-02 prior patch e81d23a812 not yet product qualified. H-079/H-081/H-082 exact-HEAD CI, Electron, real Laya DIRECT, lease/restart E2E and performance baseline remain HOLD. Main untouched; no merge authorized.
+
+## 2026-10-12 — Experience Compiler RED-GREEN authority and verified evidence, PR #82 DRAFT
+- EC-03: browser_navigate read-only classification and wrong-host bypass reproduced by 2 RED tests; fixed with HTTPS scoped CALL and required readback; 3 browser tests PASS. Stale cached owner dispatch/readback RED and production TaskRun binding check GREEN, 7 owner tests PASS.
+- EC-03: revoked lease after snapshot but before durable item start RED (2 unauthorized calls); runtime now rechecks authority/lease/uncertain effects at item start and immediately before every step. Two cancellation window regressions plus happy path PASS.
+- EC-04: fabricated progressive VERIFIED_SUCCESS via missing/stale/bad evidence RED; now requires E2+ persistent matched owner proof and canonical verifier linkage; 10 focused progressive/browser tests PASS. Kernel provides operation-bound canonical verification receipt.
+- H080B paired regression after changes 2 PASS. Prior full safety suite 49 PASS; final full regression for last race fix see activation EVIDENCE.md.
+- EC-05 vendored Laya 0.3.23 matches lock SHA 4aa6761be8173de4ce6d92c31b3e40b6eaf59a7c; 2 System-1 telemetry tests PASS. Real DIRECT/H-081/H-082/CI release gates remain HOLD. No main merge.

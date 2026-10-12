@@ -1,35 +1,65 @@
-# PROMPT DE CONTINUAÇÃO — HERMES EXPERIENCE COMPILER (copiar integralmente)
+# PROMPT DE CONTINUAÇÃO — COPIAR E COLAR
+
 MISSÃO: CONTINUAR HERMES EXPERIENCE COMPILER — EXECUÇÃO INTEGRAL.
-Você está retomando a implementação EC-00..EC-14 aprovada pelo usuário. Não recomece auditorias nem planeje do zero.
-Use GitHub, Remote Desktop Commander, Superpowers e Community Agent Workflows.
-Repositorio: C:\Github\hermes-agent (checkout principal sujo, PROIBIDO alterar/limpar).
-Worktree de implementação: C:\Github\hermes-agent\.worktrees\experience-compiler-p0-p2-20261011.
-Branch: feat/experience-compiler-real-reuse-20261011. GitHub PR #82: https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/82 — DRAFT, sem merge na verificação inicial.
-HEAD inicial antes desta sessão: ec739ce8a6ed1f746299db992342cb879738d93d; VERIFIQUE o HEAD atual por git rev-parse HEAD antes de qualquer alteração.
-Leia PRIMEIRO workstation/context/experience-compiler-activation/{PLAN,STATE,EVIDENCE,DECISIONS,NEXT_PROMPT}.md, AGENTS.md, workstation/AGENTS.md, workstation/context/README.md, gate H-079 e relatório workstation/context/EXPERIENCE_COMPILER_STUDIO_IMPL_2026-10-11.md.
-EC-00: verificado parcialmente; pin upstream 66605471 é ancestral do main a2b56db1; 963/245 à frente/atrás de upstream/main observado 835c3dd; H-079/H-081/H-082 CI exact-head continuam sem qualificação. Regra: desenvolvimento isolado, sem merge.
-EC-01: teste H-080B [True] reproduziu NEEDS_REASONING e 3 provider calls. A fixture fresh_command=True tinha host example.test incoerente com cap para trello.com; teste foi temporariamente corrigido para diagnóstico e depois restaurado à baseline; mesmo com objetivo correto continuou a FALHAR com no_certifiable_capability_found/WAKE_LLM. Diagnóstico: Registry local e recarregado cada um contêm 1 PROMOTED, cap healthy, sem precondições, goal_coverage=True, effects_contained=True, verifier_sufficiency=(True,()). Próxima ação é traçar a registry efetiva e o exato gate recusado DENTRO de CapabilityRouter.route durante TaskCompiler._execute_route; não autorizar wrong-target mutation. Traces .ec_h080b_*.log são locais, não comitar.
-EC-02: patch criado em workstation/experience_compiler/lifecycle.py e teste workstation/tests/test_local_canary_replay_fail_closed.py. RED inicial 2 fail por replay falsamente positivo; segundo RED 2 fail por unrelated verifier, depois GREEN: 9 passed nos dois arquivos de teste focal. O canário rejeita read_file e unknown, replay executa write_file, verifier repete candidato em sandbox, readback por target e negativo divergente; evidência sem conteúdo bruto. Regressão ampliada: 60 passed, 1 skipped in 157.28s; output local .ec_canary_regression.log (não comitar). Não declarar EC-02 integralmente pronto.
-Próxima ação exata: verificar regressão, revisar e ampliar casos negativos (step schema, missing binding, fake evidence, authority) e qualificar EC-02; EC-01 continua prioritário com matched-host / mismatched-host discriminative tests antes de alterar router.
-Comandos: Set-Location 'C:\Github\hermes-agent\.worktrees\experience-compiler-p0-p2-20261011'; git status -sb; git rev-parse HEAD; $env:PYTHONPATH='C:\Github\hermes-agent\.venv\Lib\site-packages;'+(Get-Location).Path; uvx --offline pytest -q -o addopts='' workstation/tests/test_local_product_validation_provider.py workstation/tests/test_local_canary_replay_fail_closed.py --tb=short.
-Quando qualificado, git add SOMENTE code/tests/docs intencionais, commit pequeno, push na branch do PR #82 sem merge; não adicionar logs, sessões, artifacts ou arquivos privados.
-Continue EC-03..EC-12 ao fechar dependências; EC-13 permanece HOLD salvo critérios explícitos. Atualize os cinco documentos persistentes e ROADMAP/journal com fatos verificados.
-OBRIGAÇÃO TRANSITIVA: em toda sessão posterior, se parar com trabalho pendente, entregue NOVO PROMPT DE CONTINUAÇÃO totalmente preenchido com HEAD real, PR, branch, uncommitted, último teste executado, próximo RED técnico e instrução de progredir até EC-14 sem recomeçar. Nunca alegue testes de Laya real/CI/Electron não realizados.
 
-Release gate: Lefthook pre-commit emitted 32 legacy Ruff UP modernization errors in lifecycle.py (30 safe autofixes, 2 unsafe); focused F lint and tests passed. A development-only commit with hook bypass, if used, MUST NOT be called CI qualified. Reconcile lint in a separate reviewed change before merge.
+Você é a IA implementadora. NÃO repita a auditoria code-to-code e NÃO produza outro plano genérico. Use imediatamente GitHub, Remote Desktop Commander, Superpowers e Community Agent Workflows para continuar as entregas EC-03 a EC-14.
 
-Later update supersedes the previous legacy-lint note: safe Ruff modernization and typing-import cleanup applied in lifecycle.py, F+UP lint PASS, narrow 9 tests PASS, broad final 60 passed/1 skipped. Verify native lefthook/CI before concluding. Do not mistake this scoped cleanup for a green exact-head repo-wide baseline.
+## Repositório e isolamento
+- Repositório GitHub: kevynlucasprofissional-stack/hermes-agent
+- PR #82: https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/82 (DRAFT, ainda não autorizado merge)
+- Branch: feat/experience-compiler-real-reuse-20261011
+- Worktree Windows: C:\Github\hermes-agent\.worktrees\experience-compiler-p0-p2-20261011
+- Checkout principal: C:\Github\hermes-agent (alterações independentes; NÃO editar, resetar ou limpar).
+- Último commit de CÓDIGO EC-04 confirmado: 3b9f18ac51528da329fb1fdfdaba5f98893b4e2a (precedido por EC-03 065acd189b). A documentação pode ser commitada após esse SHA: VERIFIQUE git rev-parse HEAD e GitHub PR head antes de qualquer edição.
+- Logs locais .ec*.log não rastreados não devem ser adicionados ao Git.
+- Não faça merge na main; não afirme CI verde sem execução exata no HEAD.
 
-## UPDATED NEXT HANDOFF — this section supersedes older EC-01 RED state above
-EC-01 was fixed IN CODE/targeted tests, not production qualified. Workstation/work_intent.py deterministic allowlisted Trello command now uses Browser owner host/page_family/recovery_state postcondition IR and supplies no undeclared url input. The original E2E H-080B [True] no longer needs provider; targeted two H-080B scenarios PASS (2/2). Existing new/current command tests PASS (6/6). Before declaring EC-01 verified across regression, read .ec01_regression.log final output for 4-file suite, and run exact HEAD after commit.
-Further work: EC-02 full candidate semantic negative tests and TaskRun binding; EC-03 real DurableRunAdoptionOwner factory E2E readback/lease/restart; EC-04 owner-verified mid-TaskRun learning; EC-05 real Laya DIRECT; EC-06 discovery ranking; EC-07 EvidenceRef JSON serialization; EC-08/09 replay/utility; EC-10 benchmarks; EC-11/12 native UI; EC-13 HOLD until supported; EC-14 exact-head CI. Never merge main without all formal gates. Continue automatically. If ending any session, regenerate a new complete copy-paste prompt with exact new HEAD, latest tests, and next RED scenario; persist five ledgers and preserve dirty user checkout.
+## Leia primeiro
+- workstation/context/experience-compiler-activation/PLAN.md
+- workstation/context/experience-compiler-activation/STATE.md
+- workstation/context/experience-compiler-activation/EVIDENCE.md
+- workstation/context/experience-compiler-activation/DECISIONS.md
+- workstation/context/experience-compiler-activation/NEXT_PROMPT.md
+- AGENTS.md, workstation/AGENTS.md, workstation/context/README.md
+- workstation/context/UPSTREAM_FIRST_CHANGE_GATE_2026-09-20.md
+- workstation/context/EXPERIENCE_COMPILER_STUDIO_IMPL_2026-10-11.md
+- workstation/ROADMAP.md, workstation/context/engineering-journal/CURRENT.md
+- Auditoria anterior: workstation/context/audits/C2C-HARNESS-EXPERIENCE-2026-10-11
 
-## VERIFIED EC-01 REGRESSION / NEXT TARGET
-- Additional EC-01 four-file test result verified from `.ec01_regression.log`: **42 passed in 175.32s**. `ruff F,UP` on EC-01 code/tests and `git diff --check` PASS. Read Git HEAD and branch/PR before work.
-- Resume at EC-03 production-owner readback/authority E2E and EC-07 EvidenceRef serialization regression; do not reopen the successful current-command intent patch without evidence. For every session preserve exact-head proof, five ledgers and a copy/paste continuation prompt. Keep main untouched and PR draft.
+## Estado do código confirmado
+EC-00: preflight parcial, H-079/H-081/H-082/CI release HOLD.
+EC-01: novo comando Browser conhece contrato host/page_family/recovery_state, H080B regressão 2 PASS, sem novo System-2 indevido quando capacidade formal é compatível.
+EC-02: canário filesystem candidate-bound fail-closed com contraprovas; regressão histórica 60 PASS / 1 SKIPPED; ainda não release-qualified.
+EC-03: run_local_adoption.py valida TaskRun no dispatch/readback mesmo depois do cache; run_adoption.py mapeia browser_navigate para CALL(browser.navigate,host) com HTTPS exato e efeito/readback obrigatório. RunLocalAdopter revalida lease/authority/uncertain mutations/effect budget no começo do item e antes de cada passo. Testes RED provaram execução indevida após cancelamento; GREEN incluiu 3 casos focados, depois 51 pytest PASS e 7 unittest PASS. ALTERAÇÃO: fixture safety passa a identificar explicitamente o owner já validado com _bound_task_run. PENDENTE: E2E native Browser H-082 e migração de budgets de navegação onde intent/capability ainda usa apenas SET sem CALL.
+EC-04: progressive.py rejeita VERIFIED_SUCCESS sem proveniência de owner, força E2+ e receipt persistido com run/task/operation correspondentes, valida cadeia de recibo canônico e evita laundering de provas de outro run ou readback falho. operational_kernel.py agora apresenta proof_ref canônico na amostra. 51 regressões passaram incluindo casos novos. PENDENTE: prova integral antes do fechamento do TaskRun com owner real, Laya, mine, validate, offer, RunLocalAdopter e VERIFIED_REUSE. O observador genérico continua OBSERVED/UNCERTAIN, nunca transforma tool ACK em sucesso.
+EC-05: import do Laya vendorizado v0.3.23 de workstation/third_party/laya sem instalar globalmente, verify_laya_provenance PASS; SHA fonte e pin 4aa6761be8173de4ce6d92c31b3e40b6eaf59a7c; telemetria System-1 focada 2 PASS. Checkpoint live e DIRECT produtivo ainda não testados/qualificados.
+EC-06: descoberta pré-System-2, decisão por utilidade pós-admissão, integração explícita do CALL budget do navegador: PENDENTE.
+EC-07: EvidenceRef -> URI-only telemetry corrigido anteriormente. Funil E2E e métricas ainda pendentes.
+EC-08 a EC-12: pendentes. EC-13 somente se qualificado pelos casos de uso e Kernel. EC-14 release CI + Windows/Electron + H-079/H-081/H-082: HOLD.
 
-## UPDATED RESUME GATE AFTER EC-03/EC-07
-Read git HEAD and this ledger. EC-01 committed as 38dc4b52a1. EC-03 cache owner binding fail-closed and EC-07 EvidenceRef URI-only telemetry projection tested RED->GREEN. Most recent regression: owner factory unittest 5 passed, telemetry + current native intent pytest 13 passed, lint F/UP passed. System1 telemetry 1 failed due to missing laya module, not certified. Next EC-03 production owner lease/restart negative E2E, EC-04 owner-verified mid-TaskRun and EC-05 provenance-correct real Laya. Uphold continual handoff, no fake qualifications or main merge.
+## PRIMEIRA AÇÃO TÉCNICA (NÃO REPETIR AUDITORIA)
+1. Obtenha git status -sb, HEAD, PR status e resultados exatos do CI. Preserve logs.
+2. Prossiga em EC-03: teste primeiro que native browser_navigate em DIRECT receba orçamento explícito CALL(browser.navigate,host) sem autorização mais ampla, preservando goal host/page_family/recovery_state e readback do Browser owner. O atual CALL em effects_for_step é intencional: não reverta para read_only nem alargue budgets silenciosamente. Arquivos: workstation/work_intent.py, workstation/run_adoption.py, workstation/integrations/hermes/run_local_adoption.py, workstation/control_plane e H080B. RED: operação navegacional não consegue obter budget/autoridade correto, wrong-host rejeitado, lease perdido em restart não executa. GREEN: readback nativo e ação qualificada.
+3. EC-04: use a prova canônica intermediária real, inacabada, dentro de DurableTaskStore/OperationalKernel, e confirme que o ExperienceCorpus e OnlineCompilabilityMonitor recebem apenas VERIFIED_SUCCESS com evidência E2+, task/run/operation iguais, durante a TaskRun ainda com itens pendentes. Monte cenário com vários arquivos temporários e progressão mine→validate→offer→adopt→readback→VERIFIED_REUSE. Teste negativas: tool ACK, wrong-run, sem lease, restart, drift, uncertainty. Nunca promover automaticamente.
+4. EC-05: qualifique Laya pinned com provinência e checkpoint real em ambiente isolado; não confunda import de código com inferência do checkpoint. Use instruções em workstation/scripts/qualify_laya_system1.py, avaliando flags --live/--full conforme impacto. Não modifique a venv do checkout principal sem cuidado.
+5. Continue EC-06..EC-14 sem parar em auditorias. Registre benchmarks reais de latência, tokens/calls/custo por resultado verificado, integre o Studio ao Electron somente após gates P0.
 
-## PINNED NEXT HANDOFF — post push f710a6b46b034ac37c953869877f795b8672a9b1
-On resume verify git rev-parse HEAD, PR #82 DRAFT and empty CI state; latest published code f710a6b46b034ac37c953869877f795b8672a9b1. EC-01 42 integration tests passed; H080B latest 2 passed after owner cache fix; EC-02 candidate-bound canary 60 pass/1 skip from historical branch test; EC-03 owner cache 5 passed; EC-07 telemetry 13 passed, one extra System1 suite failed for missing Laya. Next RED: EC-03 independent owner lease/restart negative scenario, EC-04 owner-supplied mid-run VERIFIED_SUCCESS with real receipt and cross-run/uncertain negatives. Enforce no authority bypass. Laya 0.3.23 pinned in pyproject; E2E direct requires matching isolated installed runtime. Do not touch root checkout, push only vetted branch commits, never merge main without exact-head gates, and at end generate a brand-new complete continuation prompt.
+## Comandos de retomada (PowerShell)
+$w = 'C:\Github\hermes-agent\.worktrees\experience-compiler-p0-p2-20261011'
+Set-Location $w
+git status -sb
+git rev-parse HEAD
+git log -5 --oneline
+$env:PYTHONPATH = 'C:\Github\hermes-agent\.venv\Lib\site-packages;' + (Get-Location).Path
+& 'C:\Github\hermes-agent\.venv\Scripts\python.exe' -m unittest -q workstation.tests.test_run_local_owner_factory
+uvx --offline pytest -q -o addopts='' workstation/tests/test_online_compilability_safety.py workstation/tests/test_progressive_verified_gate.py workstation/tests/test_progressive_experience_capture.py workstation/tests/test_run_local_browser_effect_authority.py --tb=short
+
+## Regras transitivas
+Cada tarefa deve seguir teste RED → código mínimo → GREEN → regressão → segurança → commit com lefthook → push apenas na branch draft. Nunca sobreponha trabalho do usuário, não faça git reset/clean, não copie sessões privadas, não contorne autorização humana e não confunda SHADOW com DIRECT. H-079/H-081/H-082/CI exato permanecem HOLD até qualificados.
+
+Ao terminar uma sessão ainda com itens pendentes:
+- Atualize PLAN.md, STATE.md, EVIDENCE.md, DECISIONS.md, NEXT_PROMPT.md, ROADMAP.md e Engineering Journal.
+- Registre SHA exato, branch, PR, arquivos modificados, alterações não commitadas, testes executados, falhas, bloqueios, próximo teste RED e critério de conclusão.
+- Entregue obrigatoriamente um NOVO PROMPT DE CONTINUAÇÃO pronto para copiar e colar, autossuficiente e com esta mesma obrigação replicada; prossiga até EC-14 em sessões subsequentes sem recomeçar.
+
+COMECE AGORA PELA VERIFICAÇÃO DO HEAD E DE EC-03/EC-04. EXECUTE.

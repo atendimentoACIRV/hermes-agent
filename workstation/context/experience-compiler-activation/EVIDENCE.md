@@ -50,3 +50,25 @@ Status vocabulary: PASS, FAIL, SKIPPED, NOT RUN, BLOCKED, INCONCLUSIVE. Never in
 - Fresh H080B paired test on current code: 2 passed, 24 deselected in 37.92s, exit 0, log .ec_h080b_final_after_owner.log (UNTRACKED, DO NOT COMMIT).
 - Source review for EC-04: tool_observer.py yields observed/uncertain only; operational_kernel.py capture("verified_success", verification) already notifies online monitor; kanban.py accepts final run after completion; run_adoption.py records per-item readback evidence. New mid-run acceptance requires owner-bound proof, not raw tool result; NOT IMPLEMENTED by this review.
 - Laya is pinned in pyproject.toml as version 0.3.23; package source at workstation/third_party/laya. Missing import in test runtime still unqualified; do not call full Laya E2E PASS.
+
+## 2026-10-12 — EC-03/04 RED-GREEN / Laya local source
+- RED: browser_navigate yielded [] effects and accepted cross-host URL. GREEN: 3 browser effects/admission tests PASS with HTTPS scoped CALL and required owner readback; missing effect budget/lease denied.
+- RED: cached owner still dispatched/readback after TaskRun swap. GREEN: 7 unittest factory tests PASS with call-time task/run guard.
+- RED: capture_progressive accepted VERIFIED_SUCCESS without persisted proof, wrong run, canonical proof without underlying evidence and canonical laundering of failed/alien readback. GREEN: focused progressive tests 10 PASS, original capture fixture switched to real persisted owner receipt. Kernel carries canonical verification proof reference rather than unbound evidence.
+- RED: operator cancellation between snapshot and work item start caused 2 extra tool calls (8 vs 6). GREEN: happy-path adoption plus 2 lease-race windows, 3 tests PASS after live item-boundary and pre-step authority checks.
+- Root cause of 6 early no_canonical_snapshot regression failures: injected fixture owner missing _bound_task_run and was correctly rejected by production cache; fixture now binds real task/run explicitly. Isolated happy-path rerun 1 PASS; previous full suite before final race tests 49 PASS in 168.79s, exit 0.
+- H080B pair after EC-04 proof hardening: 2 PASS/24 deselected, exit 0, 43.42s.
+- Laya source 0.3.23 import PASS; verify_laya_provenance PASS, source_SHA and lock_SHA both 4aa6761be8173de4ce6d92c31b3e40b6eaf59a7c; focused System-1 telemetry 2 PASS (26.29s). This is not live checkpoint qualification.
+- Ruff full configured rules on edited files PASS, git diff --check PASS; owner factory 7 PASS. Complete final suite still subject to latest execution result.
+
+## EC-03/EC-04 last fresh qualification
+- Command: uvx --offline pytest -q -o addopts='' workstation/tests/test_online_compilability_safety.py workstation/tests/test_progressive_verified_gate.py workstation/tests/test_progressive_experience_capture.py workstation/tests/test_run_local_browser_effect_authority.py --tb=short
+- Result: 51 passed in 115.40s, exit 0, log .ec04_final_full_suite.log (untracked).
+- Owner: python -m unittest -q workstation.tests.test_run_local_owner_factory: Ran 7, OK, exit 0.
+- Ruff default configured rules: All checks passed. git diff --check exit 0.
+- Both lease race tests after fix and canonical progress proof checks are included. No exact-head CI, native Browser production, Laya DIRECT, or user dogfood certification.
+
+## Committed artifacts
+- EC-03 source+tests: git commit 065acd189b, Lefthook precommit lint PASS. First commit attempt blocked by 2 legacy RUF059 unused unpacked variables in test_online_compilability_safety.py; repaired by naming unused values with underscore and retry succeeded without bypass.
+- EC-04 source+tests: git commit 3b9f18ac51528da329fb1fdfdaba5f98893b4e2a, Lefthook precommit lint PASS.
+- No destructive git reset/clean. Local .ec*.log scratch excluded from commits.

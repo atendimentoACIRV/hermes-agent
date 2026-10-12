@@ -14,3 +14,9 @@
 
 12. **EC-03 legacy cache fail-closed**: only return a cached DurableRunAdoptionOwner if _bound_task_run exactly matches current canonical (task_id, run_id). An owner lacking identity must be reconstructed; no permissive grandfathering.
 13. **EC-07 URI-only telemetry projection**: emit_event converts known workstation.contracts.EvidenceRef objects to URI; summaries/verifier metadata must never be serialized into telemetry. No change to canonical evidence or verification authority.
+
+14. Native Browser navigation changes external state: run-local adoption requires explicit CALL(browser.navigate,host), HTTPS host and optional path match, independently admitted readback and effect authority; never classify it as read-only. SET-only existing budgets need separately reviewed migration if Browser direct adoption is desired.
+15. A cached owner matching at factory time may become stale later; production dispatch and readback must re-check canonical task/run at every call boundary.
+16. Snapshot/lease revocation is a TOCTOU risk. Runtime re-reads live canonical authority, lease, uncertain effects and budgets at durable item admission and before each step. No claim of perfect atomicity across native Browser side effects without H-082.
+17. VERIFIED_SUCCESS in progressive corpus requires E2+ persisted proof, explicit owner trust and verifier fingerprint, matching task/run/operation and canonical proof linking underlying evidence. A fabricated text, mismatched run or failed readback never certifies an operation.
+18. Vendor Laya 0.3.23 locked-source provenance and local System-1 tests are distinct from live checkpoint, DIRECT, exact-head CI and release certification.
