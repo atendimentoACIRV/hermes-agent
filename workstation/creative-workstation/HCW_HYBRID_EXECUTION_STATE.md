@@ -384,3 +384,114 @@ and older 8 CAS tests green. Ruff and Python compileall for modified CAS
 and tests also passed, git diff --check exited 0. Still missing full CI,
 H-079, Electron manual UI and user identity proof. Commit/push this
 post-886d50918f correctness fix separately.
+
+
+## 2026-10-12 frontend H-C2 continuation — read-only canonical HEAD projection
+
+Started with confirmed PR #81 draft HEAD
+62dc14f66f9c3e3770c1feab75499af5c84d4e93,
+isolated worktree clean; checkout C:\Github\hermes-agent at
+9fffa7f3ffcc2c50774654c271fe25e92ce459e8
+with 34 unrelated dirty entries preserved.
+
+NEW FRONTEND OBSERVATIONS AND CHANGES:
+- /creative route in apps/desktop/src/app/contrib/surfaces.tsx mounted
+  CreativeWorkspacePage with NO CreativeWorkspaceProvider. The use hook
+  requires this provider and would throw. Fixed Page to mount provider
+  before rendering CreativeWorkspaceBody. Existing route test extended;
+  focused UI Vitest 9 passed / 0 failed, exit 0.
+- The React context had TWO local project copies (useState plus
+  $creativeProject nanostore) plus unrestricted setProject, with neither
+  tied to an acknowledged backend CreativeDocument. Removed both writable
+  local-project controls. Added acceptCanonicalHead(unknown) which validates
+  the backend HEAD and only projects it for display, exposing immutable
+  revision ID/ETag; clearCanonicalHead discards display state.
+  Selection/playhead/workspace panel state remains local UI state.
+- Added apps/desktop/src/app/creative-workspace/canonical-creative-projection.ts
+  and a standalone Node test suite plus Vitest context tests. Strict
+  input/schema/project ownership/range validation, projected React
+  camelCase shapes from authentic Python snake_case schema. A direct
+  Node runtime test proved RED missing module then GREEN.
+- An additional RED regression established that fractional CanonicalTime
+  strings such as 1001/30000 were wrongly rejected. Renderer projection
+  now accepts bounded rational-seconds strings and preserves fps 30000/1001.
+- A REAL backend CreativeProjectRevision was generated in an isolated
+  HERMES_HOME using workstation.creative_revision_cas and
+  workstation.creative_document; live JSON snapshot at
+  C:\Temp\hcw-hybrid01-native-smoke\canonical_real_head.json
+  (test script canonical_real_head_smoke.py). This revealed another RED:
+  actual strong ETag is QUOTED "revision_id[:16]-source_sha256[:16]",
+  NOT a 64-digit SHA. Fixed projection validator to match the
+  real Python CreativeProjectRevision.etag contract.
+  The actual Python-backed Node smoke suite: 4 passed, exit 0.
+- Isolated Windows Node dependencies were missing @rolldown/plugin-babel.
+  npm ci failed due package-lock/overrides mismatch; a normal isolated
+  install failed on upstream React/Ink peer conflicts. Installed 1541
+  packages into this WORKTREE only using npm install --legacy-peer-deps
+  --ignore-scripts --no-save --package-lock=false --no-audit --no-fund,
+  exit 0. This is a local testing accommodation, NOT qualification of
+  dependency lock or release reproducibility. Main checkout untouched.
+  No package lock update in git status.
+- Last UI Vitest targeted: 9 passed / 0 failed, exit 0;
+  TypeScript renderer tsc is being rerun on final source in Remote
+  Desktop process PID 62912; inspect final output before claiming final
+  typecheck. ESLint fixes were applied to changed frontend source and
+  rerun in focused scope; final ESLint run exited 0.
+
+**HIGH-PRIORITY UNFINISHED CONTRACT:** No actual Electron main/preload
+CreativeDocument IPC and no valid backend gateway API creative route
+were found during focused inspection. No renderer UI element invokes
+canonical-open, apply-batch or TaskRun admission yet; page may still
+show empty state because no canonical snapshot is loaded from backend.
+The context's acceptCanonicalHead is ONLY a display adapter; values
+supplied by JS are NOT server authority. Do not claim manual/agent E2E.
+The real backend TaskRun CAS/CLI implemented before this session is
+unchanged and remains available. Do NOT create shell/terminal IPC allowing
+arbitrary commands or trust renderer-supplied actor identity.
+
+Updated milestone labels:
+H-C0 PARTIAL, H-079 / CI absent.
+H-C1 INTEGRATED_NATIVE_E2E+CANONICAL_REVISIONS_PARTIAL, no Electron UI.
+H-C2 FRONTEND_READ_MODEL_TESTED + TASKRUN_BACKEND_TESTED, actual IPC
+and combined human/agent UI round trip NOT implemented.
+H-C3 PARTIAL: true rational time display + HF typed native variables,
+two-way native binding not complete.
+H-C4 BACKEND_CAS_TESTED, no Electron manual editor / trusted actor identity,
+no native distributed atomicity / undo-redo fully done.
+H-C5 NOT_IMPLEMENTED Electron EffectCraft WebContentsView.
+H-C6 PARTIAL native typography+blur; mattes/keying not qualified.
+H-C7 UNIT_TESTED fingerprint, runtime cache missing.
+H-C8 NOT_IMPLEMENTED frame-on-demand hybrid engine.
+H-C9 UNIT_TESTED graph; 1920x1080 10s final delivery not qualified.
+
+Next executable steps:
+1. Finish final UI tsc verification PID 62912, rerun scoped tests
+   if source changed after it; check git diff --check.
+2. Commit just scoped frontend changes and documentation to isolated
+   feat/hcw-hybrid-01-20261011, push and verify remote SHA, keep PR draft.
+3. Implement the MISSING SECURE IPC or existing gateway API route. First
+   trace main-process session ownership and actual TaskRun identity;
+   do not accept renderer-provided session key/actor identity or
+   command paths. Write RED tests for actual Electron main -> real
+   Python canonical-open/apply-batch and fixed authorized owner before
+   registering any channel. Reuse existing authority/policy. No
+   arbitrary subprocess/shell API to untrusted renderer.
+4. Call this new safe IPC from the React CreativeWorkspaceProvider,
+   require acknowledged HEAD and ETag for EVERY edit, and read back
+   authoritative HEAD after edits/restart. Remove any optimistic local
+   project changes. Test human click then agent command then refresh.
+5. Continue H-C4 identity/transactions, H-C5+ other milestones,
+   full Electron E2E, H-079, exact-head CI, then eventual authorized merge.
+6. On EVERY incomplete ending, produce a complete self-contained,
+   ready-to-copy continuation prompt with exact SHA, tests, blockers
+   and this same recursive obligation.
+
+Final H-C2 frontend validation receipt: targeted ui vitest **9 passed**,
+2 test files, UI_FINAL_VITEST_EXIT=0 (lazy route tests printed existing
+React act warnings but no test failure). Python-generated genuine
+CreativeProjectRevision HEAD fed to Node native .ts ESM test suite:
+**4 passed**, NODE_REAL_HEAD_FINAL_EXIT=0; source schema, ratio seconds,
+real quoted ETag and negative cases covered. Scoped frontend TypeScript
+`tsc -p tsconfig.json --noEmit` **UI_FINAL_TYPECHECK_EXIT=0**
+(118.34s). Targeted ESLint --fix completed UI_FINAL_ESLINT_EXIT=0;
+`git diff --check` exit 0. Main checkout and lockfile untouched.

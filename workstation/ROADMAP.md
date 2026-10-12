@@ -3015,3 +3015,18 @@ verified Electron actor identity or H-079 qualified.
 Post-history-index CAS regression: 32 selected Creative files,
 152 passed / 1 skipped, 158.95s, exit 0. H-C4 partial, unqualified
 pending true editor identity, live Electron and distributed engine edits.
+
+
+### HCW-HYBRID — 2026-10-12 H-C2 React presentation seam
+
+New frontend trace: /creative now mounts CreativeWorkspaceProvider; a
+single React display state is projected from validated canonical HEAD,
+not writable duplicated useState/Nanostore project. Real Python
+CreativeProjectRevision.etag syntax and rational-seconds CanonicalTime
+strings are verified in Node projection tests. Focused UI Vitest
+9 green and real-backend Node tests 4 green. H-C2 is NOT QUALIFIED:
+the renderer is not yet connected to an authenticated Electron IPC
+or gateway endpoint, nor to an authorized live TaskRun identity.
+Next stage must implement that link (no arbitrary shell interface)
+and prove human mouse -> canonical HEAD -> agent command -> UI refresh
+with actual Electron E2E. All H-079 and exact-head CI gates remain.

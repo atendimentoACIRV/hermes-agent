@@ -53,3 +53,14 @@ describe('ChatRoutesSurface and APP_ROUTES', () => {
     expect(screen.queryByTestId('chat-view')).toBeNull()
   })
 })
+
+
+it('mounts /creative with the required CreativeWorkspaceProvider instead of crashing', async () => {
+  const actions = { getGateway: () => null } as unknown as WiringActions
+  render(
+    <MemoryRouter initialEntries={['/creative']}>
+      <ChatRoutesSurface actions={actions} />
+    </MemoryRouter>
+  )
+  expect(await screen.findByText('Open or create a project to start editing')).toBeTruthy()
+})

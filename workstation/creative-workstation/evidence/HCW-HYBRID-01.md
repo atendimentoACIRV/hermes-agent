@@ -161,3 +161,31 @@ Historical operation replay final qualification: 32-file Creative suite,
 Historical human transaction replay after agent commit now returns its
 original receipt and does not advance canonical HEAD; altered payload
 using same ID returns 409. Native/Electron product gates remain open.
+
+
+### 2026-10-12 — H-C2 frontend mount and canonical read-model contract (not Electron E2E)
+
+- Previously /creative direct route had no CreativeWorkspaceProvider although
+  page used useCreativeWorkspace (runtime error). Route-level Vitest now
+  confirms welcome UI mounts with provider; 9 focused UI tests passed.
+- Removed duplicate writable local React project state and independent
+  $creativeProject nanostore; display state is now accepted ONLY from
+  a validated canonical HEAD projection containing revisionId and ETag.
+  Selection/playhead remain UI-local, intentionally.
+- New pure TS projection maps Python CreativeDocument snake_case to UI
+  camelCase and rejects bad project ID/ETag/schema/ranges. Actual Python
+  CreativeProjectRevision.etag is quoted 16hex-16hex, found by RED test
+  against real serialized Python output. Rational CanonicalTime strings
+  are also supported after separate RED test.
+- Canonical Python snapshot under temp/isolated profile, tested via Node:
+  4 passed, 0 failed, exit 0. UI context/route focused Vitest:
+  9 passed, 0 failed, exit 0. Full Electron IPC and UI interaction
+  with TaskRun are NOT implemented.
+- The upstream npm lock/overrides conflict required isolated
+  --legacy-peer-deps/--ignore-scripts install to run UI tests locally.
+  No global release qualification is implied.
+
+Final frontend exact-source verification: 9 focused Vitest passed;
+4 pure Node/real-Python-schema tests passed; renderer TypeScript
+full-project tsconfig --noEmit exit 0; targeted ESLint exit 0;
+`git diff --check` exit 0. No Electron IPC binding qualified.

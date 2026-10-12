@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+
 import { CreativeWorkspaceProvider, useCreativeWorkspace } from '@/app/creative-workspace'
 import type { CreativeProject } from '@/app/creative-workspace'
 
 function TestComponent() {
   const { project, selection, selectClip, selectTrack, selectLayer, selectKeyframe, clearSelection } = useCreativeWorkspace()
+
   return (
     <div>
       <div data-testid="project-name">{project?.name ?? 'none'}</div>
@@ -106,4 +108,42 @@ describe('CreativeWorkspaceContext', () => {
     expect(screen.getByTestId('selected-layers').textContent).toBe('0')
     expect(screen.getByTestId('selected-keyframes').textContent).toBe('0')
   })
+})
+
+function CanonicalSnapshotProbe() {
+  const { project, canonicalRevision, acceptCanonicalHead } = useCreativeWorkspace()
+
+  const makeHead = (name: string, suffix: string) => ({
+    project_id: 'a'.repeat(32),
+    revision_id: suffix.repeat(32),
+    etag: `"${suffix.repeat(16)}-${suffix.repeat(16)}"`,
+    source: {
+      schema_version: 1, project_id: 'a'.repeat(32), name,
+      metadata: {}, assets: {},
+      compositions: [{
+        composition_id: 'b'.repeat(32), name: 'Main', width: 640, height: 360,
+        duration: '10', fps: { num: 30, den: 1 }, tracks: [], layers: [],
+      }],
+    },
+  })
+
+  return (
+    <>
+      <div data-testid="canonical-name">{project?.name ?? 'none'}</div>
+      <div data-testid="canonical-revision">{canonicalRevision?.revisionId ?? 'none'}</div>
+      <button onClick={() => acceptCanonicalHead(makeHead('First canonical', 'c'))}>Accept first HEAD</button>
+      <button onClick={() => acceptCanonicalHead(makeHead('Agent revision', 'd'))}>Accept agent HEAD</button>
+    </>
+  )
+}
+
+it('only displays acknowledged canonical backend HEADs and updates after another actor commits', () => {
+  render(<CreativeWorkspaceProvider><CanonicalSnapshotProbe /></CreativeWorkspaceProvider>)
+  expect(screen.getByTestId('canonical-name').textContent).toBe('none')
+  fireEvent.click(screen.getByText('Accept first HEAD'))
+  expect(screen.getByTestId('canonical-name').textContent).toBe('First canonical')
+  expect(screen.getByTestId('canonical-revision').textContent).toBe('c'.repeat(32))
+  fireEvent.click(screen.getByText('Accept agent HEAD'))
+  expect(screen.getByTestId('canonical-name').textContent).toBe('Agent revision')
+  expect(screen.getByTestId('canonical-revision').textContent).toBe('d'.repeat(32))
 })

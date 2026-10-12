@@ -4431,3 +4431,17 @@ trace metadata (do not claim human identity attestation). This is NOT
 complete manual React/Electron synchronization, distributed dual-engine
 atomic native transaction, on-demand hybrid render or H-079.
 See ledger and evidence files for tested paths and gates.
+
+
+### HCW H-C2 desktop read-model 2026-10-12
+
+The React /creative route previously omitted the mandatory workspace
+provider and maintained writable project state twice. Now mounting
+uses the provider and React display state accepts a parsed canonical
+CreativeDocument HEAD with revisionId and ETag. A pure strict adapter
+validates schema, project ID and dimensions; its rational-second parser
+and strong ETag syntax were corrected by tests against real backend
+serialization. THIS IS ONLY THE VIEW SIDE: the secure Electron
+main/preload bridge to Python TaskRun canonical-open/apply-batch
+is still missing; the renderer cannot publish a canonical revision.
+Do not elevate H-C2 to integrated editor or qualified release.

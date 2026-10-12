@@ -1,12 +1,20 @@
-import { useCreativeWorkspace } from './CreativeWorkspaceContext'
-import { CreativeTimeline } from './CreativeTimeline'
+import { CreativeGraphEditor } from './CreativeGraphEditor'
 import { CreativeInspector } from './CreativeInspector'
 import { CreativePreview } from './CreativePreview'
-import { CreativeGraphEditor } from './CreativeGraphEditor'
+import { CreativeTimeline } from './CreativeTimeline'
 import { CreativeToolbar } from './CreativeToolbar'
+import { CreativeWorkspaceProvider, useCreativeWorkspace } from './CreativeWorkspaceContext'
 import { CreativeWorkspaceSwitcher } from './CreativeWorkspaceSwitcher'
 
 export function CreativeWorkspacePage() {
+  return (
+    <CreativeWorkspaceProvider>
+      <CreativeWorkspaceBody />
+    </CreativeWorkspaceProvider>
+  )
+}
+
+function CreativeWorkspaceBody() {
   const { project, workspaceMode, pinnedPanels } = useCreativeWorkspace()
 
   const showTimeline = pinnedPanels.has('timeline') || workspaceMode === 'montage' || workspaceMode === 'motion'

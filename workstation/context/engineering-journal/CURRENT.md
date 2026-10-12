@@ -5778,3 +5778,25 @@ Final independent regression after history-index CAS fix:
 32 Creative modules, 152 passed / 1 skipped / 0 failed, 158.95s,
 CAS_FINAL_TEST_EXIT=0; Ruff/compileall targeted passed. Continue to
 React/Electron canonical handoff, full CI and H-079; no main merge.
+
+
+### 2026-10-12 — Frontend H-C2 read-model and /creative route continuation
+
+PR #81 baseline SHA 62dc14f66f at beginning; isolated worktree used,
+root checkout still 34 unrelated dirty entries preserved.
+Found missing CreativeWorkspaceProvider on /creative route and independent
+React useState/$creativeProject authority; fixed route and converted
+UI project state to a validated canonical HEAD read-model only.
+Added TS projection tests RED/GREEN for schema, revision/ETag,
+rational CanonicalTime and actual backend-generated ETag format
+(quoted 16hex-16hex, NOT hex SHA256). Node actual-backend adapter tests
+4 passed; focused React UI Vitest 9 passed.
+Missing IPC/preload/main and gateway Creative route remain a real
+blocker for human/agent E2E; no false claim of UI editing. npm
+isolated --legacy-peer-deps install for tests; no lockfile/main changes.
+Next: secure main-process TaskRun-bound IPC, then UI command and refresh.
+
+Frontend verification final: 9 Vitest passed (2 files), 4 Node
+projection tests passed against real Python-generated HEAD;
+TypeScript renderer typecheck exit 0 (118.34s); scoped ESLint exit 0.
+No new Electron IPC or full E2E claims.
