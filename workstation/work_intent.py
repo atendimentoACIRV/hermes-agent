@@ -102,6 +102,8 @@ def prepare_turn_work(agent, content, envelope: MessageEnvelope | None = None) -
         prior_turn_id = getattr(agent, "_canonical_work_turn_id", None)
         keep_explicit = False
         if (prebound_task and prebound_run is not None and envelope.can_create_work
+                # Neither absent nor empty lineage identifies the current turn.
+                and envelope.correlation_id
                 and prior_turn_id == envelope.correlation_id):
             from hermes_cli import kanban_db
             from workstation.kanban import WorkstationKanbanBridge
@@ -141,6 +143,9 @@ def prepare_turn_work(agent, content, envelope: MessageEnvelope | None = None) -
             if (pinned_run is not None
                     and str(current.current_run_id) == str(pinned_run)
                     and envelope.can_create_work
+                    # A missing turn correlation cannot prove a run belongs
+                    # to this turn; fail closed rather than adopting an old run.
+                    and envelope.correlation_id
                     and pinned_turn == envelope.correlation_id):
                 current_run_id = current.current_run_id
             else:
