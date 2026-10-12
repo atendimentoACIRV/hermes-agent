@@ -7,6 +7,7 @@ Never use this protocol on a real user session.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
@@ -37,8 +38,8 @@ def rpc(action: str, args: dict | None = None):
     return result.get("result")
 
 
-def run(mode: str, note: str, site: str, storage: str, fixture_path: str) -> None:
-    if mode not in {"seed", "replay"}:
+def run(mode: str, note: str, site: str, storage: str, fixture_path: str, journal_path: str) -> None:
+    if mode not in {"seed", "replay", "crash", "recover"}:
         raise ValueError("unsupported test-only mode")
     if not isinstance(note, str) or not (1 <= len(note) <= 64) or not note.isascii():
         raise ValueError("test note must be 1..64 ASCII characters")
@@ -52,6 +53,21 @@ def run(mode: str, note: str, site: str, storage: str, fixture_path: str) -> Non
     memory = ProceduralMemory(storage_path=Path(storage))
     if memory.load_error:
         raise RuntimeError("persistent memory is corrupt: " + memory.load_error)
+
+    fence = None
+    if mode in {"crash", "recover"}:
+        from workstation.artifacts import ArtifactStore
+        from workstation.journal import ExecutionJournal
+        from workstation.tests.bav04_experimental_recovery import RecoveryFence
+        candidate = memory.find_promoted(fingerprint=FINGERPRINT, scope=fixture["scope"], preconditions=[])
+        if candidate is None:
+            raise RuntimeError("test fixture procedure was not promoted")
+        fence = RecoveryFence(
+            journal=ExecutionJournal("bav-cdp-test", "offline-session",
+                file_path=Path(journal_path), environment="test"),
+            artifacts=ArtifactStore(), procedure=candidate,
+            task_id="bav-cdp-test", session_id="offline-session", run_id="bav-run",
+        )
 
     ctx: dict = {
         "note": note,
@@ -86,10 +102,19 @@ def run(mode: str, note: str, site: str, storage: str, fixture_path: str) -> Non
         elif step.action == "click":
             if not target or not target.startswith("@e"):
                 raise ValueError("semantic click anchor unresolved")
+            if mode == "crash":
+                fence.mark_dispatched(step_index=2, operation_id="bav-04-beta-click",
+                                      baseline_effects=ctx["server_before"])
             rpc("browser_click", {
                 "ref": target, "semantic_anchor": step.fallback_anchors[0],
             })
             snapshot()
+            if mode == "crash":
+                if not verified_effect():
+                    raise RuntimeError("expected fixture effect missing before simulated process death")
+                # Deliberately lose worker before persisting the independent proof.
+                # Native BrowserTask and local fixture server remain alive.
+                os._exit(37)
         elif step.action == "verify":
             snapshot()
             expected = step.expectation.replace("{note}", note)
@@ -103,6 +128,43 @@ def run(mode: str, note: str, site: str, storage: str, fixture_path: str) -> Non
             "Saved: " + note in ctx["snapshot"]
             and rpc("test_effect_count") == ctx["server_before"] + 1
         )
+
+    if mode == "recover":
+        # Same already-authorized BrowserTask: probe through its real native controller.
+        # The admitted dict is test-only fixture metadata, NOT a signed production lease.
+        def independent_readback():
+            snapshot()
+            actual_count = rpc("test_effect_count")
+            return {
+                "verified": "Saved: " + note in ctx["snapshot"],
+                "fault_domain": "fixture-server",
+                "effect_count": actual_count,
+            }
+
+        checkpoint = fence.reconcile_for_resume(
+            admission={
+                "task_id": "bav-cdp-test", "session_id": "offline-session",
+                "run_id": "bav-run", "lease_valid": True,
+                "host": "127.0.0.1", "scope": fixture["scope"],
+            },
+            independent_readback=independent_readback,
+        )
+        result = DeterministicRoutineRunner(memory).run(
+            fence.procedure.id, ctx, execute_step, resume_ref=checkpoint,
+            check_postcondition=lambda condition, _ctx: (
+                condition == "fixture-confirmed"
+                and "Saved: " + note in ctx["snapshot"]
+                and rpc("test_effect_count") == ctx["server_before"]
+            ),
+        )
+        if result.status != RoutineExecutionStatus.COMPLETED:
+            raise RuntimeError("reconciliation did not safely finish " + result.reason)
+        emit({
+            "done": True, "mode": "recover", "verified": True,
+            "completed_steps": result.completed_steps,
+            "procedure_id": result.procedure_id,
+        })
+        return
 
     if mode == "seed":
         if memory.list_procedures():

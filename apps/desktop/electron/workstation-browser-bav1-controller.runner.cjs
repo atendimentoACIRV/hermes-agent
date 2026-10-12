@@ -45,9 +45,9 @@ async function run(){
   const repoRoot=path.resolve(__dirname,'../../..')
   const storage=path.join(root,'procedures.json')
   const py=spawn('python',['-u',path.join(__dirname,'workstation-browser-bav1-memory.worker.py'),
-   mode,note,site,storage,path.join(__dirname,'workstation-browser-bav1-procedure.fixture.json')],{
+   mode,note,site,storage,path.join(__dirname,'workstation-browser-bav1-procedure.fixture.json'),path.join(root,'bav04-journal.jsonl')],{
     cwd:repoRoot,windowsHide:true,stdio:['pipe','pipe','pipe'],
-    env:{...process.env,PYTHONPATH:[repoRoot,'C:\\Github\\hermes-agent\\.venv\\Lib\\site-packages'].join(path.delimiter)}
+    env:{...process.env,HERMES_HOME:path.join(root,'hermes-home'),HERMES_TEST_ISOLATION:'1',PYTHONPATH:[repoRoot,'C:\\Github\\hermes-agent\\.venv\\Lib\\site-packages'].join(path.delimiter)}
   })
   let data='',err='',done=null,queue=Promise.resolve()
   py.stderr.on('data',x=>err+=x.toString())
@@ -68,6 +68,10 @@ async function run(){
   })
   const code=await new Promise(resolve=>py.on('exit',resolve))
   await queue
+  if(mode==='crash'){
+   assert.equal(code,37,'expected process exit after mutation: '+err.slice(-3000))
+   return {crashed:true,code}
+  }
   assert.equal(code,0,mode+' '+note+' worker failed '+err.slice(-3000))
   assert.ok(done&&done.verified,'worker must provide independent verified effect '+err)
   return done
@@ -93,7 +97,19 @@ async function run(){
   const state=await invoke('browser_snapshot',{full:true})
   assert.ok(String(state.snapshot||'').includes(procedure.steps[3].expectation.replace('{note}',note)),'expected server readback: '+JSON.stringify({snapshot:String(state.snapshot||'').slice(-180),effects}))
  }
- if(process.env.BAV_PERSISTENCE_TEST==='1'){
+ if(process.env.BAV_RECOVERY_TEST==='1'){
+  const seed=await runPersistentWorker('seed','Alpha')
+  const crashed=await runPersistentWorker('crash','Beta')
+  assert.equal(crashed.code,37)
+  assert.equal(effects,2,'effect must have occurred before worker death')
+  const resumed=await runPersistentWorker('recover','Beta')
+  assert.equal(seed.procedure_id,resumed.procedure_id)
+  assert.equal(resumed.completed_steps,4)
+  assert.equal(effects,2,'recovery must not replay prior uncertain click')
+  console.log('BAV04_BROWSER_CRASH_RECONCILED_PASS '+JSON.stringify({
+   effects,crashCode:crashed.code,modelCalls:0,controllerCalls:callId,
+   persistentMemory:true,journalRecovered:true,existingBrowserOwner:true}))
+ }else if(process.env.BAV_PERSISTENCE_TEST==='1'){
   const seed=await runPersistentWorker('seed','Alpha')
   const replay1=await runPersistentWorker('replay','Beta')
   const replay2=await runPersistentWorker('replay','Gamma')
