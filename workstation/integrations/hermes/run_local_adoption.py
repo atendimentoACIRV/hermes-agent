@@ -156,13 +156,21 @@ def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> DurableRunA
     inner = workstation_durable_dispatch(agent)
     artifacts = ArtifactStore()
 
+    def ensure_bound_run() -> None:
+        current = (getattr(agent, "_canonical_work_task_id", None),
+                   getattr(agent, "_canonical_work_run_id", None))
+        if tuple(str(v) for v in current) != bound:
+            raise RuntimeError("taskrun_identity_changed")
+
     def dispatch(tool: str, args: dict) -> Any:
+        ensure_bound_run()
         with workstation_scoped_execution(agent, str(task_id), None):
             return inner(tool, args, str(task_id), f"runlocal_{uuid.uuid4().hex[:10]}")
 
     readback_fns = _build_readback_fns(dispatch, artifacts, str(task_id))
 
     def verified_readback(primitive: str, args: dict, raw: Any) -> dict | None:
+        ensure_bound_run()
         # Do not let merely having an entry in the dispatcher prove independent
         # verification. Only explicitly admitted primitives may use it.
         handler = readback_fns.get(primitive) if primitive in _READBACK else None

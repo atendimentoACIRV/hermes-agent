@@ -95,6 +95,21 @@ class RunLocalOwnerWiringTests(unittest.TestCase):
         self.assertIsNot(actual, old_owner)
         self.assertEqual(actual._bound_task_run, ("task-A", "1"))
 
+    def test_stale_owner_cannot_dispatch_into_a_later_taskrun(self):
+        owner = module.build_run_adoption_owner(self.agent)
+        self.agent._canonical_work_task_id = "task-B"
+        self.agent._canonical_work_run_id = "2"
+        with self.assertRaisesRegex(RuntimeError, "taskrun_identity_changed"):
+            owner.dispatch("write_file", {"path": "stale.txt", "content": "unsafe"})
+        self.assertEqual(self.operations, [])
+
+    def test_stale_owner_cannot_issue_readback_after_run_change(self):
+        owner = module.build_run_adoption_owner(self.agent)
+        self.agent._canonical_work_run_id = "2"
+        with self.assertRaisesRegex(RuntimeError, "taskrun_identity_changed"):
+            owner.readback("write_file", {"path": "stale.txt", "content": "unsafe"}, None)
+        self.assertEqual(self.operations, [])
+
     def test_readback_is_not_claimed_for_unverified_raw_only_primitives(self):
         owner = module.build_run_adoption_owner(self.agent)
         self.assertFalse(owner.can_readback("browser_snapshot"))

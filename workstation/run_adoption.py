@@ -23,7 +23,9 @@ import re
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Protocol, Sequence
+from typing import Any, Protocol
+from collections.abc import Callable, Sequence
+from urllib.parse import urlsplit
 
 from workstation.artifacts import ArtifactStore
 from workstation.control_plane.ir import CALL, CREATE, MOVE, Effect, effect_contained
@@ -84,17 +86,17 @@ class RunAdoptionOwner(Protocol):
     task_store: DurableTaskStore
     artifacts: ArtifactStore
 
-    def snapshot(self, task_id: str, run_id: str) -> Optional[CanonicalRunSnapshot]: ...
+    def snapshot(self, task_id: str, run_id: str) -> CanonicalRunSnapshot | None: ...
 
     def supports(self, primitive: str) -> bool: ...
 
     def dispatch(self, tool: str, args: dict[str, Any]) -> Any: ...
 
-    def readback(self, primitive: str, bound_args: dict[str, Any], raw: Any) -> Optional[dict[str, Any]]: ...
+    def readback(self, primitive: str, bound_args: dict[str, Any], raw: Any) -> dict[str, Any] | None: ...
 
     def can_readback(self, primitive: str) -> bool: ...
 
-    def system2_call_count(self) -> Optional[int]: ...
+    def system2_call_count(self) -> int | None: ...
 
 
 @dataclass
@@ -131,8 +133,25 @@ _READ_ONLY_PRIMITIVES = {
 _BROWSER_MUTATIONS = {"browser_click", "browser_type", "browser_press", "click", "fill", "press", "browser_batch_actions"}
 
 
-def effects_for_step(primitive: str, args: dict[str, Any], scope: dict[str, Any]) -> Optional[list[Effect]]:
+def effects_for_step(primitive: str, args: dict[str, Any], scope: dict[str, Any]) -> list[Effect] | None:
     """Owner table: effects a step can have, or ``None`` when they cannot be established."""
+    if primitive == "browser_navigate":
+        # Navigation changes external Browser state. Reuse requires an explicit
+        # effect grant AND independently verified readback, never a read-only ACK.
+        host = scope.get("host")
+        address = args.get("url")
+        if not isinstance(host, str) or not host or not isinstance(address, str):
+            return None
+        try:
+            parsed = urlsplit(address)
+            if (parsed.scheme != "https" or parsed.hostname != host
+                    or parsed.username or parsed.password or parsed.port not in (None, 443)
+                    or (scope.get("path_family")
+                        and (parsed.path or "/") != scope["path_family"])):
+                return None
+        except ValueError:
+            return None
+        return [CALL("browser.navigate", host)]
     if primitive in _READ_ONLY_PRIMITIVES:
         return []
     if primitive in {"write_file", "fs_write", "fs_mkdir", "mkdir"}:
@@ -177,10 +196,10 @@ class ItemAdoptionPlan:
 
 
 def plan_item_adoption(
-    snapshot: Optional[CanonicalRunSnapshot],
+    snapshot: CanonicalRunSnapshot | None,
     offer: AdoptionOffer,
     owner: RunAdoptionOwner,
-) -> tuple[Optional[ItemAdoptionPlan], list[str]]:
+) -> tuple[ItemAdoptionPlan | None, list[str]]:
     """Fail-closed gate list for adopting the *next* pending item. Empty reasons => plan."""
     if snapshot is None:
         return None, ["no_canonical_snapshot"]
@@ -348,9 +367,41 @@ class RunLocalAdopter:
                 return ok
             return _verify
 
+        def live_effect_authority() -> bool:
+            # Re-read the canonical run immediately before each effect. The
+            # planning snapshot can become stale while the worker is starting.
+            fresh = owner.snapshot(offer.task_id, offer.run_id)
+            return bool(
+                fresh is not None
+                and fresh.task_id == snapshot.task_id
+                and fresh.run_id == snapshot.run_id
+                and fresh.plan_id == snapshot.plan_id
+                and fresh.lease_valid
+                and not fresh.termination
+                and not fresh.uncertain_mutations
+                and authority_covers(fresh.authority, plan.required_authority)
+                and (not plan.effects or (
+                    fresh.effect_budget
+                    and all(effect_contained(e, list(fresh.effect_budget)) for e in plan.effects)
+                ))
+                and fresh.pending_items
+                and fresh.pending_items[0].item_id == item.item_id
+            )
+
+        def may_start_item(work_item) -> bool:
+            if work_item.status == WorkItemStatus.COMPLETED:
+                return True
+            if work_item.id != item.item_id or not live_effect_authority():
+                return False
+            fresh = owner.snapshot(offer.task_id, offer.run_id)
+            checked, _ = plan_item_adoption(fresh, offer, owner)
+            return bool(checked is not None and checked.item.item_id == item.item_id
+                        and checked.steps == plan.steps)
+
         handoff_steps = []
         for step in plan.steps:
             handoff = {k: v for k, v in step.items() if k != "_effects"}
+            handoff["pre_condition_check"] = lambda _args, _payload: live_effect_authority()
             if step["_effects"]:
                 handoff.update(readback=True, verifier_fn=make_verifier(step))
             handoff_steps.append(handoff)
@@ -365,7 +416,7 @@ class RunLocalAdopter:
             outcome = execute_in_flight_handoff(
                 proof, [item.payload], handoff_steps, owner.dispatch,
                 task_store=owner.task_store, artifact_store=owner.artifacts,
-                can_start_item=lambda wi: wi.id == item.item_id or wi.status == WorkItemStatus.COMPLETED,
+                can_start_item=may_start_item,
                 max_retries=0,
             )
         except Exception as exc:  # the batch runner contains item failures; this is infrastructure
@@ -416,10 +467,10 @@ class DurableRunAdoptionOwner:
         *,
         authority_for_task: Callable[[Any], AuthorityScope],
         dispatch_fn: Callable[[str, dict[str, Any]], Any],
-        readback_fn: Optional[Callable[[str, dict[str, Any], Any], Optional[dict[str, Any]]]] = None,
+        readback_fn: Callable[[str, dict[str, Any], Any], dict[str, Any] | None] | None = None,
         readback_primitives: Sequence[str] = (),
         supported_primitives: Sequence[str] = (),
-        system2_counter: Optional[Callable[[], int]] = None,
+        system2_counter: Callable[[], int] | None = None,
     ):
         # sqlite connections are per-thread: the learning worker and the runtime checkpoint
         # each get their own store over the same canonical database.
@@ -459,23 +510,23 @@ class DurableRunAdoptionOwner:
     def dispatch(self, tool: str, args: dict[str, Any]) -> Any:
         return self._dispatch(tool, args)
 
-    def readback(self, primitive: str, bound_args: dict[str, Any], raw: Any) -> Optional[dict[str, Any]]:
+    def readback(self, primitive: str, bound_args: dict[str, Any], raw: Any) -> dict[str, Any] | None:
         return self._readback(primitive, bound_args, raw) if self._readback else None
 
-    def system2_call_count(self) -> Optional[int]:
+    def system2_call_count(self) -> int | None:
         return self._system2_counter() if self._system2_counter else None
 
-    def bind_system2_counter(self, counter: Optional[Callable[[], int]]) -> None:
+    def bind_system2_counter(self, counter: Callable[[], int] | None) -> None:
         self._system2_counter = counter
 
-    def snapshot(self, task_id: str, run_id: str) -> Optional[CanonicalRunSnapshot]:
+    def snapshot(self, task_id: str, run_id: str) -> CanonicalRunSnapshot | None:
         try:
             return self._snapshot(task_id, str(run_id))
         except Exception:
             logger.debug("run adoption snapshot failed closed", exc_info=True)
             return None
 
-    def _snapshot(self, task_id: str, run_id: str) -> Optional[CanonicalRunSnapshot]:
+    def _snapshot(self, task_id: str, run_id: str) -> CanonicalRunSnapshot | None:
         from hermes_cli import kanban_db
         from workstation.authority_supersession import classify_run_authority
 

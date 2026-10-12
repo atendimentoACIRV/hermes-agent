@@ -118,6 +118,9 @@ class TaskRunFixture:
             dispatch_fn=self.dispatch, readback_fn=self.readback,
             readback_primitives=("write_file",), supported_primitives=("write_file", "read_file"),
         )
+        # The injected production owner is explicitly bound to this fixture's
+        # canonical TaskRun; unbound/stale owners must never be reused.
+        self.owner._bound_task_run = (str(self.task_id), str(self.run_id))
         self.agent = SimpleNamespace(
             _canonical_work_task_id=self.task_id, _canonical_work_run_id=self.run_id,
             _run_adoption_owner=self.owner, session_id=envelope.session_id)
@@ -456,7 +459,7 @@ def test_no_canonical_identity_or_owner_means_no_proof(fx, tmp_path):
     monitor.owner = None
     monitor._get_window(fx.task_id, fx.run_id).owner = None
     assert monitor.validate_candidate_run_local(cand, task_id=fx.task_id, run_id=fx.run_id)[2] == ["no_runtime_owner"]
-    ok, proof, reasons = monitor.validate_candidate_run_local(cand, task_id="other-task", run_id="9", owner=fx.owner)
+    ok, proof, _reasons = monitor.validate_candidate_run_local(cand, task_id="other-task", run_id="9", owner=fx.owner)
     assert not ok and proof is None
 
 
@@ -517,7 +520,7 @@ def test_mining_is_scoped_to_the_task_run_before_compilation(fx, tmp_path, monke
         for n, item in enumerate(other.items[:3]):
             fx.corpus.capture(other.sample("write_file", 2 * n, {**item, "content": "OTHER"}, False))
             fx.corpus.capture(other.sample("read_file", 2 * n + 1, item, True))
-        monitor, cand = mined_candidate(fx, tmp_path)
+        _monitor, cand = mined_candidate(fx, tmp_path)
         assert cand.learning_metadata["run_ids"] == [fx.run_id]
         assert {o["task_id"] for o in cand.provenance["origins"]} == {fx.task_id}
         assert "OTHER" not in str(cand.input_schema) + str(cand.implementation)
@@ -591,6 +594,54 @@ def test_operator_revocation_between_items_stops_the_current_checkpoint(fx, tmp_
     assert not report.all_items_completed
     assert fx.statuses().count(WorkItemStatus.COMPLETED) == 4
     assert monitor.mode == SHADOW
+
+
+def test_revocation_after_snapshot_before_item_start_dispatches_nothing(fx, tmp_path, monkeypatch):
+    """A lease may be revoked after planning but before the durable worker starts."""
+    import workstation.run_adoption as adoption_module
+
+    learn(fx, tmp_path, k=3)
+    original = adoption_module.execute_in_flight_handoff
+
+    def revoke_before_worker(*args, **kwargs):
+        conn = fx.store.get_connection()
+        conn.execute("UPDATE tasks SET status='cancelled' WHERE id=?", (fx.task_id,))
+        conn.commit()
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(adoption_module, "execute_in_flight_handoff", revoke_before_worker)
+    before = len(fx.dispatch_log)
+    result = fx.checkpoint()
+    assert len(fx.dispatch_log) == before
+    assert result is None or not result.items or not any(item["verified"] for item in result.items)
+
+
+def test_revocation_after_item_admission_before_step_dispatch_is_rechecked(fx, tmp_path, monkeypatch):
+    """A successful item-boundary check is not a permanent lease for later I/O."""
+    import workstation.run_adoption as adoption_module
+
+    learn(fx, tmp_path, k=3)
+    original = adoption_module.execute_in_flight_handoff
+
+    def revoke_after_item_check(*args, **kwargs):
+        original_gate = kwargs["can_start_item"]
+
+        def gate_then_revoke(work_item):
+            allowed = original_gate(work_item)
+            if allowed and work_item.status != WorkItemStatus.COMPLETED:
+                conn = fx.store.get_connection()
+                conn.execute("UPDATE tasks SET status='cancelled' WHERE id=?", (fx.task_id,))
+                conn.commit()
+            return allowed
+
+        kwargs["can_start_item"] = gate_then_revoke
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(adoption_module, "execute_in_flight_handoff", revoke_after_item_check)
+    before = len(fx.dispatch_log)
+    result = fx.checkpoint()
+    assert len(fx.dispatch_log) == before
+    assert result is None or not any(item["verified"] for item in result.items)
 
 
 def test_single_run_candidate_is_never_promoted_globally(fx, tmp_path):
