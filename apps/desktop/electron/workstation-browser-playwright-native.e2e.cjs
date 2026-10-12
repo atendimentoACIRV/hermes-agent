@@ -59,6 +59,20 @@ async function run() {
   await contents.executeJavaScript('document.querySelector("#act").disabled = true')
   await assert.rejects(runtime.clickRef(runtime.entries.get(tab.id), button.ref), /target_not_actionable/)
   await contents.executeJavaScript('document.querySelector("#act").disabled = false')
+  await contents.executeJavaScript(`(function(){
+    var scroller=document.createElement('div');
+    scroller.id='disabled-scroller';
+    Object.assign(scroller.style,{height:'30px',width:'220px',overflow:'auto'});
+    scroller.innerHTML='<div style="height:320px"></div><button data-testid="disabled-scrolled" disabled>Disabled below fold</button>';
+    document.body.append(scroller);
+  })()`)
+  const beforeDisabledScroll = await contents.executeJavaScript('document.getElementById("disabled-scroller").scrollTop')
+  await assert.rejects(
+    runtime.clickRef(runtime.entries.get(tab.id), '@missing-disabled', { type: 'testid', value: 'disabled-scrolled' }),
+    /target_not_actionable/
+  )
+  assert.equal(await contents.executeJavaScript('document.getElementById("disabled-scroller").scrollTop'),
+    beforeDisabledScroll, 'disabled target must not trigger DOM scroll before actionability validation')
   await contents.executeJavaScript('document.body.insertAdjacentHTML("beforeend", "<button data-testid=\\"dupe\\">A</button><button data-testid=\\"dupe\\">B</button>")')
   await assert.rejects(runtime.resolvePoint(runtime.entries.get(tab.id), '@missing', false, { type: 'testid', value: 'dupe' }), /ambiguous_anchor/)
   // Simulate a human takeover during async read-only target resolution.

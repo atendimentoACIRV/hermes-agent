@@ -833,6 +833,15 @@ function pointScript(ref: string, focus: boolean, anchor?: { type?: string; valu
       } catch (err) {}
     }
     if (!el || !el.isConnected) return { success: false, error: 'stale_or_unknown_ref' };
+    // These read-only checks must precede scroll/focus. Scrolling or focus
+    // can fire page handlers and change state even before input dispatch.
+    if (el.matches(':disabled') || el.closest('[inert], [aria-disabled="true"]')) {
+      return { success: false, error: 'target_not_actionable' };
+    }
+    var preStyle = getComputedStyle(el);
+    if (preStyle.visibility === 'hidden' || preStyle.display === 'none' || preStyle.pointerEvents === 'none') {
+      return { success: false, error: 'target_not_actionable' };
+    }
     try { el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'auto' }); } catch (err) {}
     if (${focus ? 'true' : 'false'}) { try { el.focus({ preventScroll: true }); } catch (err) { try { el.focus(); } catch (err2) {} } }
     var r = el.getBoundingClientRect();
