@@ -49,3 +49,9 @@ Before ending update these files, git status, exact commit SHA, test outputs and
 - EC-07: EvidenceRef typed object caused SQLite telemetry warning. emit_event projects URI only, no summary; RED->GREEN regression, 11 telemetry PASS + 13 focused pytest PASS, Ruff F,UP PASS. Full System-1 telemetry suite has independent Laya import blocker.
 - NEXT priority: EC-03 owner lease/restart negative tests and EC-04 live intermediate VERIFIED samples; assess Laya installation provenance before EC-05. Preserve EC-02 candidate-specific validation and release gates as partial.
 - This worktree remains isolated; do not merge main. Refresh git HEAD, GitHub PR and CI, since this ledger is written before next commit/push.
+
+## Handoff checkpoint after publish / EC-04 seam discovery
+- Last tested/pushed code commit f710a6b46b034ac37c953869877f795b8672a9b1; GitHub PR #82 draft, unmerged, no workflow runs at this SHA (NOT green). Current doc-only commit may advance HEAD; always git rev-parse HEAD.
+- H080B rerun on published code: 2 passed / 24 deselected in 37.92s, verifying no regression in native reused capability routing after EC-03 cache fix.
+- EC-04 NEXT RED: exercise a real intermediate owner-verification event in an unfinished TaskRun; assert neither observed nor uncertain tool result becomes VERIFIED_SUCCESS, and that independently verified operation sample/provenance is offered to monitor before TaskRun completion. Inspect run_adoption.py:_execute_item and operational_kernel.py:capture, corpus.py and compilability_monitor.py:notify_online_compilability, plus current Kanban completion hook. Do not grant authority through observer notifications.
+- EC-05: environment must install qualified pinned Laya 0.3.23 and provenance subtree in isolated runtime; no fake DIRECT. EC-03 browser lease/restart and full authority negative E2E pending.
