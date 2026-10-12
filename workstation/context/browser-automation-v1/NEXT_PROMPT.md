@@ -46,3 +46,6 @@ uvx --offline pytest -q -o addopts='' workstation/tests/test_routines.py --tb=sh
 ## Checkpoint obrigatório, recursivo
 Atualize PLAN/STATE/EVIDENCE/DECISIONS/METRICS/NEXT_PROMPT e ROADMAP/journal de engenharia. Termine com testes realmente executados (PASS/FAIL/SKIP), HEAD completo verificado, branch/worktree/remote/PR, diff/dirty, gates H-079/H-081/H-082, próxima etapa/RED e incertezas. Faça commits pequenos sem segredos/logs/artefatos gerados. Push apenas na branch experimental apropriada, nunca main, e sem alegar release aprovado.
 **OBRIGATORIAMENTE entregue ao usuário um NOVO PROMPT COMPLETO PRONTO PARA COPIAR/COLAR em toda interrupção. Cada prompt deverá incluir todas estas regras e obrigar a próxima sessão a gerar outro prompt, até BAV-12 integralmente qualificado.**
+
+## Estado remoto confirmado após o primeiro commit
+PR de trabalho **#85** DRAFT, https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/85. Código+testes+documentação publicados no commit d1d867a3a22fa6e77a45000992f54784c71954f2. GitHub retornou 0 combined statuses e 0 workflow runs nesse commit; isto NÃO significa verde. Um commit somente documental posterior pode avançar HEAD: confirmar a SHA na primeira chamada Git.

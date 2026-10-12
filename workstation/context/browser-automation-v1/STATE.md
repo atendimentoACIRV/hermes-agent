@@ -12,3 +12,6 @@ Read PLAN/STATE/EVIDENCE/DECISIONS/REFERENCE_MATRIX/METRICS/NEXT_PROMPT at start
 
 ## Continuation checkpoint — 2026-10-12
 The experimental controller harness was extended (not production runtime). New files: apps/desktop/electron/workstation-browser-bav1-memory.worker.py and workstation-browser-bav1-persistence.contract.test.cjs. Existing controller.runner.cjs now supports BAV_PERSISTENCE_TEST=1. RED confirmed missing persistence marker, then GREEN in isolated Electron under same 'bav-run' authorized owner. A deliberately mismatched run_id was rejected with HTTP 400 CAPABILITY_MISSING; do NOT turn off admission. Replayed procedure is local fixture-only; no cross-run authority, live Trello, product integration, Playwright production CDP, or release qualification.
+
+## Publicação — 2026-10-12
+PR #85 DRAFT: https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/85; commit principal d1d867a3a22fa6e77a45000992f54784c71954f2. GitHub HEAD sem combined statuses e sem PR workflow runs na checagem; CI exact-head NÃO qualificado. Leia git rev-parse HEAD para o último SHA, pois o checkpoint documental pode ter commit posterior.
