@@ -27,3 +27,6 @@ Further work: EC-02 full candidate semantic negative tests and TaskRun binding; 
 ## VERIFIED EC-01 REGRESSION / NEXT TARGET
 - Additional EC-01 four-file test result verified from `.ec01_regression.log`: **42 passed in 175.32s**. `ruff F,UP` on EC-01 code/tests and `git diff --check` PASS. Read Git HEAD and branch/PR before work.
 - Resume at EC-03 production-owner readback/authority E2E and EC-07 EvidenceRef serialization regression; do not reopen the successful current-command intent patch without evidence. For every session preserve exact-head proof, five ledgers and a copy/paste continuation prompt. Keep main untouched and PR draft.
+
+## UPDATED RESUME GATE AFTER EC-03/EC-07
+Read git HEAD and this ledger. EC-01 committed as 38dc4b52a1. EC-03 cache owner binding fail-closed and EC-07 EvidenceRef URI-only telemetry projection tested RED->GREEN. Most recent regression: owner factory unittest 5 passed, telemetry + current native intent pytest 13 passed, lint F/UP passed. System1 telemetry 1 failed due to missing laya module, not certified. Next EC-03 production owner lease/restart negative E2E, EC-04 owner-verified mid-TaskRun and EC-05 provenance-correct real Laya. Uphold continual handoff, no fake qualifications or main merge.

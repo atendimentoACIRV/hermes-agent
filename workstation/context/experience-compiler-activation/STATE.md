@@ -42,3 +42,10 @@ Before ending update these files, git status, exact commit SHA, test outputs and
 ## Continuation result — EC-01 regression confirmed
 - EC-01 intent IR adaptation in work_intent.py with target/contract-matched allowlist is ready for draft review. Full four-file regression 42 passed in 175.32s, lint F,UP passed. Exact-head CI/H-079/H-082 remains unqualified, no production certification.
 - Next engineering target EC-03 and EC-07: exercise production factory readback/lease and fix EvidenceRef JSON serialization at telemetry sink with RED->GREEN tests. EC-02 committed under e81d23a812, with safety gaps preserved as future negative-test work.
+
+## UPDATE — EC-03/EC-07 incremental (2026-10-12)
+- EC-01 committed: 38dc4b52a1 (native intent IR routing); 42 passed in four-file regression; targeted H080B [False,True] passed. PR #82 remains draft.
+- EC-03: fail-closed cache binding patched in run_local_adoption.py and RED->GREEN owner factory test (5 PASS). Broader owner/lease/browser/restart E2E pending.
+- EC-07: EvidenceRef typed object caused SQLite telemetry warning. emit_event projects URI only, no summary; RED->GREEN regression, 11 telemetry PASS + 13 focused pytest PASS, Ruff F,UP PASS. Full System-1 telemetry suite has independent Laya import blocker.
+- NEXT priority: EC-03 owner lease/restart negative tests and EC-04 live intermediate VERIFIED samples; assess Laya installation provenance before EC-05. Preserve EC-02 candidate-specific validation and release gates as partial.
+- This worktree remains isolated; do not merge main. Refresh git HEAD, GitHub PR and CI, since this ledger is written before next commit/push.

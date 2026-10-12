@@ -5689,3 +5689,10 @@ unclassified / 0 budget regressions. Exact-head CI remains not GREEN (Actions
 HTTP 422 history + Desktop failures open); this authorization does not relabel
 those gates VERIFIED and does not authorize main merge. Target runtime work
 continues on this branch with RED->GREEN per phase and separate upstream sync.
+
+
+## 2026-10-12 — Experience Compiler activation continuation (PR #82; not release-qualified)
+- Feature branch on isolated worktree: EC-01 fixed deterministic native command formal intent mismatch to promoted Browser capability, not a policy bypass; H-080B [True] and [False] passed, adjacent four-file regression 42 passed. Commit 38dc4b52a1.
+- EC-03 RED to GREEN: cached run-local owner without _bound_task_run wrongly reused; explicit identity required; owner factory 5/5 PASS.
+- EC-07 RED to GREEN: EvidenceRef telemetry refs caused SQLite JSON serialization failure; URI-only projection avoids metadata leakage; telemetry + native intent suite 13/13 PASS. System1 telemetry suite still red due to unavailable laya module.
+- EC-02 prior patch e81d23a812 not yet product qualified. H-079/H-081/H-082 exact-HEAD CI, Electron, real Laya DIRECT, lease/restart E2E and performance baseline remain HOLD. Main untouched; no merge authorized.

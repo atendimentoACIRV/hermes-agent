@@ -88,6 +88,13 @@ class RunLocalOwnerWiringTests(unittest.TestCase):
         self.assertEqual(self.operations[-1][0], "task-B")
         self.assertIs(next_owner, module.build_run_adoption_owner(self.agent))
 
+    def test_legacy_cached_owner_without_taskrun_binding_is_not_reused(self):
+        old_owner = SimpleNamespace(dispatch=lambda *_: None)
+        self.agent._run_adoption_owner = old_owner
+        actual = module.build_run_adoption_owner(self.agent)
+        self.assertIsNot(actual, old_owner)
+        self.assertEqual(actual._bound_task_run, ("task-A", "1"))
+
     def test_readback_is_not_claimed_for_unverified_raw_only_primitives(self):
         owner = module.build_run_adoption_owner(self.agent)
         self.assertFalse(owner.can_readback("browser_snapshot"))

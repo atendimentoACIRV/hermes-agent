@@ -39,3 +39,8 @@ Status vocabulary: PASS, FAIL, SKIPPED, NOT RUN, BLOCKED, INCONCLUSIVE. Never in
 - Worktree `.ec01_regression.log` concludes: `42 passed in 175.32s` for H-080B, current command existing/new and E2E operational resolution. This is integration regression evidence, not live provider/production Laya certification.
 - `uvx --offline ruff check --select F,UP workstation/work_intent.py workstation/tests/test_current_command_resolution.py workstation/tests/test_current_command_native_intent_contract.py`: `All checks passed!` (exit 0).
 - `git diff --check`: exit 0. Raw scratch log remains untracked and excluded from commit.
+
+## EC-03 and EC-07 continued RED/GREEN — 2026-10-12
+- EC-03: test_legacy_cached_owner_without_taskrun_binding_is_not_reused RED (unexpected identical legacy owner); replaced implicit cache fallback with explicit _bound_task_run check. Fresh 5/5 owner factory unittest PASS (0.077s). Production authority/lease/browser restart E2E still unqualified.
+- EC-07: EvidenceRef object in emit_event.evidence_refs RED: sqlite sink logged Object of type EvidenceRef is not JSON serializable; regression asserted URI-only storage and no summary leak. Code projects canonical EvidenceRef.uri before event construction; 11/11 telemetry+operational tests PASS; broader owner+telemetry+intent suite 5 unittest PASS + 13 pytest PASS (2.86s). Ruff F,UP PASS; diff check PASS.
+- Extended test_system1_telemetry.py has 1 FAIL from ModuleNotFoundError: No module named laya (12 passed, 1 failed); not counted as green. Real Laya, H-079/H-081/H-082, Electron, DIRECT and exact-HEAD CI remain unqualified.

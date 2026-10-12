@@ -2926,3 +2926,10 @@ Real Trello/HyperFrames/repetition baseline BLOCKED: installed native controller
 A new real local adoption regression exposed a remaining lifetime gap: revoking the qualification after the first reused item did not stop the three later items in the same checkpoint. Valid RED: four items executed instead of one (29.1s runner; initial fixture-error attempt is not counted as security evidence). Runtime now re-queries qualified offers at every item boundary, records denial and halts the checkpoint. The independently verified first item remains completed; no blind rollback/retry.
 GREEN: complete online safety file, 38 passed, zero failed, 149.0s. Config/expiry/scope changes apply at item boundaries; this is not an atomic distributed revocation guarantee for an effect already in progress. No Trello write or production trust provisioning.
 Native regression at bb1888976e: existing headless-load contract passed with four real Electron/Chromium BrowserTasks (8.5s test; 1.6m including bootstrap under concurrent tests). Inference and pages are fixtures: native lifecycle/IPC evidence only, not E1 completion or measured product latency/cost. Broader Workstation regression still running; CI remains skipped by maintainer.
+
+### 2026-10-12 — Experience Compiler activation (PR #82, draft; qualification HOLD)
+- EC-01: native command intent aligned to canonical Browser host/page_family/recovery_state IR; 42 targeted/integration regressions passed; not production certified.
+- EC-02: candidate-bound filesystem canary/replay fail-closed patch previously committed as e81d23a812; real DIRECT/Electron E2E pending.
+- EC-03: owner cache requires explicit TaskRun identity (focused tests passed); deeper lease/restart E2E pending.
+- EC-07: telemetry projects canonical EvidenceRef to URI only, avoiding JSON serialization failure; 13 focused pytest passed. System1 runtime lacks laya in this test environment.
+- Continue EC-03 to EC-14 using workstation/context/experience-compiler-activation documents; H-079/H-081/H-082 exact-head and main merge remain HOLD.
