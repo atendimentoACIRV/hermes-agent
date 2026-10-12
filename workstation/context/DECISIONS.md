@@ -1,5 +1,15 @@
 # Architectural Decisions
 
+## D-045 — Smart Task Admission / Session ≠ Task ≠ TaskRun (decisão histórica, pausa 2026-10-12)
+
+**Problema:** promoção de perguntas e ações pontuais a Kanban `running` contaminava autoridade de sessão, bloqueios e `SUPERSEDED`. **Alternativas:** A desligar autocriação (reduz risco e autonomia); B criar tudo em triagem (muito ruído); C admissão semântica progressiva e triage sem run (escolhida, com contenção inicial B); D manter auto-promoção ampla (descartada).
+
+**Decisão preservada:** Session é conversa, Task é compromisso durável canônico, TaskRun é tentativa de execução sob autoridade. Conversa e point_action não criam Task especulativa; Task durável entra triage, reclama run apenas no primeiro efeito autorizado. Mudança de assunto não herda run anterior. `force=True` exige trusted ingress + marcador explícito; não substitui controle de política. **Implementação reportada em drafts #75/#76/#79/#83, não na main.** Trade-off: medir falsos positivos/negativos e regressões de intent; packaged/CI pendentes.
+
+**Não decisão de release:** KANBAN-04 UI handoff + readback tipado ainda falta. Suspensão estratégica não altera esta decisão nem fecha problemas. [Fundamentos e alternativas](HERMES_WORK_DECISION_RATIONALE_2026-10-12.md), [handoff](HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md).
+
+
+
 <!-- creative-D043-overlay -->
 ## D-043 — Creative Workstation independente de motor, documento e edição compartilhada humano/IA (2026-10-10)
 **Status: ARQUITETURA E IMPLEMENTAÇÃO ENGINE-NEUTRAL.** Substitui a seleção HyperFrames-first de D-041 no PR #62 como regra de motor/editor, **sem** invalidar D-042 dogfood (PR #63), D-038 segurança, D-039 aprendizagem, H-079 upstream-first, H-080, H-081/082, segurança/consentimento e CI exato.
