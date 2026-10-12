@@ -16,6 +16,10 @@ const electron = vi.hoisted(() => {
     private url = 'about:blank'
     frameRate = 60
     focused = false
+    readbackEnabled = false
+    inputValue = ''
+    suppressInsertText = false
+    onInsertText: (() => void) | null = null
     readonly navigationHistory = {
       canGoBack: () => false,
       canGoForward: () => false,
@@ -25,7 +29,13 @@ const electron = vi.hoisted(() => {
     readonly debugger = {
       isAttached: () => false,
       attach: () => undefined,
-      sendCommand: async () => ({})
+      sendCommand: async (method: string, params?: { text?: string }) => {
+        if (method === 'Input.insertText' && this.readbackEnabled) {
+          if (!this.suppressInsertText) this.inputValue += String(params?.text ?? '')
+          this.onInsertText?.()
+        }
+        return {}
+      }
     }
 
     on(event: string, listener: Listener): this {
@@ -84,6 +94,22 @@ const electron = vi.hoisted(() => {
     stop(): void {}
 
     async executeJavaScript(source: string): Promise<unknown> {
+      if (source.includes('__HERMES_BATCH_READBACK_V1__')) {
+        return this.readbackEnabled
+          ? {
+              url: this.url,
+              documentToken: 'test-document',
+              elementToken: 1,
+              found: true,
+              editable: true,
+              value: this.inputValue,
+              checked: null,
+              pressed: null,
+              expanded: null,
+              scrollY: 0
+            }
+          : null
+      }
       if (source.includes('__hermesWorkstationRefs')) {
         if (source.includes('byRef.get')) {
           return {
@@ -217,7 +243,7 @@ afterEach(() => {
   }
 })
 
-test('browser_batch_actions executes sequential steps and produces receipts', async () => {
+test('browser_batch_actions verifies observed type steps and produces receipts', async () => {
   runtimeHome()
   const runtime = new WorkstationBrowserRuntime()
   const executeControlRequest = (
@@ -232,26 +258,28 @@ test('browser_batch_actions executes sequential steps and produces receipts', as
     arguments: { url: 'https://example.com' }
   })
 
+  const entry = (runtime as any).entryForTask('task-batch-1', false)
+  entry.view.webContents.readbackEnabled = true
+
   const batchResponse = await executeControlRequest({
     action: 'browser_batch_actions',
     task_id: 'task-batch-1',
     operation_id: 'op-batch-test-1',
     arguments: {
       steps: [
-        { kind: 'click', ref: '@e1' },
         { kind: 'type', ref: '@e1', text: 'typed text', clear: true },
-        { kind: 'press', key: 'Enter' },
-        { kind: 'scroll', direction: 'down' }
+        { kind: 'type', ref: '@e1', text: ' and more', append: true }
       ]
     }
   })
 
   assert.equal(batchResponse.status, 'verified')
-  assert.equal(batchResponse.completed_steps, 4)
-  assert.equal(batchResponse.verified_steps, 4)
+  assert.equal(batchResponse.completed_steps, 2)
+  assert.equal(batchResponse.verified_steps, 2)
+  assert.equal(entry.view.webContents.inputValue, 'typed text and more')
   assert.equal(batchResponse.stopped_at, null)
   const receipts = batchResponse.receipts as Array<string | null>
-  assert.equal(receipts.length, 4)
+  assert.equal(receipts.length, 2)
   assert.ok(receipts[0]?.startsWith('op-batch-test-1:0:'))
   assert.ok(receipts[1]?.startsWith('op-batch-test-1:1:'))
 
@@ -308,15 +336,22 @@ test('browser_batch_actions halts immediately when human takes over during batch
   })
 
   // Acquire human control lease on the task
-  const taskLifecycle = (runtime as unknown as {
-    taskLifecycle(): {
-      acquireHumanControl(
-        taskId: string,
-        details: { sessionId: string | null; tabId: string | null; pageId: number | null; profileScope: string | null },
-        ttlMs: number
-      ): void
+  const taskLifecycle = (
+    runtime as unknown as {
+      taskLifecycle(): {
+        acquireHumanControl(
+          taskId: string,
+          details: {
+            sessionId: string | null
+            tabId: string | null
+            pageId: number | null
+            profileScope: string | null
+          },
+          ttlMs: number
+        ): void
+      }
     }
-  }).taskLifecycle()
+  ).taskLifecycle()
   taskLifecycle.acquireHumanControl(
     'task-batch-human',
     { sessionId: null, tabId: null, pageId: null, profileScope: null },
@@ -363,5 +398,148 @@ test('browser_batch_actions rejects batches exceeding maximum limit (20)', async
   assert.equal(res.completed_steps, 0)
   assert.equal(res.reason, 'invalid_batch_identity_or_size')
 
+  await runtime.destroy()
+})
+
+test('BROW-N1: an action ACK and persisted receipt without readback must not verify a batch', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const dispatch = (runtime as any).executeControlRequest.bind(runtime) as (
+    request: Record<string, unknown>
+  ) => Promise<Record<string, any>>
+  await dispatch({
+    action: 'browser_navigate',
+    task_id: 'task-proof-negative',
+    arguments: { url: 'https://example.com' }
+  })
+  const response = await dispatch({
+    action: 'browser_batch_actions',
+    task_id: 'task-proof-negative',
+    operation_id: 'proof-negative',
+    arguments: {
+      steps: [
+        { kind: 'click', ref: '@e1' },
+        { kind: 'type', ref: '@e1', text: 'SHOULD_NOT_EXECUTE' }
+      ]
+    }
+  })
+  assert.equal(response.status, 'uncertain')
+  assert.equal(response.completed_steps, 1)
+  assert.equal(response.verified_steps, 0)
+  assert.equal(response.stopped_at, 0)
+  assert.notEqual(response.receipts.length, 0, 'ACK receipt remains visible without implying VERIFIED')
+  await runtime.destroy()
+})
+
+async function batchFixture(taskId: string) {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const dispatch = (runtime as any).executeControlRequest.bind(runtime) as (
+    request: Record<string, unknown>
+  ) => Promise<Record<string, any>>
+  await dispatch({ action: 'browser_navigate', task_id: taskId, arguments: { url: 'https://example.com' } })
+  const entry = (runtime as any).entryForTask(taskId, false)
+  entry.view.webContents.readbackEnabled = true
+  const execute = () =>
+    dispatch({
+      action: 'browser_batch_actions',
+      task_id: taskId,
+      operation_id: 'op-' + taskId,
+      arguments: {
+        steps: [
+          { kind: 'type', ref: '@e1', text: 'first' },
+          { kind: 'type', ref: '@e1', text: 'second' }
+        ]
+      }
+    })
+  return { runtime, entry, execute }
+}
+
+test('BROW-N1: CDP ACK with unchanged input value halts subsequent steps', async () => {
+  const { runtime, entry, execute } = await batchFixture('proof-no-effect')
+  entry.view.webContents.suppressInsertText = true
+  const result = await execute()
+  assert.equal(result.status, 'uncertain')
+  assert.equal(result.reason, 'input_value_mismatch')
+  assert.equal(result.completed_steps, 1)
+  assert.equal(result.verified_steps, 0)
+  assert.equal(result.receipts.length, 1)
+  await runtime.destroy()
+})
+
+test('BROW-N1: human takeover during first effect blocks subsequent steps', async () => {
+  const { runtime, entry, execute } = await batchFixture('proof-takeover')
+  entry.view.webContents.onInsertText = () => {
+    ;(runtime as any)
+      .taskLifecycle()
+      .acquireHumanControl('proof-takeover', { sessionId: null, tabId: null, pageId: null, profileScope: null }, 60_000)
+  }
+  const result = await execute()
+  assert.equal(result.status, 'uncertain')
+  assert.equal(result.completed_steps, 1)
+  assert.equal(result.verified_steps, 0)
+  assert.equal(result.stopped_at, 0)
+  await runtime.destroy()
+})
+
+test('BROW-N1: navigation during first effect invalidates document binding and halts', async () => {
+  const { runtime, entry, execute } = await batchFixture('proof-navigation')
+  entry.view.webContents.onInsertText = () => {
+    void entry.view.webContents.loadURL('https://example.com/other')
+  }
+  const result = await execute()
+  assert.equal(result.status, 'uncertain')
+  assert.equal(result.completed_steps, 1)
+  assert.equal(result.verified_steps, 0)
+  assert.equal(result.stopped_at, 0)
+  await runtime.destroy()
+})
+
+test('BROW-N1: failed owner receipt never upgrades a readback to VERIFIED', async () => {
+  const { runtime, execute } = await batchFixture('proof-receipt-missing')
+  const owner = (runtime as any).taskLifecycle()
+  const original = owner.recordReceipt.bind(owner)
+  owner.recordReceipt = () => {
+    throw new Error('receipt_store_failed')
+  }
+  const result = await execute()
+  assert.equal(result.status, 'uncertain')
+  assert.equal(result.completed_steps, 1)
+  assert.equal(result.verified_steps, 0)
+  owner.recordReceipt = original
+  await runtime.destroy()
+})
+
+test('BROW-N1: failed durable checkpoint halts even after readback and receipt', async () => {
+  const { runtime, entry, execute } = await batchFixture('proof-checkpoint-failed')
+  const original = (runtime as any).persistBrowserSessionState.bind(runtime)
+  let failCheckpoint = false
+  entry.view.webContents.onInsertText = () => {
+    failCheckpoint = true
+  }
+  ;(runtime as any).persistBrowserSessionState = () => {
+    if (failCheckpoint) throw new Error('checkpoint_failed')
+    return original()
+  }
+  const result = await execute()
+  assert.equal(result.status, 'uncertain')
+  assert.equal(result.completed_steps, 1)
+  assert.equal(result.verified_steps, 0)
+  assert.equal(result.reason, 'verification_or_checkpoint_failed')
+  ;(runtime as any).persistBrowserSessionState = original
+  await runtime.destroy()
+})
+
+test('BROW-N1: explicit replay of an acknowledged batch operation cannot repeat its effects', async () => {
+  const { runtime, entry, execute } = await batchFixture('proof-reentry')
+  const first = await execute()
+  assert.equal(first.status, 'uncertain')
+  assert.equal(first.completed_steps, 2)
+  const beforeReplay = entry.view.webContents.inputValue
+  const replay = await execute()
+  assert.equal(replay.status, 'uncertain')
+  assert.equal(entry.view.webContents.inputValue, beforeReplay, 'no mutation replay on same operation ID')
+  assert.equal(replay.completed_steps, 0)
+  assert.equal(replay.reason, 'prior_batch_effect_requires_reconciliation')
   await runtime.destroy()
 })

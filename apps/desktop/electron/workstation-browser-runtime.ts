@@ -60,6 +60,7 @@ import {
   type BrowserBatchStep,
   type StepEvidence
 } from './workstation-browser-batch'
+import { batchObservationScript, hasVerifiedBatchEffect, type BatchObservation } from './workstation-browser-batch-proof'
 import { isAccessibilitySnapshotEnabled, tryAccessibilitySnapshot } from './workstation-browser-snapshot'
 import {
   BoundedExtractCache,
@@ -2587,6 +2588,24 @@ export class WorkstationBrowserRuntime {
       }
 
       case 'browser_batch_actions': {
+        // A receipt from a previous substep is evidence of a possible effect,
+        // NOT proof the batch completed. Never replay that operation ID blindly.
+        const priorReceipt = this.lastReceipts.get(taskId) ?? this.taskLifecycle().task(taskId)?.lastReceipt
+        if (operationId && priorReceipt?.tabId === entry.id &&
+            priorReceipt.operationId.startsWith(`${operationId}:`)) {
+          const snap = await this.snapshotForEntry(entry, false)
+          return {
+            ...snap,
+            status: 'uncertain',
+            reason: 'prior_batch_effect_requires_reconciliation',
+            idempotent_replay: true,
+            operation_id: operationId,
+            completed_steps: 0,
+            verified_steps: 0,
+            stopped_at: 0,
+            receipts: [`${priorReceipt.operationId}:${priorReceipt.tabId}:${priorReceipt.revision}`]
+          }
+        }
         const rawSteps = args.steps
         const batchContext: BrowserBatchContext = {
           taskId,
@@ -2595,22 +2614,44 @@ export class WorkstationBrowserRuntime {
           operationId: operationId ?? `op_batch_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
         }
 
+        const startDocumentEpoch = entry.documentEpoch
+        const startUrl = entry.view.webContents.getURL()
+        const readback = async (ref: string | null): Promise<BatchObservation | null> => {
+          try {
+            const observation = await entry.view.webContents.executeJavaScript(batchObservationScript(ref), true)
+            if (!observation || typeof observation !== 'object') return null
+            const record = observation as BatchObservation
+            return typeof record.url === 'string' && typeof record.documentToken === 'string' &&
+              typeof record.found === 'boolean' ? record : null
+          } catch {
+            return null
+          }
+        }
+
         const adapter: BrowserBatchAdapter = {
           checkBefore: async (step, context, _index) => {
             this.assertAgentControl(context.taskId)
             if (entry.view.webContents.isDestroyed() || entry.crashed) {
               throw workstationControllerFault('CONTROLLER_DOWN', 'renderer_process_gone_or_crashed')
             }
-            if (entry.ownerTaskId !== context.taskId) {
+            if (entry.ownerTaskId !== context.taskId || entry.id !== context.tabId) {
               throw workstationControllerFault('NO_BOUND_TAB', 'browser_tab_owner_mismatch')
+            }
+            const owner = this.taskLifecycle().task(context.taskId)
+            if (!owner || (owner.runId && owner.runId !== context.runId)) {
+              throw workstationControllerFault('NO_BOUND_TAB', 'browser_run_owner_mismatch')
+            }
+            if (entry.documentEpoch !== startDocumentEpoch || entry.view.webContents.getURL() !== startUrl) {
+              throw workstationControllerFault('STALE_REF', 'batch_document_changed')
             }
           },
           perform: async (step, _context, _index) => {
+            const before = await readback('ref' in step ? step.ref : null)
             switch (step.kind) {
               case 'click': {
                 const res = await this.clickRef(entry, step.ref, step.anchor)
                 await delay(120)
-                return res
+                return { before, result: res }
               }
               case 'type': {
                 const clear = step.clear !== undefined ? Boolean(step.clear) : !step.append
@@ -2620,24 +2661,38 @@ export class WorkstationBrowserRuntime {
                   anchor: step.anchor
                 })
                 await delay(120)
-                return res
+                return { before, result: res }
               }
               case 'press': {
                 await this.pressKey(entry, step.key)
                 await delay(80)
-                return { key: step.key }
+                return { before, result: { key: step.key } }
               }
               case 'scroll': {
                 await this.scrollEntry(entry, step.direction)
                 await delay(80)
-                return { direction: step.direction }
+                return { before, result: { direction: step.direction } }
               }
             }
           },
-          verifyAfter: async (step, context, index, _result) => {
+          verifyAfter: async (step, context, index, result) => {
             if (entry.view.webContents.isDestroyed() || entry.crashed) {
               return { verified: false, receiptRef: null, uncertaintyReason: 'renderer_crashed' }
             }
+            const after = await readback('ref' in step ? step.ref : null)
+            const before = (result as { before?: BatchObservation | null } | null)?.before ?? null
+            const proof = hasVerifiedBatchEffect(step, before, after)
+            let authorityRetained = true
+            try {
+              this.assertAgentControl(context.taskId)
+            } catch {
+              authorityRetained = false
+            }
+            const taskOwner = this.taskLifecycle().task(context.taskId)
+            const sameOwner = authorityRetained && entry.ownerTaskId === context.taskId &&
+              entry.id === context.tabId && entry.documentEpoch === startDocumentEpoch &&
+              entry.view.webContents.getURL() === startUrl &&
+              Boolean(taskOwner) && (!taskOwner?.runId || taskOwner.runId === context.runId)
             const stepOpId = `${context.operationId}:${index}`
             const rawReceipt: BrowserOwnerReceipt = {
               operationId: stepOpId,
@@ -2662,8 +2717,9 @@ export class WorkstationBrowserRuntime {
             }
             const receiptRef = receipt ? `${receipt.operationId}:${receipt.tabId}:${receipt.revision}` : null
             return {
-              verified: Boolean(receiptRef),
-              receiptRef
+              verified: Boolean(receiptRef) && proof.verified && sameOwner,
+              receiptRef,
+              uncertaintyReason: !sameOwner ? 'batch_owner_or_document_changed' : proof.verified ? undefined : proof.reason
             }
           },
           checkpoint: async (_context, _index, _evidence) => {
