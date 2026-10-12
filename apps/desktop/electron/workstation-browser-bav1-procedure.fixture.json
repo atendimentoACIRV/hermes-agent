@@ -1,0 +1,46 @@
+{
+  "id": "bav1-local-form",
+  "name": "BAV1 Local Form",
+  "site": "127.0.0.1",
+  "intent": "submit one scoped note",
+  "side_effect": "read_write",
+  "version": 1,
+  "lifecycle": "discovered",
+  "scope": {
+    "allowed_hosts": [
+      "127.0.0.1"
+    ],
+    "test_only": true
+  },
+  "steps": [
+    {
+      "action": "navigate",
+      "target": "{site}"
+    },
+    {
+      "action": "type",
+      "target": "note-input",
+      "value": "{note}",
+      "fallback_anchors": [
+        {
+          "type": "testid",
+          "value": "note-input"
+        }
+      ]
+    },
+    {
+      "action": "click",
+      "target": "save-button",
+      "fallback_anchors": [
+        {
+          "type": "testid",
+          "value": "save-button"
+        }
+      ]
+    },
+    {
+      "action": "verify",
+      "expectation": "Saved: {note}"
+    }
+  ]
+}

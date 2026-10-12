@@ -5689,3 +5689,17 @@ unclassified / 0 budget regressions. Exact-head CI remains not GREEN (Actions
 HTTP 422 history + Desktop failures open); this authorization does not relabel
 those gates VERIFIED and does not authorize main merge. Target runtime work
 continues on this branch with RED->GREEN per phase and separate upstream sync.
+
+## 2026-10-12 — BAV-00..05 native automation V1 test-only checkpoint
+- Isolated worktree browser-automation-v1-20261012 created from origin/main; parallel main 34-file dirty state and Playwright C2C/Experience Compiler worktrees left untouched.
+- Real Electron + WebContentsView + Playwright-core CDP on disposable profile: BAV01_CDP_SPIKE_PASS, independent loopback server effects=1. Runtime debugger observed detached immediately after snapshot; no unsupported constant-attachment assumption. No production CDP bypass.
+- BAV03 RED from test harness constructing separate BrowserRuntime: type/click owner ACK but site untouched, 0 effects. GREEN by reusing getWorkstationBrowserRuntime singleton and bearer-auth controller, two parameterized native runs with independent page/server confirmation: BAV03_CONTROLLER_PROCEDURE_PASS, effects=2, controller calls=12, model calls in harness=0.
+- BAV05 RED stale @e refs without a valid semantic anchor; GREEN after testid binding, same fixture performs second run using nonexistent @e refs and exact known anchors. WebProcedure.from_dict fixture parsed lifecycle DISCOVERED; not promoted nor persisted into ProceduralMemory.
+- Python routines 2 passed. JS syntax node --check clean. Full Vitest standard config unavailable due missing @rolldown/plugin-babel in existing deps; NOT CI green. Stage A H079 not qualified for release; no modifications to production runtime.
+
+
+### 2026-10-12 — BAV05 experimental persistent replay
+- Baseline: feat/hermes-browser-automation-v1-20261012 from origin/main a2b56db1bc; isolated test-only files and documentation, production runtime untouched.
+- New RED contract initially failed on absence of canonical persistence. Native authority rejected invented new run_id with 400 CAPABILITY_MISSING. Corrected harness to respect canonical fixture task binding.
+- GREEN test (node --test workstation-browser-bav1-persistence.contract.test.cjs): 1 passed, 0 failed, two fresh Python replays of promoted fixture-scoped procedure, three independently counted local-server effects total; no LLM calls in harness.
+- Gate: H-079 Stage A/CI exact-head unresolved; test evidence is not release certification. No main merge, no second BrowserRuntime, no production Laya validation. Further work: full distinct TaskRun admission, uncertainty/restart fail-closed, Browser integrated UI + dogfood under authority after qualification.
