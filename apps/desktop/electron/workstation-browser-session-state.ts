@@ -61,6 +61,8 @@ export interface BrowserMutationAdmission {
   tabId: string
   action: string
   argumentsDigest: string
+  /** Local owner receipt persisted. This is NOT externally VERIFIED. */
+  acknowledged?: boolean
 }
 
 const MAX_BROWSER_OPERATION_ADMISSIONS = 4096
@@ -71,7 +73,8 @@ function validateAdmission(value: unknown): value is BrowserMutationAdmission {
   for (const key of ['operationId','taskId','sessionId','runId','tabId','action']) {
     if (typeof op[key] !== 'string' || !validIdentifier(op[key])) return false
   }
-  return typeof op.argumentsDigest === 'string' && /^[a-f0-9]{64}$/.test(op.argumentsDigest)
+  return typeof op.argumentsDigest === 'string' && /^[a-f0-9]{64}$/.test(op.argumentsDigest) &&
+    (op.acknowledged === undefined || typeof op.acknowledged === 'boolean')
 }
 
 export interface BrowserSessionStateSnapshot {
@@ -564,8 +567,39 @@ export class BrowserSessionStateFilePersistence {
    * BrowserSessionState authority projection. Never return 'admitted' unless
    * the record was flushed to disk. A match is NOT success or VERIFIED.
    */
-  admitBrowserMutation(identity: BrowserMutationAdmission): 'admitted' | 'reconciliation_required' {
-    if (!validateAdmission(identity)) throw new Error('browser_admission_invalid_identity')
+  /**
+   * Preflight under the same file lock as writes, before a lazy WebContentsView
+   * might implicitly navigate to an old URL.
+   */
+  pendingBrowserMutation(taskId: string, sessionId: string, runId: string): string | null {
+    return this.withExclusiveAdmissionLock(() => {
+      this.loaded = false
+      this.cached = null
+      this.preserveUnsupportedVersion = false
+      const state = this.load()
+      if (!state && this.io.existsSync(this.filePath)) {
+        throw new Error('browser_admission_state_unavailable')
+      }
+      return this.findPendingBrowserMutation(state, taskId, sessionId, runId)
+    })
+  }
+
+  private findPendingBrowserMutation(
+    state: BrowserSessionStateSnapshot | null, taskId: string, sessionId: string, runId: string
+  ): string | null {
+    for (const record of Object.values(state?.operationAdmissions ?? {})) {
+      if (record.taskId === taskId && record.sessionId === sessionId &&
+          record.runId === runId && record.acknowledged !== true) return record.operationId
+    }
+    return null
+  }
+
+  admitBrowserMutation(identity: BrowserMutationAdmission):
+    'admitted' | 'reconciliation_required' | 'blocked_by_prior_uncertain_effect' {
+    if (!validateAdmission(identity) || identity.acknowledged !== undefined) {
+      // Only a persisted owner receipt may acknowledge an admitted operation.
+      throw new Error('browser_admission_invalid_identity')
+    }
     if (this.admissionPersistenceFailed) throw new Error('browser_admission_persistence_unavailable')
     // Atomic create-only marker is a mutual-exclusion lease, NOT a second
     // authority store. On crash it deliberately remains and blocks until
@@ -588,6 +622,11 @@ export class BrowserSessionStateFilePersistence {
           prior[key as keyof BrowserMutationAdmission] !== identity[key as keyof BrowserMutationAdmission]
         )) throw new Error('operation_identity_collision')
         return 'reconciliation_required'
+      }
+      // Admission check + write are within one lock, preventing a different
+      // process from slipping a new ID between preflight and persistence.
+      if (this.findPendingBrowserMutation(current, identity.taskId, identity.sessionId, identity.runId)) {
+        return 'blocked_by_prior_uncertain_effect'
       }
       if (Object.keys(current.operationAdmissions ?? {}).length >= MAX_BROWSER_OPERATION_ADMISSIONS) {
         throw new Error('browser_admission_capacity_reached_reconciliation_required')
@@ -695,10 +734,26 @@ export class BrowserSessionStateFilePersistence {
     }
     const mergedAdmissions = { ...persistedAdmissions }
     for (const [id, identity] of Object.entries(snapshot.operationAdmissions ?? {})) {
-      if (mergedAdmissions[id] && JSON.stringify(mergedAdmissions[id]) !== JSON.stringify(identity)) {
-        throw new Error('operation_identity_collision')
+      const existing = mergedAdmissions[id]
+      if (existing && ['operationId', 'taskId', 'sessionId', 'runId', 'tabId', 'action', 'argumentsDigest'].some(
+        key => existing[key as keyof BrowserMutationAdmission] !== identity[key as keyof BrowserMutationAdmission]
+      )) throw new Error('operation_identity_collision')
+      mergedAdmissions[id] = {
+        ...identity,
+        acknowledged: existing?.acknowledged === true || identity.acknowledged === true || undefined
       }
-      mergedAdmissions[id] = identity
+    }
+    // Persist ACK causally with the corresponding admission. A receipt is not
+    // equivalent to remote postcondition proof; only clears the pre-dispatch
+    // "no receipt after crash" fence.
+    for (const [id, admission] of Object.entries(mergedAdmissions)) {
+      const receipt = snapshot.receipts?.[admission.taskId] ??
+        snapshot.browserTasks.tasks.find(task => task.taskId === admission.taskId)?.lastReceipt
+      if (receipt && receipt.operationId === id && receipt.taskId === admission.taskId &&
+          receipt.tabId === admission.tabId && receipt.action === admission.action &&
+          (admission.runId === 'unbound' || receipt.runId === admission.runId)) {
+        mergedAdmissions[id] = { ...admission, acknowledged: true }
+      }
     }
     const normalized = normalizeBrowserSessionState({
       ...snapshot,

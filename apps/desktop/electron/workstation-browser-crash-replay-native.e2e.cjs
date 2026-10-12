@@ -58,6 +58,17 @@ async function execute() {
   assert.equal(result.reason, 'prior_operation_requires_reconciliation')
   assert.equal(result.idempotent_replay, true)
   assert.equal(runtime.entries.size, 0, 'replay must be fenced before lazy BrowserTask view materialization')
+  // CRASH-NEW-ID: an unrelated operation ID must NOT bypass an older
+  // admission whose external effect occurred before a lost receipt.
+  const later = await runtime.executeControlRequest({
+    ...request,
+    operation_id: 'op-after-uncertain-effect',
+    arguments: { url: base + '/effect' }
+  })
+  assert.equal(later.status, 'reconciliation_required')
+  assert.equal(later.reason, 'prior_operation_requires_reconciliation')
+  const newIdCount = await (await fetch(base + '/count')).json()
+  assert.equal(newIdCount.effects, 1, 'new operation must not redispatch while prior effect uncertain')
   // Restored-tab navigation is asynchronous; observe after it has had time to
   // dispatch rather than only sampling immediately after the replay fence.
   await new Promise(resolve => setTimeout(resolve, 750))

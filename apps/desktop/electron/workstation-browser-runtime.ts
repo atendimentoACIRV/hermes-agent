@@ -2201,7 +2201,7 @@ export class WorkstationBrowserRuntime {
   private admitDurableControllerEffect(
     entry: BrowserEntry, action: string, args: Record<string, unknown>,
     taskId: string, sessionHost: string | null, runId: string | null, operationId: string
-  ): 'admitted' | 'reconciliation_required' {
+  ): 'admitted' | 'reconciliation_required' | 'blocked_by_prior_uncertain_effect' {
     // Retain only a digest of action parameters; never persist DOM, passwords
     // or raw page content in the session-state authority projection.
     const argumentsDigest = crypto.createHash('sha256').update(JSON.stringify(args)).digest('hex')
@@ -2267,7 +2267,24 @@ export class WorkstationBrowserRuntime {
 
     if (mutating.has(action)) {
       this.assertAgentControl(taskId)
+      // Preflight BEFORE binding a task or lazily restoring its tab: the
+      // restoration itself may load an external URL and cause a new effect.
+      const pendingId = this.sessionStatePersistence().pendingBrowserMutation(
+        taskId, sessionHost ?? 'unbound', runId ?? 'unbound'
+      )
+      if (pendingId && pendingId !== operationId) {
+        return {
+          status: 'reconciliation_required',
+          reason: 'prior_operation_requires_reconciliation',
+          blocked_operation_id: pendingId,
+          ...(operationId ? { operation_id: operationId } : {})
+        }
+      }
     }
+    // A single generated ID must cover admission and the corresponding
+    // owner ACK, even when the caller omitted operation_id.
+    const controllerOperationId = operationId ??
+      `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
 
     if (operationId && mutating.has(action)) {
       // Replay must be reconciled BEFORE materializing a lazy BrowserTask view.
@@ -2339,7 +2356,7 @@ export class WorkstationBrowserRuntime {
       if (!this.activeTabId || this.activeTabId === entry.id || (this.preferredTaskId && this.preferredTaskId === taskId)) {
         this.activateTab(entry.id)
       }
-      const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+      const opId = controllerOperationId
       const rawReceipt: BrowserOwnerReceipt = {
         operationId: opId,
         taskId,
@@ -2405,11 +2422,13 @@ export class WorkstationBrowserRuntime {
     if (action === 'browser_navigate') {
       const entry = this.entryForTask(taskId, true, sessionHost, kanbanCardId, runId)!
       const url = normalizeWorkstationBrowserTarget(String(args.url ?? ''))
-      const admittedId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
-      if (this.admitDurableControllerEffect(entry, action, args, taskId, sessionHost, runId, admittedId) !== 'admitted') {
+      const admittedId = controllerOperationId
+      const outcome = this.admitDurableControllerEffect(entry, action, args, taskId, sessionHost, runId, admittedId)
+      if (outcome !== 'admitted') {
         return {
-          status: 'uncertain', reason: 'prior_operation_requires_reconciliation',
-          idempotent_replay: true, operation_id: admittedId
+          status: outcome === 'blocked_by_prior_uncertain_effect' ? 'reconciliation_required' : 'uncertain',
+          reason: 'prior_operation_requires_reconciliation',
+          idempotent_replay: outcome === 'reconciliation_required', operation_id: admittedId
         }
       }
       await entry.view.webContents.loadURL(url)
@@ -2528,13 +2547,14 @@ export class WorkstationBrowserRuntime {
       'browser_press', 'browser_batch_actions'
     ])
     if (guardedControllerActions.has(action)) {
-      const admittedId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
-      if (this.admitDurableControllerEffect(entry, action, args, taskId, sessionHost, runId, admittedId) !== 'admitted') {
+      const admittedId = controllerOperationId
+      const outcome = this.admitDurableControllerEffect(entry, action, args, taskId, sessionHost, runId, admittedId)
+      if (outcome !== 'admitted') {
         const batchReplay = action === 'browser_batch_actions'
         return {
-          status: 'uncertain',
+          status: outcome === 'blocked_by_prior_uncertain_effect' ? 'reconciliation_required' : 'uncertain',
           reason: batchReplay ? 'prior_batch_effect_requires_reconciliation' : 'prior_operation_requires_reconciliation',
-          idempotent_replay: true, operation_id: admittedId,
+          idempotent_replay: outcome === 'reconciliation_required', operation_id: admittedId,
           ...(batchReplay ? { completed_steps: 0, verified_steps: 0, stopped_at: 0, receipts: [] } : {})
         }
       }
@@ -2553,7 +2573,7 @@ export class WorkstationBrowserRuntime {
         const clickResult = await this.clickRef(entry, String(args.ref ?? ''), anchor)
         await delay(220)
 
-        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        const opId = controllerOperationId
         const rawReceipt: BrowserOwnerReceipt = {
           operationId: opId,
           taskId,
@@ -2590,7 +2610,7 @@ export class WorkstationBrowserRuntime {
         const typeResult = await this.typeRef(entry, String(args.ref ?? ''), String(args.text ?? ''), { clear, append, mode, anchor })
         await delay(160)
 
-        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        const opId = controllerOperationId
         const rawReceipt: BrowserOwnerReceipt = {
           operationId: opId,
           taskId,
@@ -2632,7 +2652,7 @@ export class WorkstationBrowserRuntime {
         await this.scrollEntry(entry, String(args.direction ?? 'down'))
         await delay(140)
 
-        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        const opId = controllerOperationId
         const rawReceipt: BrowserOwnerReceipt = {
           operationId: opId,
           taskId,
@@ -2673,7 +2693,7 @@ export class WorkstationBrowserRuntime {
         await this.pressKey(entry, String(args.key ?? ''))
         await delay(120)
 
-        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        const opId = controllerOperationId
         const rawReceipt: BrowserOwnerReceipt = {
           operationId: opId,
           taskId,

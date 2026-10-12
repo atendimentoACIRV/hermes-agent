@@ -33,6 +33,13 @@ test('CRASH-01/07: admission persists before effect and blocks replay after a fr
 test('CRASH-02: operation A cannot replay after B is admitted', () => {
   const { file, owner, identity } = fixture()
   assert.equal(owner.admitBrowserMutation(identity), 'admitted')
+  owner.saveSession([], null, {
+    [identity.taskId]: {
+      operationId: identity.operationId, taskId: identity.taskId, tabId: identity.tabId,
+      runId: identity.runId, browserTaskId: identity.taskId, action: identity.action,
+      revision: 0, safeUrl: null, executedAt: '2026-10-12T12:00:00.000Z'
+    }
+  })
   assert.equal(owner.admitBrowserMutation({ ...identity, operationId: 'op-b' }), 'admitted')
   assert.equal(new BrowserSessionStateFilePersistence(file).admitBrowserMutation(identity), 'reconciliation_required')
 })
@@ -84,5 +91,37 @@ test('CRASH-03: a stale session projection must not erase a different process ad
     new BrowserSessionStateFilePersistence(file).admitBrowserMutation(identity),
     'reconciliation_required',
     'a stale session save cannot permit a prior operation to be admitted again'
+  )
+})
+
+test('P0-02: an unacknowledged operation A blocks a new operation B on the same TaskRun', () => {
+  const { owner, identity } = fixture()
+  assert.equal(owner.admitBrowserMutation(identity), 'admitted')
+  assert.equal(
+    owner.admitBrowserMutation({ ...identity, operationId: 'op-b' }),
+    'blocked_by_prior_uncertain_effect'
+  )
+})
+
+test('P0-02: a persisted matching ACK releases the admission barrier without claiming external verification', () => {
+  const { file, owner, identity } = fixture()
+  assert.equal(owner.admitBrowserMutation(identity), 'admitted')
+  owner.saveSession([], null, {
+    [identity.taskId]: {
+      operationId: identity.operationId, taskId: identity.taskId, tabId: identity.tabId,
+      runId: identity.runId, browserTaskId: identity.taskId, action: identity.action,
+      revision: 0, safeUrl: null, executedAt: '2026-10-12T12:00:00.000Z'
+    }
+  })
+  const fresh = new BrowserSessionStateFilePersistence(file)
+  assert.equal(fresh.admitBrowserMutation({ ...identity, operationId: 'op-b' }), 'admitted')
+  assert.equal(fresh.load()?.operationAdmissions?.['op-a']?.acknowledged, true)
+})
+
+test('P0-02: admission caller cannot fabricate ACK state before dispatch', () => {
+  const { owner, identity } = fixture()
+  assert.throws(
+    () => owner.admitBrowserMutation({ ...identity, acknowledged: true }),
+    /browser_admission_invalid_identity/
   )
 })
