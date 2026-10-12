@@ -1,5 +1,9 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-12 — Playwright C2C: actionability, SPA freshness, native evidence
+
+Base upstream ainda velha, mas maintainer autorizou implementação **isolada**, não integração. Hermes agora possui guardas conservadoras de alvo/overlay/disabled e double-check de autoridade/documento pós-await; cache de extração em SPA passa a exigir revisão de MutationObserver no mundo isolado e faz bypass se iframe/Shadow DOM/observer indisponível; os snapshots relatam PID e RSS renderer separadamente de MAIN no payload interno, filtrado antes de model-facing. E2E **real Electron Windows** de WebContentsView e dados offline/temporários PASS; 159/159 Vitest e Python telemetry 7/7 PASS. Escopo limitado: não fechados restart/iframe/cancellation completo, rAF stable, durable exactly-once, benchmark, full TS typecheck e CI. [Relatório e pendências](../research/playwright-code-to-code-2026-10-12/09-MAINTAINER-EXCEPTION-IMPLEMENTATION-2026-10-12.md).
+
 ## 2026-10-12 — Exceção de Stage A concedida pelo mantenedor (Playwright C2C)
 
 Stage A upstream refresh/pin/seam reconciliation agora é uma **pendência autorizada** para esta trilha. Pode-se implementar localmente C2C-I01–I06 a partir de worktree isolado sem falsificar H-079, mas qualquer promoção/release permanece bloqueada até Stage A verdadeira, CI exact-head, testes de regressão, Electron Windows E2E e revisão de autoridade/privacidade. `BrowserTask`/`TaskRun`/lease são owners obrigatórios; telemetry não é journal de efeitos. Decisão registrada em [CURRENT_STATE](CURRENT_STATE.md) e jornal de engenharia.

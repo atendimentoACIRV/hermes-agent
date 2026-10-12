@@ -1,5 +1,9 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-12 — Playwright C2C: E2E Electron real e correções locais
+
+Em branch isolada `feat/playwright-c2c-kits-20261012`, commits `1997d1cbf4` harness Native Electron, `9f8b4740d8` actionability/ref/lease/document checks, `93186e4b44` cache SPA MutationObserver e `e152603402` renderer PID/RAM com privacy whitelist. **RED→GREEN reais**: overlay interceptando clique, takeover após target await, texto SPA alterado sem childElementCount variar e métrica renderer ausente. Testes: 18 arquivos/159 Vitest PASS, 7 Python isolated PASS, harness Windows Electron real PASS. **Partial** I01 (restart cross-process pendente), I02 (rAF stable e semântica plena), I04 (iframe/OOPIF), I05 (provider costs/traces); **I06 durable journal NOT STARTED**. Typecheck Electron full encontrou erro fora do diff em `electron/git-review-ops.test.ts(124,5)` (`simple-git` não-callable). Stage A H-079 com exceção somente local, **não** release. [Report](../../research/playwright-code-to-code-2026-10-12/09-MAINTAINER-EXCEPTION-IMPLEMENTATION-2026-10-12.md).
+
 ## 2026-10-12 — Autorização mantenedor para diferir Stage A Playwright C2C
 
 **PASS_WITH_AUTHORIZATION / NOT_RELEASE_QUALIFIED.** O mantenedor expressamente mandou marcar como pendência a sincronização upstream, seleção do pin e reconciliação de seams; permitiu avançar com testes e patches técnicos em worktree separado sem sincronizar. Isto substitui **apenas o bloqueio de entrada para implementação local**, não transforma baseline antiga em qualificada e não autoriza merge/push/release nem suprime CI/E2E. Estado anterior: `main@a2b56db1`, upstream local `835c3dd0` com 245 commits à frente do pin ancestral `66605471`. Retomar Stage A antes de promoção, conforme [remediação](../../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md).

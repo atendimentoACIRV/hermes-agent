@@ -1,5 +1,9 @@
 # Workstation roadmap
 
+## 2026-10-12 — Playwright C2C kits: execução parcial sob exceção
+
+**I01 PARTIAL** native Electron harness PASS; **I02 PARTIAL** ref/overlay/disabled e takeover recheck; **I03 LOCAL GREEN** MutationObserver revision no cache; **I04 PARTIAL** epoch/lease fence, OOPIF cancel pendente; **I05 PARTIAL** renderer PID/RAM em telemetria; **I06 NOT STARTED** journal durable exactly-once. Provas locais: 18/159 Vitest, 7/7 Python telemetria, E2E Electron offline PASS; full typecheck não green (`electron/git-review-ops.test.ts:124`, simple-git). **Stage A permanece PENDENTE com PASS_WITH_AUTHORIZATION somente implementação, NOT_RELEASE_QUALIFIED**, gates exatos antes de main. [Relatório](research/playwright-code-to-code-2026-10-12/09-MAINTAINER-EXCEPTION-IMPLEMENTATION-2026-10-12.md).
+
 ## 2026-10-12 — Playwright C2C Stage A: PENDÊNCIA AUTORIZADA / próxima etapa I01
 
 **PENDENTE (PASS_WITH_AUTHORIZATION somente desenvolvimento).** Por ordem explícita do mantenedor, postergada a sincronização com upstream, seleção do próximo pin e reconciliação das costuras. A exceção autoriza **iniciar I01–I06 isoladamente sem Stage A agora**, mas exige fechar Stage A/H-079/CI exact-head e Windows native E2E **antes** de qualquer release/merge. Base congelada `main@a2b56db1`, upstream local `835c3dd0`, ancestral `66605471`; branch isolada `feat/playwright-c2c-kits-20261012`. Não sobrescrever UX/browser Hub/right rail em desenvolvimento por outros agentes. Decisão canônica também em [CURRENT_STATE](context/CURRENT_STATE.md).
