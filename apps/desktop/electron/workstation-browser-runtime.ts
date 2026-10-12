@@ -69,6 +69,11 @@ import {
   normalizeExtractedItem
 } from './workstation-browser-extract-cache'
 import {
+  domRevisionProbeScript,
+  isSafeDomRevisionEvidence,
+  type DomRevisionEvidence
+} from './workstation-browser-dom-revision'
+import {
   applySnapshotDelta,
   diffSnapshot,
   type SnapshotFrame,
@@ -3849,6 +3854,17 @@ export class WorkstationBrowserRuntime {
     const limit =
       typeof args.limit === 'number' && Number.isFinite(args.limit) ? Math.min(100, Math.max(1, args.limit)) : 20
 
+    // A URL/title/child-count fingerprint is insufficient for live SPAs.
+    // The isolated-world observer returns structural counters only.
+    const readDomRevision = async (): Promise<DomRevisionEvidence | null> => {
+      try {
+        const observed = await wc.executeJavaScriptInIsolatedWorld(999, [{ code: domRevisionProbeScript() }])
+        return isSafeDomRevisionEvidence(observed) && observed.cacheable ? observed : null
+      } catch {
+        return null
+      }
+    }
+    const beforeRevision = await readDomRevision()
     // Compute document fingerprint and query digest for safe caching
     let documentFingerprint: string | null = null
     try {
@@ -3870,7 +3886,7 @@ export class WorkstationBrowserRuntime {
 
     const queryDigest = computeQueryDigest(args)
     const scope: ExtractScope | null =
-      documentFingerprint && entry.ownerTaskId
+      beforeRevision && documentFingerprint && entry.ownerTaskId
         ? {
             profileId: this.browserSession?.storagePath || 'default',
             taskId: entry.ownerTaskId,
@@ -3878,7 +3894,7 @@ export class WorkstationBrowserRuntime {
             url: wc.getURL(),
             documentEpoch: entry.documentEpoch,
             mutationRevision: entry.mutationRevision,
-            documentFingerprint: String(documentFingerprint),
+            documentFingerprint: `${documentFingerprint}::dom-${beforeRevision.generation}-${beforeRevision.revision}`,
             queryDigest
           }
         : null
@@ -3886,10 +3902,12 @@ export class WorkstationBrowserRuntime {
     if (scope) {
       const cached = this.extractCache.get(scope)
       if (cached) {
-        return {
-          ...cached,
-          cached: true
+        // A mutation between lookup and response must never serve a stale hit.
+        const atReturn = await readDomRevision()
+        if (atReturn && atReturn.generation === beforeRevision!.generation && atReturn.revision === beforeRevision!.revision) {
+          return { ...cached, cached: true }
         }
+        this.extractCache.invalidateTab(entry.id)
       }
     }
 
@@ -3935,7 +3953,10 @@ export class WorkstationBrowserRuntime {
     }
 
     if (scope && finalResult.success) {
-      this.extractCache.set(scope, finalResult)
+      const afterRevision = await readDomRevision()
+      if (afterRevision && afterRevision.generation === beforeRevision!.generation && afterRevision.revision === beforeRevision!.revision) {
+        this.extractCache.set(scope, finalResult)
+      }
     }
 
     return finalResult
