@@ -5689,3 +5689,16 @@ unclassified / 0 budget regressions. Exact-head CI remains not GREEN (Actions
 HTTP 422 history + Desktop failures open); this authorization does not relabel
 those gates VERIFIED and does not authorize main merge. Target runtime work
 continues on this branch with RED->GREEN per phase and separate upstream sync.
+
+
+## 2026-10-12 — Document-only strategic freeze of Kanban / Browser authority work
+
+**Authorization and intent:** maintainer is changing effort direction; preserve knowledge and resume point, do not continue implementation. Created an isolated documentation branch from `main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. No runtime, PR merge, Kanban DB or human-handoff real mutation; main checkout's uncommitted work remains untouched.
+
+**Provenance:** 4,458-line exported 11–12/10 history (SHA-256 `f429972fb70f97af5131bb81df274edbfb9614a89d050f077224ea5aa4f0251b`); cross-checked actual GitHub PR metadata for #70–#77/#79–#83 and specific P0 docs in PR #83. Note: older historical summaries and linked private sessions are not substitutes for direct independent reading of each original run.
+
+**Key findings preserved:** D-045 admission (conversation/point_action/durable_task); effect taxonomy BOA-001 and Rails 2/3; fail-closed authority/fence, one TaskRun per claim and per review; Kanban-04 handoff JSON concurrency and lost-ACK native proof; 106 historical deleted cards + 55 orphaned handoffs remain dry-run-only; Creative #77/#81, One-Click #70, Experience #82 and Browser benchmark gaps. Exact gates KANBAN-01..07 are documented in dossiê and Known Issues.
+
+**Last implementation checkpoint observed:** #83 OPEN/DRAFT, HEAD `22498a09db`, base #80 (stack #79→#76). Historical execution reports 34 Python PASS, 58 Vitest PASS and 4 native E2E PASS; no exact-head CI statuses or workflow runs returned. **Not done:** real HANDOFF to Desktop UI approval + typed external readback + safe continuation with no mutating replay, nor packaged release. Next code seam if and only if resumed: `workstation/integrations/hermes/tool_batch_admission.py::workstation_tool_batch_admission()` through `agent/turn_tool_round.py` / `run_agent.py` to IPC/UI, `VerificationContract/evaluate_verification()`.
+
+**Artifacts:** `HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md`, `HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md`, `HERMES_WORK_PR_RECONCILIATION_2026-10-12.md`, `HERMES_WORK_SOURCE_EVIDENCE_MANIFEST_2026-10-12.md`, `HERMES_WORK_DECISION_RATIONALE_2026-10-12.md`, and `HERMES_WORK_RESUME_PROMPT_2026-10-12.md`. Canonical KI-028..KI-043 registered with technical status and independent PAUSED_BY_STRATEGY execution flag. Resume only by explicit future decision, preserving release/authority gates.
