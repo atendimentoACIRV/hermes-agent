@@ -100,3 +100,62 @@ Prove RED for the first two absent-correlation tests at `f46454706...` (before s
 ## Next-session mandatory handoff
 
 If all eight gates are not proven, send one **standalone, user-copyable continuation prompt in Portuguese** with exact latest worktree/branch/HEAD/PR, changed paths, tests with actual counts, confirmed vs hypothetical root cause, exact next failing test and source symbol, ordered remaining steps, authority invariants, no merge without approval, and the same recursive handoff requirement. Never say to 'continue from the previous conversation'. Do not promise future background work.
+
+
+## 2026-10-12 — Windows execution / PR #88 continuation
+
+**This section supersedes the older 'Windows unavailable / zero tests' status for the new PR #88 worktree. Earlier records remain historical.**
+
+### Device, worktree and source state
+
+- Remote Desktop Commander device `DESKTOP-3NA47UH` answered real ping and shell commands.
+- Root checkout `C:\Github\hermes-agent` remains on `fix/hermes-oneclick-lock-startup-20261011@9fffa7f3ffcc2c50774654c271fe25e92ce459e8`, with numerous user-owned tracked/untracked changes. **Root not edited.**
+- Historical #83 isolated worktree verified at `C:\Github\hermes-agent-kanban-browser-authority-20261012@22498a09db0802c06125f5a5ec4cb5039da9b98f`, untouched.
+- Clean isolated PR #88 worktree created: `C:\Github\hermes-agent-mvp-kanban-browser-superseded-20261012`. Branch `fix/mvp-kanban-browser-superseded-20261012`; remote fetched at `c2dc3ef13c8c67d5d23ee5c2bfe8d0de91dbb8eb`.
+- Python interpreter with pytest: `C:\Github\hermes-agent-p0-kanban-effects\.venv\Scripts\python.exe` (pytest 9.1.1). Root `.venv` has no pytest.
+- Test `HERMES_HOME` directories under `C:\Temp\hermes-mvp-browser88-*`, never actual user home. Ignored local directory junctions from new worktree to preinstalled root/desktop `node_modules`, no source changes.
+- Local `git merge-base HEAD upstream/main` originally returned `66605471e9f0b0832abbefaf625ce08e948ca540`. This is not a full current upstream-first qualification; no upstream sync/merge or H079 release certification was performed.
+
+### Verified RED→GREEN and code regression
+
+- **RED genuinely reproduced** on detached temporary worktree `C:\Temp\hermes-pr88-red-f464` at test-only `f46454706af6a2fd7e9ef572e8181e8b08291069`:
+  `pytest -q workstation/tests/test_p0_turn_correlation_authority.py` → **2 failed in 4.56s**, both due to reuse of a prior TaskRun when correlation was absent.
+- **GREEN at PR #88 code**: `pytest -q workstation/tests/test_p0_turn_correlation_authority.py workstation/tests/test_browser_session_run_isolation_p0.py` → **12 passed in 6.92s**.
+- Larger initial Python regression exposed **two pre-existing test-fixture assumptions**, not two reasons to relax the runtime: `test_dispatch_forwards_kanban_and_run_identities` and `test_adaptive_browser_loop_uses_one_task_despite_repeatability` in `test_browser_workstation_route.py` used invented `card-123/run-456` and `card-test/run-test` bindings. Their old expectations now correctly fail closed as STALE_RUN.
+- Replaced those test-only bindings with real canonical SQLite task/run claims in isolated temporary HERMES_HOME; preserved tested sessionless legacy env binding and multi-action BrowserTask behavior. Fixed three existing test-file Ruff hook warnings (unused noqa twice and unused server binding).
+- New test-only commit **`a942a14dd577619913a66c3f040abb8992a01dff`**, pushed to PR #88. No production authority change in this commit. Pre-commit lint: PASS.
+- **Full selected Python regression on code SHA `a942a14dd577`: 88 passed in 21.69s, 0 failed, exit 0.** Files: `test_p0_turn_correlation_authority.py`, `test_browser_session_run_isolation_p0.py`, `test_smart_task_admission.py`, `test_p0_kanban_intent_semantics.py`, `test_p0_concurrent_task_admission.py`, `test_p0_multiprocess_task_admission.py`, `test_p0_force_task_authority.py`, `test_p0_completion_proof_boundary.py`, `test_denied_mutation_handoff_recovery.py`, `test_p0_handoff_concurrent_owner.py`, `test_p0_uncertain_mutation_readback.py`, `test_browser_workstation_route.py`, `test_kanban_journal.py`.
+
+### Real source-built native Electron + Chromium
+
+- In isolated PR #88 worktree, `apps/desktop/node scripts/build.mjs`: **exit 0**, build stamp `a942a14dd577` (source-built, not Windows packaged installer).
+- Real Electron + Chromium Playwright P0 suite, with `HERMES_DESKTOP_PYTHON=C:\Github\hermes-agent-p0-kanban-effects\.venv\Scripts\python.exe` and isolated HERMES_HOME:
+  `playwright test workstation-headless-load --grep P0: --reporter=line` → **4 passed in 1.4m, exit 0**.
+  Covered real two-session native Browser takeover / HTTP 409 / separate B session / release and resumption; actual UI Take Control and Release Control buttons; native mutation readback after lost controller ACK; human lease recovery across cold Electron restart.
+- Separate H013 source-built native smoke:
+  `playwright test workstation-headless-load --grep keeps.four.native.Browser.tasks --reporter=line` → **1 passed in 23.6s, exit 0**, four BrowserTasks independently aligned across controller and renderer IPC.
+- These are **real Electron+Chromium with mock inference and deterministic local pages**. They do NOT certify a packaged Windows installer, five successive real agent prompts, native human approval→typed readback→TaskRun continuation, or failure recovery of the user-reported session.
+- PR #88 code SHA `a942a14dd577619913a66c3f040abb8992a01dff` returned **zero combined statuses and zero PR-triggered GitHub workflow runs**. Exact-HEAD CI is missing.
+
+### Evidence from user dogfood incident
+
+Read-only inspection of the local original `workstation/dogfood/dados/Sessões Hermes/abrir-google-20261012.json`, 66 messages (no private data copied to commits), confirms:
+- First user-visible `Error executing tool 'browser_exec': SUPERSEDED` at message #23 following a post-dispatch navigation timeout.
+- Later `browser_navigate`, `terminal`, `write_file`, and generic `tool_call` return `SUPERSEDED`, while some browser snapshots were earlier recoverable.
+- The exported tool results contain only wrapped exception text (e.g., `Error executing tool 'terminal': SUPERSEDED`), **not a Python stack trace, emitting module or ownership-invalidation reason**.
+- This narrows focus to shared agent/session/tool execution authority; it does not prove the exact emitter. Do not promote the absent-turn-correlation fix to a fully proven production remedy without live reproduction.
+- Temporary privacy-sanitizing diagnostics located at `C:\Temp\mvp88-log-parse.py` and `C:\Temp\mvp88-superceded-context.py`, outside Git.
+
+### Open gates / next exact work
+
+- **P0-1 partially validated**: concrete authority bugs are regression-tested and 88 Python tests pass, but ten real UI prompts/one card CAS acceptance is not proven as product workflow.
+- **P0-2 OPEN**: reproduce five successive **real agent** Google/search/YouTube prompts plus timeout, chat switch, Browser open/close and unrelated terminal/write_file. Trace the exact emitting exception owner/class, invalidation event, session/turn correlation, TaskRun and BrowserTask owner. Run a failing deterministic regression **before** further production changes.
+- **P0-3 OPEN**: real native human approval via renderer/IPC, one-time handoff consumption, independent *typed* readback and resumed actual TaskRun without repeating a prior mutation. Existing native 409 / lost-ACK tests are components, not this integrated workflow.
+- **P0-4 PARTIAL**: source-built native tests PASSED (4+1). Exact-HEAD GitHub CI, packaged Windows qualification and original multi-prompt dogfood remain missing.
+- **Eight full MVP product acceptance gates: NONE fully proven yet**. Do not claim MVP QUALIFIED, release, or merge.
+- Documentation-only commit containing this section will move HEAD past `a942a14dd577`; next session MUST refresh/confirm actual head and distinguish code SHA from documentation SHA. Re-run exact-HEAD acceptance when qualifying.
+- Follow upstream-first H-079 pin/baseline checks; no unjustified upstream merge or auto-restore of historical Kanban. No merged branch or actual user data mutation.
+
+### Mandatory next handoff
+
+Start from the updated PR #88 HEAD, preserve the dirty root/other agents, continue with the exact incident reproduction and native handoff implementation, and return a new standalone recursive Portuguese continuation prompt with explicit tested vs untested gates if interrupted.
