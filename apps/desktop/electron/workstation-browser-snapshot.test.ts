@@ -138,10 +138,11 @@ describe('OPT-02 Accessibility Tree Snapshot Provider', () => {
             url: 'https://example.com/app',
             title: 'Test App',
             text: 'Hello shadow world',
-            totalTextChars: 18
+            totalTextChars: 18,
+            documentToken: 'stable-doc'
           }
         }
-        return true
+        return { url: 'https://example.com/app', documentToken: 'stable-doc' }
       }
     } as any
 

@@ -99,6 +99,14 @@ export async function tryAccessibilitySnapshot(
   if (wc.isDestroyed()) return null
 
   try {
+    // Capture document identity before the AX command. SPA/full reloads can
+    // change the document while CDP backend nodes are being resolved.
+    const documentBefore = (await wc.executeJavaScript(
+      `(function () { /* __HERMES_AX_DOCUMENT_IDENTITY__ */
+        return { url: location.href, documentToken: String(performance.timeOrigin) };
+      })()`, true
+    )) as { url?: string; documentToken?: string }
+    if (!documentBefore?.url || !documentBefore?.documentToken) return null
     await cdp('Accessibility.enable')
     const tree = (await cdp('Accessibility.getFullAXTree', { depth: -1 })) as { nodes?: AXNode[] }
     const nodes = tree?.nodes
@@ -200,10 +208,16 @@ export async function tryAccessibilitySnapshot(
       `({
         url: location.href,
         title: document.title || '',
+        documentToken: String(performance.timeOrigin),
         bodyText: String(document.body && document.body.innerText || '').replace(/\\u0000/g, ''),
       })`,
       true
-    )) as { url: string; title: string; bodyText: string; totalTextChars?: number }
+    )) as { url: string; title: string; bodyText: string; documentToken?: string; totalTextChars?: number }
+
+    if (docMeta.url !== documentBefore.url ||
+        !docMeta.documentToken || docMeta.documentToken !== documentBefore.documentToken) {
+      return null
+    }
 
     const rawText = docMeta.bodyText || ''
     const text = rawText.slice(0, maxTextChars)

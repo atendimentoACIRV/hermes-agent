@@ -9,7 +9,8 @@ function fakePage() {
     executeJavaScript: async () => ({
       url: 'https://example.test/app',
       title: 'Fixture',
-      bodyText: 'A button'
+      bodyText: 'A button',
+      documentToken: 'same-fixture-document'
     })
   } as any
 }
@@ -122,4 +123,32 @@ test('AX snapshots never reassign an existing ref when dynamic elements replace 
   assert.equal(restored?.elements[0].ref, first?.elements[0].ref)
   const refMap = (pageWindow.__hermesWorkstationRefs as { byRef: Map<string, unknown> }).byRef
   assert.equal(refMap.get(first!.elements[0].ref), elements.get(101))
+})
+
+test('BROW-N2: AXTree snapshot fails closed if document changes during node mapping', async () => {
+  let epoch = 'before'
+  const wc = {
+    isDestroyed: () => false,
+    executeJavaScript: async (source: string) => {
+      if (source.includes('__HERMES_AX_DOCUMENT_IDENTITY__')) {
+        return { url: 'https://example.test/spa', documentToken: epoch }
+      }
+      return { url: 'https://example.test/spa', title: 'SPA', bodyText: 'Changed', documentToken: epoch }
+    }
+  } as any
+  const cdp = async (method: string, params: Record<string, any> = {}): Promise<any> => {
+    if (method === 'Accessibility.getFullAXTree') {
+      return { nodes: [{ nodeId: 'n', role: { value: 'button' }, backendDOMNodeId: 7 }] }
+    }
+    if (method === 'DOM.resolveNode') {
+      epoch = 'after'
+      return { object: { objectId: 'id7' } }
+    }
+    if (method === 'Runtime.callFunctionOn') {
+      return { result: { value: { ref: '@e1', tag: 'button', role: 'button', label: 'Old', disabled: false } } }
+    }
+    return {}
+  }
+  const result = await tryAccessibilitySnapshot(wc, cdp, false)
+  assert.equal(result, null, 'cannot combine AX nodes from old document with new DOM metadata')
 })
