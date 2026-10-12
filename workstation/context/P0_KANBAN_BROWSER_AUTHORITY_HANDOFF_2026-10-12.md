@@ -37,3 +37,13 @@ From the **root worktree with existing user UI changes**, executed:
 Result: **1 PASSED (54.9s)**. This launched the real headless Electron runtime with a mock inference backend and deterministic loopback pages, navigated four BrowserTasks with distinct session IDs, and verified resource identity across authenticated controller and renderer IPC. This is stronger than unit tests, but uses the **root UI and backend**, not the stacked PR #83 branch, does not involve packaged Electron click events, and does not test human takeover→release→agent resume/cold restart. No real external services or user Kanban data were modified.
 
 For qualification, reproduce the same H013 fixture on the integrated candidate built from the stacked PR and extend a bounded native scenario covering safe manual takeover, release, switching chats and valid run continuation, with explicit failure diagnosis rather than loosening fences.
+
+
+## P0 concurrent admission closed (post-Electron headless E2E)
+
+An additional RED→GREEN gate was completed **after** the initial PR #83 commit.
+
+- Reproducer `workstation/tests/test_p0_concurrent_task_admission.py`: two threads and distinct correlation IDs simultaneously promote the same durable objective in one session. Previous behavior yielded two different `t_*` task IDs; a second request for a blocked objective also created a duplicate. RED **2 failures / 1 pass**.
+- Fix: `workstation/kanban.py::WorkstationKanbanBridge.promote_request_if_multistep` now performs `BEGIN IMMEDIATE` and canonical unfinished-work lookup **inside the same SQLite write transaction that creates the task**, solely for `defer_execution=True`. It reuses an existing `triage|todo|ready|running|blocked|scheduled` task instead of cloning it or inventing a new TaskRun. It does not reissue the TASK_CREATED journal event when reusing an existing task. Completed tasks remain requestable again. Does not add any new state owner or per-prompt LLM classifier. GREEN **3 passed / 0 failed**.
+- This is a two-thread test against shared SQLite; **a separate multi-process cold restart/worker ownership test is still required** before production qualification. Exact-head regression suite started as an additional check.
+- Before claiming all P0 gates green, confirm the final output of the six-suite regression and the current PR/head, plus perform native packaged Electron takeover→release→agent resume/restart. No historic Kanban user data was edited.

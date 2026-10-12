@@ -212,6 +212,21 @@ class WorkstationKanbanBridge:
         clean_title = (title or prompt.strip().split("\n")[0])[:80]
         claimed_run_id = None
         with self.get_connection() as conn:
+            if defer_execution:
+                # The caller's preflight is a separate read: two workers can
+                # observe no task and both create. Serialize the admission at
+                # the canonical SQLite owner across turns and processes.
+                conn.execute("BEGIN IMMEDIATE")
+                row = conn.execute(
+                    "SELECT id FROM tasks WHERE session_id=? AND body=? "
+                    "AND created_by='workstation' "
+                    "AND status IN ('triage','todo','ready','running','blocked','scheduled') "
+                    "ORDER BY created_at DESC, id DESC LIMIT 1",
+                    (session_id, prompt),
+                ).fetchone()
+                if row is not None:
+                    conn.commit()
+                    return str(row[0])
             task_id = kanban_db.create_task(
                 conn,
                 title=clean_title,
