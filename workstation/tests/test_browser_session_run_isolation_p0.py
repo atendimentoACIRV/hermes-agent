@@ -101,6 +101,9 @@ def test_nonexistent_or_incomplete_explicit_binding_fails_closed(
 ):
     """Unverifiable explicit run/card binding must not reach Electron."""
     monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    # Initialize only the isolated test database, never the user's Kanban.
+    with WorkstationKanbanBridge().get_connection():
+        pass
     with pytest.raises(bw.WorkstationBrowserError) as err:
         bw._dispatch(
             "browser_snapshot", {}, session_id="chat-a",
