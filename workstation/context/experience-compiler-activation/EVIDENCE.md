@@ -87,3 +87,20 @@ Status vocabulary: PASS, FAIL, SKIPPED, NOT RUN, BLOCKED, INCONCLUSIVE. Never in
 - H080B paired: `test_real_browser_readback_validates_and_promotes_compiled_capability` **2 passed, 24 deselected in 73.59s**, exit 0, scratch log `.ec04_prestate_final_h080b.log`.
 - Owner factory: **7 unit tests PASS**. Laya vendor/real-contract/routing: **10 passed 1 skipped**, source pinned 0.3.23. Ruff current edited files PASS.
 - Native hooks: commit 40f8f82a66 PASS; commit c3f87a84860615f2086f17191921605068c6932c PASS. Do not interpret absence of PR-head CI runs as green.
+
+## 2026-10-12 — Owner-created witnessed filesystem proof
+- RED: 2 real OperationalKernel/DurableTaskStore failures: filesystem precondition observes wrong path due ignored base_dir, and no prestate receipt emitted. GREEN: both pass, original first green 2 tests and 29 targeted tests covering existing compiler/kernel after authority guard.
+- RED: learned durable filesystem effect executes with no primitive_admission (1 failure). GREEN: missing admission is denied, original 6 tests after change pass.
+- RED: operator cancels running durable plan after prestate but before dispatch (1 failure). GREEN: second owner admission and canonical plan/item check; 10/10 owner tests PASS.
+- RED: real fs_hash verifier VERIFIED but corpus query during still-open two-item TaskRun returns [] (1 failure). GREEN: persist hash-only independent readback artifact linked to verification receipt; direct test PASS.
+- RED: prestate resource A plus poststate fs_hash resource B wrongly captures VERIFIED_SUCCESS (1 failure). GREEN: verified post-readback resource must match witnessed prestate resource; 35 focused tests PASS in 38.93s, Ruff PASS.
+- Earlier full EC-03/04 safety 65 PASS (169.88s) before later postreadback binding change. New exact final full regression .ec04_prod_full_safety_final.log running (record outcome when complete), H-080B .ec04_prod_h080b_final.log running. Current owner 7 unittest PASS; ruff and git diff --check PASS.
+- Important: these prove a real intermediate hash-verified sample before workplan completion but NOT Laya decision, candidate, adoption, DIRECT or VERIFIED_REUSE.
+
+## Final EC-04 producer tests — exact outcomes
+- Command: uvx --offline pytest -q -o addopts='' workstation/tests/test_ec04_production_prestate.py workstation/tests/test_online_compilability_safety.py workstation/tests/test_progressive_verified_gate.py workstation/tests/test_progressive_experience_capture.py workstation/tests/test_run_local_browser_effect_authority.py --tb=short.
+- Result **68 passed in 207.98s**, exit 0, .ec04_prod_full_safety_final.log. H080B original 2 PASS/24 deselected in 27.19s, .ec04_prod_h080b_final.log. Separate 35 targeted PASS, native owner factory 7 PASS, Ruff PASS.
+- No measured provider/token savings, no live Laya checkpoint or DIRECT verification, no exact-head Actions run. Release HOLD.
+
+## Commit qualification
+- d3c171c3ef78efb2c3c025af00938bdd6694ddc9: tested/committed code (4 files). Native Lefthook PASS on second attempt, no LEFTHOOK bypass. First hook failed RUF059 36 unused unpackings in new test; fixed only in test_ec04_production_prestate.py by Ruff --select RUF059 --fix --unsafe-fixes, inspected patch, narrow 23 PASS after correction.

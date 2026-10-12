@@ -5713,3 +5713,9 @@ continues on this branch with RED->GREEN per phase and separate upstream sync.
 ## 2026-10-12 — Latest EC-03/04 evidence and publication
 - Exact code commits on isolated PR #82 branch: 40f8f82a663152bcbade0fea809352973edd1dc7 and c3f87a84860615f2086f17191921605068c6932c, Lefthook native lint PASS.
 - Full regression after conservative witnessed-prestate gate: **56 PASS in 221.83s**. H080B native pair 2 PASS; owner 7 PASS, Laya focused 10 PASS /1 SKIPPED. Release authority and CI exact-head remain HOLD, no main merge.
+
+## 2026-10-12 — EC-04 real scoped prestate, hash readback and intermediate corpus
+- Production owner RED→GREEN: wrong filesystem observed from process CWD instead of step.base_dir; independent prestate missing before dispatch. Fixed within existing OperationalKernel (no parallel execution owner).
+- Scope/lease negatives: missing admission, cancelled plan, foreign RunId, scope escape, restart after dispatch marker, revocation between prestate and dispatch. Scoped single fs_write only; no broad authority grant.
+- Real fs_hash verifier RED: VERIFIED result but no VERIFIED_SUCCESS experience due lack of persisted readback ref. GREEN: hash-only canonical receipt; positive unfinished TaskRun sample in corpus, second item PENDING. Cross-resource proof laundering RED→GREEN, rejected.
+- Local focused 35 PASS after proof; larger exact-HEAD regression and H080B to be confirmed; Laya direct/checkpoint and release qualification still HOLD.

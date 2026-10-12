@@ -89,3 +89,18 @@ Before ending update these files, git status, exact commit SHA, test outputs and
 - **Fresh full safety regression after prestate proof**: 56 passed in 221.83 seconds, exit 0. Log .ec04_prestate_final_safety.log (intentionally untracked). H080B after proof change 2 passed/24 deselected in 73.59 sec, exit 0. Owner tests 7 passed; Laya pinned 10 passed 1 skipped. Ruff PASS.
 - All substantive local changes are staged for publication through code commits. Final documentation commit may follow. PR #82 remains DRAFT and must NOT be merged.
 - No qualification of native Electron live effects, DIRECT real model checkpoint, full early-capture producer/verified same-run adoption, or exact-head CI. EC-13/14 HOLD.
+
+## 2026-10-12 — EC-04 partial real producer and verified intermediate sample
+- Base HEAD 7d85ffdf627eeb0f5e352bcffd203007607e6916 on isolated feat/experience-compiler-real-reuse-20261011. PR #82 DRAFT, no merge. Refresh HEAD after local commits.
+- Filesystem observer now uses _resolve_path(path, base_dir) for filesystem/composite. A real DurableTaskStore (SQLite) test reproduces the original wrong-path precondition and its correction.
+- Single-step scoped fs_write on the existing OperationalKernel, with callable primitive_admission and matching durable plan/item, persists workstation.operational_prestate_readback.v1 before effects. Rechecks admission + durable plan/item after prestate. Cross-run, cancelled plan, missing owner admission, path escape, and restart with uncertain dispatch marker must fail closed.
+- For fs_hash/fs_stat only, independent owner readback is persisted without raw content and referenced by canonical verifier. A real filesystem hash verifier produces VERIFIED_SUCCESS in rehydrated ExperienceCorpus while second durable work item remains PENDING. Cross-resource prestate/poststate chains rejected.
+- Important limitation: proof producer is currently scoped to one fs_write step and a supplied existing primitive_admission callback; no proof of native Browser/Electron authority and no end-to-end live Laya or verified reuse. Do NOT declare EC-04 globally complete.
+- Local scratch .ec*.log files remain untracked. Original checkout untouched. H-079/H-081/H-082 exact-head gates hold.
+
+## Final focused qualification on 2026-10-12
+- Full combined owner/EC-03/EC-04 regression after resource-binding fix: **68 PASS in 207.98s**, exit 0, .ec04_prod_full_safety_final.log local untracked. H080B native pair **2 PASS, 24 deselected in 27.19s**, exit 0, .ec04_prod_h080b_final.log. Owner factory 7 PASS. Ruff default PASS, git diff --check PASS.
+- Complete live Laya and DIRECT offer/adopt/VERIFIED_REUSE remain NOT RUN/HOLD. PR #82 draft, no merge.
+
+## Código EC-04 publicado localmente
+- Novo commit de código d3c171c3ef78efb2c3c025af00938bdd6694ddc9, hook Lefthook PASS; primeiro hook recusou 36 avisos RUF059 de unpacked vars em teste novo, corrigidos com Ruff fix restrito ao arquivo novo; replay focused 23 PASS (16.42s), hook segundo PASS sem bypass. O próximo commit documental e GitHub PR head devem ser verificados.

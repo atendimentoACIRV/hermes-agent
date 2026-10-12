@@ -2944,3 +2944,9 @@ Native regression at bb1888976e: existing headless-load contract passed with fou
 - EC-03 recognized Trello open-site command explicitly budgets CALL(browser.navigate,trello.com); read authority and wrong-host denied. Local contract tests 10 PASS and H080B 2 PASS; native lease/restart/H-082 release remains HOLD.
 - EC-04 formal capability labels now flow into progressive capture; no arbitrary replay parameters are inferred. A verified poststate alone carries no causality; prestate delta requires independent persisted and scope-bound prestate receipt. Still missing native producer, actual in-flight Laya mined offer and VERIFIED_REUSE. Do not count local unit tests as productive release.
 - EC-05 locked Laya v0.3.23 three focused suites 10 PASS 1 SKIPPED; live checkpoint/DIRECT/CI HOLD. EC-06+ not completed. PR #82 draft; no merge.
+
+### 2026-10-12 — EC-04 witnessed filesystem capture (draft PR #82)
+- OperationalKernel filesystem/composite state observation now resolves scoped base_dir correctly.
+- Existing durable owner emits independent prestate for single fs_write; second canonical admission/status check prevents cancelled plans from mutating after witness. Filesystem fs_hash/stat readbacks persisted as hash/metadata-only evidence, linked to canonical verification; mismatched pre/post resources fail closed.
+- One real two-item WorkPlan scenario demonstrates corpus VERIFIED_SUCCESS while a second item remains pending; this is NOT candidate mining, offer, VERIFIED_REUSE or Laya real qualification. Next P0: attested replay parameters and full active TaskRun mine/validate/offer/adopt readback path.
+- H-079/H-081/H-082 and exact-head CI HOLD; PR stays draft/unmerged.
