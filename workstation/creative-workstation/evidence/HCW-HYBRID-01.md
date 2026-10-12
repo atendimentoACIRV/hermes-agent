@@ -144,3 +144,20 @@ Final verification of this checkpoint: 32 selected Creative pytest files,
 151 passed / 1 skipped / 0 failures / 175.02 seconds / exit 0, native
 engines enabled. Python Ruff targeted ALL CHECKS PASSED; compileall exit 0.
 Release gates (global CI, native UI Editor, H-079) remain open.
+
+### Additional replay correctness receipt
+
+Test RED reproduced an old human command resubmitted after another
+agent's canonical revision; prior code refused it as stale. New
+per-operation durable receipt index verifies source revision and
+published ancestry, replays original receipt only when transaction
+digest and expected parent match; mismatched payload and orphan index
+fail closed. CAS focused suite 8 passed, exit 0. Global scoped
+native pytest PID 75136 pending. No claim of full native
+distributed idempotency or Electron authority.
+
+Historical operation replay final qualification: 32-file Creative suite,
+152 passed / 1 symlink skip / exit 0 / 158.95s with native engine opt-ins.
+Historical human transaction replay after agent commit now returns its
+original receipt and does not advance canonical HEAD; altered payload
+using same ID returns 409. Native/Electron product gates remain open.

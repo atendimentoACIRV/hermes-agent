@@ -133,7 +133,7 @@ def publish_creative_document_cas(
 ) -> CreativeProjectRevision:
     """Serialize concurrent human/agent publications against durable head.
 
-    Same-op latest-head replay is idempotent only if every source byte and
+    Historical operation-ID replay is idempotent only if every source byte and
     CreativeDocument field match; stale parents fail without writing a revision.
     This does not yet provide global distributed multi-engine rollback/undo.
     """
@@ -146,6 +146,15 @@ def publish_creative_document_cas(
         _identifier(expected_head_revision)
     with _exclusive_project_lock(project_id):
         latest = load_creative_head(project_id)
+        used = _read_operation_receipt(project_id, operation_id)
+        if used is not None:
+            if not _revision_in_ancestry(latest, used):
+                raise CreativeConflictError("409 Conflict: interrupted or foreign operation receipt")
+            if _same_payload(used, doc, native_files):
+                return used
+            raise CreativeConflictError("409 Conflict: reused operation with different payload")
+        # Backward compatibility only for HEAD created before operation indexing:
+        # a reused head identifier still must never be applied twice.
         if latest and latest.operation_id == operation_id:
             if _same_payload(latest, doc, native_files):
                 return latest
@@ -162,6 +171,7 @@ def publish_creative_document_cas(
             if_match=latest.etag if latest else None,
             operation_id=operation_id, native_files=native_files,
         )
+        _persist_operation_receipt(committed)
         _persist_head(committed)
         return committed
 
@@ -215,6 +225,18 @@ def publish_creative_command_batch_cas(
     head = load_creative_head(project_id)
     if head is None:
         raise CreativeConflictError("409 Conflict: missing canonical Creative head")
+    used = _read_operation_receipt(project_id, operation_id)
+    if used is not None:
+        if not _revision_in_ancestry(head, used):
+            raise CreativeConflictError("409 Conflict: interrupted or foreign batch operation")
+        old = load_creative_document(project_id, used.revision_id)
+        receipt = old.metadata.get("_hermes_command_receipt")
+        if (isinstance(receipt, dict)
+                and receipt.get("digest") == fingerprint
+                and receipt.get("parent_revision") == expected_head_revision
+                and used.parent_revision == expected_head_revision):
+            return used
+        raise CreativeConflictError("409 Conflict: reused batch operation with different payload")
     if head.operation_id == operation_id:
         prior_doc = load_creative_document(project_id, head.revision_id)
         receipt = prior_doc.metadata.get("_hermes_command_receipt")
@@ -237,3 +259,69 @@ def publish_creative_command_batch_cas(
         doc, expected_head_revision=head.revision_id, expected_etag=head.etag,
         operation_id=operation_id, native_files=native_files,
     )
+
+
+def _operation_receipt_path(project_id: str, operation_id: str) -> Path:
+    return _root() / _identifier(project_id) / "operations" / f"{_identifier(operation_id)}.json"
+
+
+def _read_operation_receipt(project_id: str, operation_id: str) -> CreativeProjectRevision | None:
+    """Use an O(1) per-operation lookup, validating revision and source hashes."""
+    path = _operation_receipt_path(project_id, operation_id)
+    parent = path.parent
+    if parent.is_symlink():
+        raise PermissionError("Creative operation index redirected")
+    if not path.exists() and not path.is_symlink():
+        return None
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 1024:
+        raise ValueError("Creative operation receipt missing, redirected or oversized")
+    receipt = json.loads(path.read_bytes())
+    if (not isinstance(receipt, dict)
+            or set(receipt) != {"operation_id", "revision_id", "etag"}
+            or receipt["operation_id"] != operation_id):
+        raise ValueError("Invalid Creative operation receipt")
+    revision = load_creative_revision(project_id, _identifier(receipt["revision_id"]))
+    if revision.operation_id != operation_id or revision.etag != receipt["etag"]:
+        raise ValueError("Creative operation receipt integrity mismatch")
+    return revision
+
+
+def _revision_in_ancestry(
+    latest: CreativeProjectRevision | None, earlier: CreativeProjectRevision,
+) -> bool:
+    """A completed operation must be an ancestor of the published HEAD."""
+    if latest is None:
+        return False
+    current = latest
+    visited: set[str] = set()
+    for _ in range(65536):
+        if current.revision_id == earlier.revision_id:
+            return True
+        if current.revision_id in visited:
+            raise CreativeConflictError("409 Conflict: Creative revision cycle")
+        visited.add(current.revision_id)
+        if current.parent_revision is None:
+            return False
+        current = load_creative_revision(current.project_id, current.parent_revision)
+    raise CreativeConflictError("409 Conflict: Creative ancestry verification budget exceeded")
+
+
+def _persist_operation_receipt(revision: CreativeProjectRevision) -> None:
+    """Write durable operation ID BEFORE HEAD; orphan receipts never count as published."""
+    path = _operation_receipt_path(revision.project_id, revision.operation_id)
+    folder = path.parent
+    folder.mkdir(parents=True, exist_ok=True)
+    if folder.is_symlink() or folder.resolve() != folder or path.is_symlink():
+        raise PermissionError("Creative operation receipt directory redirected")
+    receipt = {
+        "operation_id": revision.operation_id,
+        "revision_id": revision.revision_id,
+        "etag": revision.etag,
+    }
+    try:
+        with path.open("xb") as stream:
+            stream.write(_json_bytes(receipt))
+            stream.flush()
+            os.fsync(stream.fileno())
+    except FileExistsError as exc:
+        raise CreativeConflictError("409 Conflict: reused Creative operation ID") from exc

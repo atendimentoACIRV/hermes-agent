@@ -354,3 +354,33 @@ Electron E2E or H-079 approval. The prior CLI TaskRun-only suite was
 No main worktree mutation or merge. The new APIs are opt-in, NOT yet
 wired to a real Electron manual editor. No claim of verified actor ID;
 actor_type is trace metadata, subject to future trustworthy identity binding.
+
+### Same-date continuation — historical operation replay durability
+
+After commit 886d50918f632e58bc5ec434afe996a0f603b1f0, an additional
+H-C4 failure mode was reproduced RED: a completed human batch replayed
+after an intervening agent edit returned 409, instead of its prior
+receipt. New test in test_hcw_hybrid_revision_cas.py confirmed RED.
+The canonical CAS now stores immutable operation-id keyed receipt files
+in the project's operations directory before swapping HEAD. An operation
+receipt is only eligible for idempotent replay if its verified revision
+belongs to the current published HEAD lineage; interrupted/orphan
+records are refused. Exact command digest and original parent revision
+must match. Fresh publications check receipts by direct filename lookup
+(O(1), ancestry traversal only on replay). This fixes historical replay
+without duplicate new revisions or spoofed payload acceptance.
+8 tests in test_hcw_hybrid_revision_cas.py PASSED, 0 failed, exit 0.
+A full 32-file native Creative scoped suite was started with
+Remote Desktop PID 75136 and MUST be read for final exit and result.
+No UI/Electron live co-editing, global CI, H-079 or 10s 1080p
+qualification claimed.
+
+### Verified subsequent historical CAS replay regression, 2026-10-12
+
+Final scoped pytest re-executed with real EffectCraft/HyperFrames opt-ins,
+32 Creative test modules: **152 passed, 1 Windows symlink skip, zero failures**,
+158.95s, CAS_FINAL_TEST_EXIT=0. New historical operation replay test passed
+and older 8 CAS tests green. Ruff and Python compileall for modified CAS
+and tests also passed, git diff --check exited 0. Still missing full CI,
+H-079, Electron manual UI and user identity proof. Commit/push this
+post-886d50918f correctness fix separately.

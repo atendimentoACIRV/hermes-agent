@@ -3003,3 +3003,15 @@ Current scoped test result: 32 Creative test files, 151 passed,
 1 skipped, 0 failures, 175.02 s, exit 0. Next gating priority is
 Electron renderer edits through live TaskRun canonical-open/apply-batch;
 this backend receipt is not an Electron E2E qualification.
+
+H-C4 backend progress: historical operation replay is now O(1)
+receipt-index lookup with verified published ancestry and
+stable typed-command digest; repeated older command after
+intervening commit returns original receipt without new revision.
+Nonmatching or orphan receipts are refused. 8 CAS tests green.
+Not yet native dual-engine distributed transaction, durable undo/redo,
+verified Electron actor identity or H-079 qualified.
+
+Post-history-index CAS regression: 32 selected Creative files,
+152 passed / 1 skipped, 158.95s, exit 0. H-C4 partial, unqualified
+pending true editor identity, live Electron and distributed engine edits.

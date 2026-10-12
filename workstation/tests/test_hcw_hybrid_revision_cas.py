@@ -230,3 +230,57 @@ def test_legacy_or_orphan_revision_without_head_not_silently_promoted(tmp_path):
         assert not (orphan.manifest_path.parent.parent.parent / "head.json").exists()
     finally:
         reset_hermes_home_override(token)
+
+
+def test_idempotency_receipt_survives_intervening_agent_commit_and_restart(tmp_path):
+    """Retry of a completed human batch cannot become a second edit after an agent edit."""
+    from workstation.creative_revision_cas import publish_creative_command_batch_cas
+    from workstation.creative_commands import Actor, CreativeCommand
+    from workstation.creative_transactions import CreativeTransaction
+    from workstation.creative_project_store import load_creative_document
+
+    token = set_hermes_home_override(tmp_path / "profile")
+    try:
+        doc = create_empty_project(name="Durable replay after another editor")
+        first = publish_creative_document_cas(doc, operation_id="a" * 32)
+        comp = doc.compositions[0].composition_id
+
+        def tx(op, ident, actor):
+            return CreativeTransaction(transaction_id=op, commands=[
+                CreativeCommand(
+                    "layer.create", {
+                        "composition_id": comp, "layer_id": ident, "name": actor,
+                    }, Actor(actor, "hermes_agent" if actor == "agent" else "human_mouse"),
+                    f"same-key-{ident}",
+                ),
+            ])
+
+        original = tx("b" * 32, "1" * 32, "human")
+        second = publish_creative_command_batch_cas(
+            doc.project_id, original, expected_head_revision=first.revision_id,
+            expected_etag=first.etag,
+        )
+        next_tx = tx("c" * 32, "2" * 32, "agent")
+        third = publish_creative_command_batch_cas(
+            doc.project_id, next_tx, expected_head_revision=second.revision_id,
+            expected_etag=second.etag,
+        )
+        # Process restart-equivalent: import the module again and use disk HEAD.
+        retry = publish_creative_command_batch_cas(
+            doc.project_id, original, expected_head_revision=first.revision_id,
+            expected_etag=first.etag,
+        )
+        assert retry == second
+        assert load_creative_head(doc.project_id) == third
+        assert len(load_creative_document(doc.project_id, third.revision_id)
+                   .compositions[0].layers) == 2
+
+        altered = tx("b" * 32, "3" * 32, "human")
+        with pytest.raises(CreativeConflictError, match="409 Conflict"):
+            publish_creative_command_batch_cas(
+                doc.project_id, altered,
+                expected_head_revision=first.revision_id, expected_etag=first.etag,
+            )
+        assert load_creative_head(doc.project_id) == third
+    finally:
+        reset_hermes_home_override(token)

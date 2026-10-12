@@ -5766,3 +5766,15 @@ Final tests: 32 scoped files with native opt-in engines configured,
 151 passed / 1 skipped / 0 failed in 175.02 s, FINAL_SCOPE_EXIT=0.
 Targeted Ruff and Python compileall checks passed. H-079, full CI,
 Electron UI and verified human identity not established.
+
+Historical idempotency defect found RED: replaying an already applied
+human command after an agent revision failed to return original
+receipt. Added verified per-operation on-disk index with ancestry
+check, strict digest and parent match; 8 CAS tests green.
+Global scoped native pytest launched PID 75136; read final status
+before release. No merge or root checkout changes.
+
+Final independent regression after history-index CAS fix:
+32 Creative modules, 152 passed / 1 skipped / 0 failed, 158.95s,
+CAS_FINAL_TEST_EXIT=0; Ruff/compileall targeted passed. Continue to
+React/Electron canonical handoff, full CI and H-079; no main merge.
