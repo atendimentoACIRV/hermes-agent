@@ -56,6 +56,12 @@ All eight MVP acceptance items are **UNVERIFIED** against this new exact HEAD:
 7. Restart → no stale lease revival, clean new work.
 8. Exact-head Python/TS/Electron native regression, CI and Windows dogfood.
 
+## Directed source trace (GitHub-only, not runtime proof)
+
+Current branch `workstation/batch_detection.py::prepare_mutation` checks **every non-compiled mutable tool** (not only Browser tools) against the agent's `_canonical_work_task_id` and `_canonical_work_run_id`. If a task remains pinned from a superseded turn, `classify_run_authority` can fence unrelated `terminal` / `write_file` operations before I/O. This is a concrete path consistent with the incident's cross-tool symptoms, **not proof that it was entered in the reported session**.
+
+The turn admission path `agent/turn_tool_round.py` admits whole batches and uses `scoped_execution` from `agent/scoped_execution.py`. Separately, `run_agent.py::_execute_tool_calls` can admit intervention decisions. Need inspect the actual Workstation registration and invocation of `workstation/work_intent.py::prepare_turn_work`, including turn boundary and the clearing of obsolete agent fields; instrument **which fence produced the user-visible SUPERSEDED** before patching. There is no evidence yet that `agent/scoped_execution.py` itself is responsible.
+
 ## Immediate next step — do this before writing more code
 
 1. Restore responsiveness of authorized Desktop Commander computer; `list_devices` saying Online is not enough. Confirm with `ping`, then run a read-only `git status --short`, `git rev-parse HEAD`, and `git worktree list --porcelain` in `C:\Github\hermes-agent`.
