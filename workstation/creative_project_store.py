@@ -14,7 +14,6 @@ from hermes_constants import get_hermes_home
 
 class CreativeConflictError(ValueError):
     """409 Conflict: ETag mismatch indicating concurrent or superseded edit."""
-    pass
 
 
 @dataclass(frozen=True)
@@ -78,7 +77,8 @@ def load_creative_revision(project_id: str, revision_id: str) -> CreativeProject
             raise ValueError("Creative revision file is missing, redirected or oversized")
     manifest = json.loads(manifest_path.read_bytes())
     expected = {"schema_version", "project_id", "revision_id", "parent_revision", "engine", "source", "operation_id"}
-    if isinstance(manifest, dict) and manifest.get("engine") in {"remotion", "hyperframes"}:
+    if isinstance(manifest, dict) and (manifest.get("engine") in {"remotion", "hyperframes"}
+                                      or (manifest.get("engine") == "creative-document" and "native_files" in manifest)):
         expected.add("native_files")
     if (not isinstance(manifest, dict) or set(manifest) != expected
             or type(manifest["schema_version"]) is not int or manifest["schema_version"] != 1
@@ -123,7 +123,8 @@ def load_creative_revision(project_id: str, revision_id: str) -> CreativeProject
             raise ValueError("Creative revision file is missing, redirected or oversized")
     manifest = json.loads(manifest_path.read_bytes())
     expected = {"schema_version", "project_id", "revision_id", "parent_revision", "engine", "source", "operation_id"}
-    if isinstance(manifest, dict) and manifest.get("engine") in {"remotion", "hyperframes"}:
+    if isinstance(manifest, dict) and (manifest.get("engine") in {"remotion", "hyperframes"}
+                                      or (manifest.get("engine") == "creative-document" and "native_files" in manifest)):
         expected.add("native_files")
     if (not isinstance(manifest, dict) or set(manifest) != expected
             or type(manifest["schema_version"]) is not int or manifest["schema_version"] != 1
@@ -280,19 +281,25 @@ def save_creative_document(
     parent_revision: str | None = None,
     operation_id: str | None = None,
     if_match: str | None = None,
+    native_files: dict[str, bytes] | None = None,
 ) -> CreativeProjectRevision:
-    """Save an engine-neutral CreativeDocument instance."""
+    """Save canonical CreativeDocument, optionally preserving hybrid natives."""
     from workstation.creative_document import document_to_dict
     payload = document_to_dict(doc)
-    proj_id = doc.project_id
-    return save_creative_revision(
-        payload,
-        project_id=proj_id,
-        parent_revision=parent_revision,
-        operation_id=operation_id,
-        engine="creative-document",
-        if_match=if_match,
-    )
+    options = {
+        "project_id": doc.project_id,
+        "parent_revision": parent_revision,
+        "operation_id": operation_id,
+        "if_match": if_match,
+    }
+    has_hybrid = isinstance(doc.metadata, dict) and "native_compositions" in doc.metadata
+    if has_hybrid:
+        if not native_files:
+            raise ValueError("Hybrid CreativeDocument requires its editable native sources")
+        return save_hybrid_project_revision(payload, native_files=native_files, **options)
+    if native_files:
+        raise ValueError("Native sources require declared hybrid composition references")
+    return save_creative_revision(payload, engine="creative-document", **options)
 
 
 def load_creative_document(project_id: str, revision_id: str) -> Any:
@@ -301,3 +308,61 @@ def load_creative_document(project_id: str, revision_id: str) -> Any:
     rev = load_creative_revision(project_id, revision_id)
     payload = json.loads(rev.source_path.read_bytes())
     return load_document_from_dict(payload)
+
+
+def save_hybrid_project_revision(
+    source: dict,
+    *,
+    native_files: dict[str, bytes],
+    project_id: str | None = None,
+    parent_revision: str | None = None,
+    operation_id: str | None = None,
+    if_match: str | None = None,
+) -> CreativeProjectRevision:
+    """Persist editable EffectCraft and HyperFrames natives under one Hermes revision.
+
+    The canonical CreativeDocument stays the source owner. External render
+    engines do not gain publication authority through this file-store API.
+    """
+    if not isinstance(source, dict) or not isinstance(source.get("metadata"), dict):
+        raise ValueError("Hybrid project metadata is required")
+    items = source["metadata"].get("native_compositions")
+    if not isinstance(items, list) or not items:
+        raise ValueError("Hybrid native_compositions must be a non-empty array")
+    if not isinstance(native_files, dict):
+        raise ValueError("Hybrid native_files must be a mapping")
+    ids: set[str] = set()
+    engines: set[str] = set()
+    for item in items:
+        if not isinstance(item, dict) or set(item) != {"id", "engine", "source_ref", "source_sha256"}:
+            raise ValueError("Invalid hybrid native composition")
+        cid = _identifier(item["id"])
+        if cid in ids:
+            raise ValueError("Duplicate hybrid composition id")
+        ids.add(cid)
+        engine = item["engine"]
+        ref = item["source_ref"]
+        if engine not in {"effectcraft", "hyperframes"}:
+            raise ValueError("Unsupported hybrid composition engine")
+        engines.add(engine)
+        _validate_native_filename(ref)
+        if engine == "effectcraft" and not ref.endswith(".ecproj"):
+            raise ValueError("EffectCraft composition must preserve an .ecproj source")
+        if engine == "hyperframes" and not ref.endswith(".html"):
+            raise ValueError("HyperFrames composition must preserve HTML source")
+        value = native_files.get(ref)
+        if not isinstance(value, bytes) or len(value) > _MAX_NATIVE_FILE_BYTES:
+            raise ValueError("Referenced hybrid native source is missing or invalid")
+        if item["source_sha256"] != hashlib.sha256(value).hexdigest():
+            raise ValueError("Hybrid native source digest mismatch")
+    if engines != {"effectcraft", "hyperframes"}:
+        raise ValueError("Hybrid project requires EffectCraft and HyperFrames")
+    return save_creative_revision(
+        source,
+        project_id=project_id,
+        parent_revision=parent_revision,
+        operation_id=operation_id,
+        engine="creative-document",
+        native_files=native_files,
+        if_match=if_match,
+    )
