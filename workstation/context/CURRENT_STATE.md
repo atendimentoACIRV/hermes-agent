@@ -1,5 +1,9 @@
 # Current State
 
+## 2026-10-12 — P0 durable admission progress (NOT_RELEASE_QUALIFIED)
+
+Local `feat/playwright-c2c-kits-20261012`: commit `81a16ed00b78b7f741c331ee90a3bf06b003942f` adds persistence of mutation admissions through existing BrowserSessionState (SHA256 args only), blocks uncertain replay after interleaved effects and detects ownership/id collisions/corrupt state. GREEN: 164/164 Browser Vitest and native Electron offline harness; RED tests archived in repo. **Partial not exactly-once external**; tests still lack real two-process crash injection, Python CertifiedDispatcher/ExecutionJournal reconciliation, complete coverage and benchmarks. Vitest runner now makes HERMES_WORKSTATION_HOME temporary per test. Stage A is explicitly **PENDING_WITH_MAINTAINER_AUTHORIZATION** for local development, obligatory before release; main untouched, no push. Full [handoff checkpoint](../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
 ## 2026-10-12 — Playwright C2C local progress under maintainer exception
 
 **IMPLEMENTAÇÃO PARCIAL LOCAL / NOT_RELEASE_QUALIFIED.** C2C-I01 harness Electron real passou (WebContentsView/BrowserTask, overlay, disabled, takeover, cache SPA e renderer metrics); C2C-I02 actionability guard/lease+epoch **parcial**; C2C-I03 revision cache MutationObserver **implementado localmente**; C2C-I04 frame/cancel **parcial**, C2C-I05 telemetry **parcial**; C2C-I06 durable exactly-once **NÃO INICIADO**. Testes executados: 18 arquivos / 159 Vitest PASS, 7/7 Python isolados PASS e native Electron offline PASS. Typecheck Electron completo encontrou erro em `electron/git-review-ops.test.ts:124` (simple-git, fora dos arquivos alterados), portanto **não passa**. Stage A upstream/pin/seams segue PENDENTE com exceção somente desenvolvimento; sem push/merge. [Evidências](../research/playwright-code-to-code-2026-10-12/09-MAINTAINER-EXCEPTION-IMPLEMENTATION-2026-10-12.md).

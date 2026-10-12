@@ -1,5 +1,9 @@
 # Workstation roadmap
 
+## 2026-10-12 — Browser C2C P0-01/P0-02 admission/replay fence
+
+Local commit `81a16ed00b`: persistent pre-dispatch admission in existing BrowserSessionState, replay returns UNCERTAIN, mismatched operation IDs rejected, corrupted state fails closed; 164/164 Vitest tests and offline native Electron E2E passed. Test runner now isolates Workstation state per test. P0-01/P0-02 remain PARTIAL: two-process crash/restart, full canonical journal and external verifier pending. Stage A deferred with maintainer authorization for local development, not waived for release. No push or merge. See [continuity checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
 ## 2026-10-12 — Playwright C2C kits: execução parcial sob exceção
 
 **I01 PARTIAL** native Electron harness PASS; **I02 PARTIAL** ref/overlay/disabled e takeover recheck; **I03 LOCAL GREEN** MutationObserver revision no cache; **I04 PARTIAL** epoch/lease fence, OOPIF cancel pendente; **I05 PARTIAL** renderer PID/RAM em telemetria; **I06 NOT STARTED** journal durable exactly-once. Provas locais: 18/159 Vitest, 7/7 Python telemetria, E2E Electron offline PASS; full typecheck não green (`electron/git-review-ops.test.ts:124`, simple-git). **Stage A permanece PENDENTE com PASS_WITH_AUTHORIZATION somente implementação, NOT_RELEASE_QUALIFIED**, gates exatos antes de main. [Relatório](research/playwright-code-to-code-2026-10-12/09-MAINTAINER-EXCEPTION-IMPLEMENTATION-2026-10-12.md).

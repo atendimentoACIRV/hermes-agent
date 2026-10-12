@@ -1,5 +1,9 @@
 # Source reuse matrix
 
+## 2026-10-12 — Playwright C2C implementation reuse decision
+
+The new admission fence (`81a16ed00b`) is **KEEP/EXTEND Hermes** existing BrowserSessionState, not a copied Playwright mutation retry. Playwright's Electron native WebContentsView testing pattern was previously **ADAPT** for existing fixture; no Playwright runtime shipped or source code transplanted in this increment. Evidence: [P0 local GREEN checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md). Stage A upstream-first exception pending; NOT_RELEASE_QUALIFIED.
+
 ## 2026-10-12 — Playwright Browser Nativo: auditoria C2C com hash e licença
 
 | Projeto local | Evidência analisada | Classificação | Produto / ressalva |

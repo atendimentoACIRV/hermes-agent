@@ -1,5 +1,9 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-12 — Native Browser safe replay fence (partial)
+
+Existing `BrowserSessionStateFilePersistence` is now pre-dispatch admission owner for navigate/click/type/scroll/back/press/batch: persists structural operation/task/session/run/tab/action ID + args SHA-256, returns reconciliation_required for replay instead of repeating unknown effects. A local ACK remains UNCERTAIN, never remote VERIFIED. On Windows flush via r+ fsync; corrupt session state fail-closed. Test runner isolates Workstation temp home per test; 19/164 Vitest + single-process native Electron E2E PASS. Do not overclaim durable exactly-once or release: external verifier, crash/restart across processes, concurrent writers, Python CertifiedDispatcher/ExecutionJournal, 4096-capacity performance and P0/P1 work remain. Stage A `PENDING_WITH_MAINTAINER_AUTHORIZATION`; [handoff](../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
 ## 2026-10-12 — Playwright C2C: actionability, SPA freshness, native evidence
 
 Base upstream ainda velha, mas maintainer autorizou implementação **isolada**, não integração. Hermes agora possui guardas conservadoras de alvo/overlay/disabled e double-check de autoridade/documento pós-await; cache de extração em SPA passa a exigir revisão de MutationObserver no mundo isolado e faz bypass se iframe/Shadow DOM/observer indisponível; os snapshots relatam PID e RSS renderer separadamente de MAIN no payload interno, filtrado antes de model-facing. E2E **real Electron Windows** de WebContentsView e dados offline/temporários PASS; 159/159 Vitest e Python telemetry 7/7 PASS. Escopo limitado: não fechados restart/iframe/cancellation completo, rAF stable, durable exactly-once, benchmark, full TS typecheck e CI. [Relatório e pendências](../research/playwright-code-to-code-2026-10-12/09-MAINTAINER-EXCEPTION-IMPLEMENTATION-2026-10-12.md).
