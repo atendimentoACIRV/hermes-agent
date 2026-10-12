@@ -978,8 +978,8 @@ test('P0: Browser UI Take Control and Release Control buttons are actually click
 // A cold restart is only a BrowserTask persistence test when the BrowserTask
 // belongs to an actual persisted Hermes chat. Synthetic controller-only
 // session IDs are not discoverable by the renderer's lazy restore path.
-test('P0: released native BrowserTask is retained and agent resumes after cold Electron restart', async () => {
-  test.setTimeout(210_000)
+test('P0: released and active human leases recover safely across cold Electron restarts', async () => {
+  test.setTimeout(360_000)
   if (!fixture || !controller) {
     throw new Error('P0 restart fixture is not ready')
   }
@@ -1035,6 +1035,58 @@ test('P0: released native BrowserTask is retained and agent resumes after cold E
       })
     })
     expect(readback.result?.url).toBe(`${pageBaseUrl}/p0-cold-restart-resumed`)
+
+    // A second cold restart intentionally occurs with a live human lease.
+    // Human control must block the old process, then must NOT be restored as
+    // an authoritative lease of the new process (contract in browser-task.ts).
+    const lease = await fixture.page.evaluate(async ({ taskId, sessionId }) => {
+      const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
+        WorkstationBridge & { takeControl: (id: string, session: string) => Promise<unknown> }
+      await bridge.takeControl(taskId, sessionId)
+      const current = (await bridge.listTasks()).find(task => task.taskId === taskId)
+      return (current as BrowserTaskRecord & { humanControlLease?: { owner?: string } })?.humanControlLease
+    }, { taskId, sessionId: session.id })
+    expect(lease?.owner).toBe('human')
+    const denied = await fetch(`${controller.url}/v1/action`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${controller.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'browser_navigate', task_id: taskId, session_id: session.id,
+        arguments: { url: `${pageBaseUrl}/p0-stale-human-denied` }
+      })
+    })
+    expect(denied.status).toBe(409)
+    expect((await denied.json() as { error_code?: string }).error_code).toBe('USER_CONTROL_ACTIVE')
+
+    const leaseOwnerToken = controller.token
+    await restarted.app.close()
+    const activeRestart = await launchDesktop(env)
+    fixture.app = activeRestart.app
+    fixture.page = activeRestart.page
+    try {
+      await waitForAppReady(fixture, 120_000, false)
+      await expect.poll(async () => (await readControllerFile(controlPath)).token,
+        { timeout: 30_000 }).not.toBe(leaseOwnerToken)
+      controller = await readControllerFile(controlPath)
+      await openStoredSessionByTitle(fixture.page, session.label, 'P0 cold restart real session')
+      const recovered = await fixture.page.evaluate(async taskId => {
+        const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+        return (await bridge.listTasks()).find(task => task.taskId === taskId)
+      }, taskId)
+      expect(recovered?.sessionHost).toBe(session.id)
+      expect((recovered as BrowserTaskRecord & { humanControlLease?: unknown })?.humanControlLease).toBeUndefined()
+      const safelyResumed = await browserAction(taskId, session.id, `${pageBaseUrl}/p0-active-lease-restart`)
+      expect(safelyResumed.result?.title).toBe('H013 p0-active-lease-restart')
+      const finalSnapshot = await controllerRequest('/v1/action', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId,
+          session_id: session.id, arguments: {} })
+      })
+      expect(finalSnapshot.result?.url).toBe(`${pageBaseUrl}/p0-active-lease-restart`)
+    } finally {
+      await activeRestart.app.close().catch(() => undefined)
+    }
   } finally {
     // Fixture cleanup owns the first Electron instance captured at setup.
     // Explicitly stop the replacement so no E2E orphan contaminates later tests.

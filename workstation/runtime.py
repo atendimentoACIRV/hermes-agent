@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
 import json
+import os
 from pathlib import Path
 import queue
 import threading
@@ -597,7 +598,12 @@ class HumanHandoff:
 
 
 class HumanHandoffManager:
-    """Explicitly transfers task control without changing task/page identity."""
+    """Explicit handoffs, serialized through the existing canonical JSON owner.
+
+    Each process must reload under one OS file lock before checking identity or
+    transitioning a review; a stale instance cannot mint duplicate handoffs,
+    consume a review twice, or overwrite an unrelated review.
+    """
 
     def __init__(self, path: Path | None = None) -> None:
         self._handoffs: dict[str, HumanHandoff] = {}
@@ -609,21 +615,52 @@ class HumanHandoffManager:
             return
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
-        except (FileNotFoundError, OSError, ValueError):
+        except FileNotFoundError:
+            self._handoffs = {}
             return
-        for item in data.get("handoffs", []) if isinstance(data, dict) else []:
+        except (OSError, ValueError) as exc:
+            # Fail closed: never overwrite a corrupt/inaccessible review ledger
+            # with an empty in-memory snapshot.
+            raise RuntimeError(f"handoff ledger unreadable: {self.path}") from exc
+        if not isinstance(data, dict) or not isinstance(data.get("handoffs"), list):
+            raise RuntimeError(f"handoff ledger invalid: {self.path}")
+        found: dict[str, HumanHandoff] = {}
+        for item in data["handoffs"]:
             if not isinstance(item, dict) or not item.get("handoff_id"):
-                continue
+                raise RuntimeError(f"handoff ledger contains invalid record: {self.path}")
             try:
-                self._handoffs[str(item["handoff_id"])] = HumanHandoff(**item)
-            except (TypeError, ValueError):
-                continue
+                parsed = HumanHandoff(**item)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError(f"handoff ledger contains invalid record: {self.path}") from exc
+            if parsed.handoff_id in found:
+                raise RuntimeError(f"handoff ledger has duplicate identity: {self.path}")
+            previous = self._handoffs.get(parsed.handoff_id)
+            if previous is not None:
+                # Preserve existing references returned to callers of this
+                # manager (e.g. the UI) while refreshing their stored state.
+                for key in ("status", "resumed_at", "returned_by"):
+                    setattr(previous, key, getattr(parsed, key))
+                found[parsed.handoff_id] = previous
+            else:
+                found[parsed.handoff_id] = parsed
+        self._handoffs = found
+
+    def _transaction(self):
+        from contextlib import nullcontext
+        from hermes_cli.active_sessions import _FileLock
+
+        if self.path is None:
+            return nullcontext()
+        return _FileLock(self.path.with_suffix(self.path.suffix + ".lock"))
 
     def _persist(self) -> None:
         if self.path is None:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.path.with_suffix(self.path.suffix + f".{threading.get_ident()}.tmp")
+        # Lock owner serializes writes across threads and processes.
+        temp = self.path.with_suffix(
+            self.path.suffix + f".{os.getpid()}.{threading.get_ident()}.tmp"
+        )
         temp.write_text(
             json.dumps({"schema_version": 1, "handoffs": [asdict(item) for item in self._handoffs.values()]}, indent=2),
             encoding="utf-8",
@@ -640,45 +677,51 @@ class HumanHandoffManager:
     ) -> HumanHandoff:
         if not reason.strip() or not task_id.strip() or not session_id.strip():
             raise ValueError("task, session and reason are required for handoff")
-        # Repeated attempts for one operation share its pending/handled review.
-        # An ephemeral tool_call_id is not a stable operation identity.
-        for existing in self._handoffs.values():
-            if (existing.task_id == task_id and existing.session_id == session_id
-                    and existing.reason == reason and existing.scope == scope):
-                return existing
-        handoff = HumanHandoff(
-            handoff_id=f"handoff-{uuid4().hex}",
-            task_id=task_id,
-            session_id=session_id,
-            reason=reason,
-            scope=dict(scope),
-        )
-        self._handoffs[handoff.handoff_id] = handoff
-        self._persist()
-        return handoff
+        with self._transaction():
+            self._load()
+            for existing in self._handoffs.values():
+                if (existing.task_id == task_id and existing.session_id == session_id
+                        and existing.reason == reason and existing.scope == scope):
+                    return existing
+            handoff = HumanHandoff(
+                handoff_id=f"handoff-{uuid4().hex}",
+                task_id=task_id,
+                session_id=session_id,
+                reason=reason,
+                scope=dict(scope),
+            )
+            self._handoffs[handoff.handoff_id] = handoff
+            self._persist()
+            return handoff
 
     def resume(self, handoff_id: str, *, returned_by: str) -> bool:
-        handoff = self._handoffs.get(handoff_id)
-        if handoff is None or handoff.status != "waiting-for-human":
-            return False
         if not returned_by.strip():
             raise ValueError("returned_by is required")
-        handoff.status = "ready"
-        handoff.returned_by = returned_by
-        handoff.resumed_at = _utc_now()
-        self._persist()
-        return True
+        with self._transaction():
+            self._load()
+            handoff = self._handoffs.get(handoff_id)
+            if handoff is None or handoff.status != "waiting-for-human":
+                return False
+            handoff.status = "ready"
+            handoff.returned_by = returned_by
+            handoff.resumed_at = _utc_now()
+            self._persist()
+            return True
 
     def consume(self, handoff_id: str) -> bool:
         """Acknowledge one resumed review; never infer external-effect verification."""
-        handoff = self._handoffs.get(handoff_id)
-        if handoff is None or handoff.status != "ready":
-            return False
-        handoff.status = "consumed"
-        self._persist()
-        return True
+        with self._transaction():
+            self._load()
+            handoff = self._handoffs.get(handoff_id)
+            if handoff is None or handoff.status != "ready":
+                return False
+            handoff.status = "consumed"
+            self._persist()
+            return True
 
     def get(self, handoff_id: str) -> HumanHandoff | None:
+        if self.path is not None:
+            self._load()
         return self._handoffs.get(handoff_id)
 
 
