@@ -159,3 +159,44 @@ Read-only inspection of the local original `workstation/dogfood/dados/Sessões H
 ### Mandatory next handoff
 
 Start from the updated PR #88 HEAD, preserve the dirty root/other agents, continue with the exact incident reproduction and native handoff implementation, and return a new standalone recursive Portuguese continuation prompt with explicit tested vs untested gates if interrupted.
+
+
+## 2026-10-12 — PR #88 follow-up: five AIAgent turns, CI and packaging blockers
+
+**Status: MVP PARTIALLY QUALIFIED; original persistent SUPERSEDED root cause and product acceptance are NOT proven. This section supersedes any previous assertion that the remote device remains unresponsive.**
+
+### Identity / published code
+
+- Working branch and isolated Windows worktree unchanged: `fix/mvp-kanban-browser-superseded-20261012`, `C:\Github\hermes-agent-mvp-kanban-browser-superseded-20261012`; stacked PR #88 over draft PR #83; never merge main without owner approval.
+- Code/test commit **`bd4c826460e1219c78d67a64a8c27c69757af9fe`**, pushed successfully to GitHub. Contains only new isolated test `workstation/tests/test_p0_browser_five_turn_authority.py`; **no production runtime modifications**.
+- Previous source-built Python 88/88 and native Electron/Chromium 5/5 remain prior evidences from `a942a14dd577`, not fresh exact-head qualifications.
+- No root checkout or existing Kanban data touched. All new test DBs are `tmp_path` homes. No uploaded real session content.
+
+### Five-turn real agent lifecycle, deterministic physical Browser mock
+
+- New test drives **real `AIAgent.run_conversation()` five times on a single agent**, Workstation trusted turn admission, conversation loop, tool dispatch middleware, and Browser routing. Inference responses are scripted and `_request_json` is fake local physical controller (NOT a real Chromium browser). `terminal` handler returns a safe fake value, but goes through the agent executor. Calls: open Google, Browser snapshot, open YouTube, Browser snapshot, independent terminal.
+- Parametrized cases: (a) all acknowledgments normal; (b) controlled `TimeoutError` raised **after simulated YouTube navigation state changed** (lost ACK). Both ensure exactly two navigation dispatches, no automatic duplicate mutation, independent terminal still runs, no `SUPERSEDED` in tool receipts, and no user-conversation Kanban card.
+- `agent.skip_background_review=True` is essential for harness isolation. Before setting it, a prior parametrized invocation launched **an unrelated background skill review** with task body beginning `Review the conversation above and update the skill library`; that task appeared in the next fixture and was initially mistaken as a phantom user Kanban task. **Root cause of the test contamination: background review worker, NOT a proven user Kanban regression.** On isolated invocation with lost ACK alone there was no card. Do not make production changes based on this fixture artifact.
+- Final new test, both parameters: **2 passed in 8.19s**, exit 0; lint Ruff PASS.
+- Combined focused selection `test_p0_browser_five_turn_authority.py`, `test_p0_turn_correlation_authority.py`, `test_browser_session_run_isolation_p0.py`: **14 passed in 14.56s**, exit 0 (before final strengthened assertions); last two-param post-assertion rerun passed.
+- **Limitation:** This rules out some straightforward same-agent contamination under scripted tool/I/O, but it does **not** reproduce the reported literal `SUPERSEDED`, native Electron controller timeout, provider callbacks, chat-switch cancellation or multi-session restart. The error source remains unknown.
+
+### GitHub CI blocker now proven, not just 'no status'
+
+- Read existing `.github/workflows/workstation-ci.yml` and `.github/workflows/workstation-browser-windows.yml`; **both explicitly support `workflow_dispatch`**, and Windows workflow verifies the exact candidate SHA and contains build/packaged GUI, soak and native Browser E2E jobs.
+- Attempted `gh workflow run workstation-ci.yml -R kevynlucasprofissional-stack/hermes-agent --ref fix/mvp-kanban-browser-superseded-20261012` and same for `workstation-browser-windows.yml` after pushing `bd4c826460`.
+- **Both requests failed HTTP 422: `Actions has been disabled for this repository`.** No CI jobs were started and no results exist. **DO NOT enable Actions or relax repository security settings without explicit owner approval.** Owner must decide whether to enable Actions; remote CI is categorically blocked until then.
+
+### Packaged Windows candidate blocker
+
+- Tried nonpublishing local packaging in isolated worktree: `npm run builder --workspace apps/desktop -- --dir --publish never`.
+- **EXIT 1** at `apps/desktop/scripts/prepare-packaging-tools.mjs:26`: installed `app-builder-lib` is not the source lock-pinned package. This branch's `node_modules` are ignored directory junctions to the separately managed dirty root checkout; its dependencies are not a valid pinned install for packaged candidate.
+- DO NOT invoke `npm ci` against the shared junctions: doing so could destructively modify the root's installed packages and affect other agents. Resolve in a **new isolated dependency directory** after examining actual Node lock and disk space; alternatively rely on CI once Actions is explicitly authorized. Existing source-built Electron E2E proof is unchanged.
+
+### Remaining exact next engineering steps
+
+1. Continue P0-2: capture **the first actual `SUPERSEDED` stack/emitter and losing authority** from a safe reproducible native Browser/controller + real-agent multi-turn session. The archived 66-message dogfood transcript displays only wrapped `Error executing tool ... SUPERSEDED`, without a stack. Do not infer its emitter from matching names or apply speculative runtime patches.
+2. Exercise genuine two-chat conversation switching after a dispatched-but-unacknowledged native navigation, Browser close/reopen and unrelated mutating tool in an isolated profile; compare against passing agent harness; instrument per-boundary identifiers only, no credentials or private payloads.
+3. Complete P0-3 human renderer approval consumed once → independent typed readback → continuation on validated TaskRun, with no replay. Existing synthetic and partial native tests are NOT end-to-end integrated proof.
+4. Finish 10 on-screen point actions / one durable task CAS, packaged Windows dogfood, and exact-SHA CI **only when available**. All 8 full acceptance criteria remain incompletely proven. P0-4 partly covered by existing local source-built Electron tests.
+5. Preserve worktree status, recheck actual branch/remote HEAD, update journal if warranted. If interrupted, return a complete self-contained Portuguese continuation prompt with current SHA, blockers, exact next test, and recursive continuation requirement.
