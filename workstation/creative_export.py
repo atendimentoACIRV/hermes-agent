@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 class ExportEngineError(RuntimeError):
     """Raised when video export or frame verification fails."""
-    pass
 
 
 @dataclass
@@ -85,29 +84,33 @@ def cancel_active_render(project_id: str) -> None:
                 pass
 
 
-def _decode_frame_hash(video_path: Path, frame_index: int, fps: RationalFps) -> str:
-    """Extract an exact decoded video frame using ffmpeg and calculate its SHA-256 digest."""
+def _decode_frame_hash(
+    video_path: Path, frame_index: int, fps: RationalFps,
+    expected_dimensions: tuple[int, int] | None = None,
+) -> str:
+    """Hash actual decoded RGB pixels; failed/short decodes must fail closed."""
     ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
     time_sec = frame_index / float(fps)
     cmd = [
-        ffmpeg_bin,
-        "-nostdin",
-        "-ss", f"{time_sec:.4f}",
-        "-i", str(video_path),
-        "-frames:v", "1",
-        "-f", "image2pipe",
-        "-vcodec", "rawvideo",
-        "-pix_fmt", "rgb24",
-        "-",
+        ffmpeg_bin, "-nostdin", "-v", "error",
+        "-ss", f"{time_sec:.6f}", "-i", str(video_path),
+        "-frames:v", "1", "-f", "rawvideo",
+        "-pix_fmt", "rgb24", "-",
     ]
     try:
-        proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5.0)
-        if proc.returncode == 0 and proc.stdout:
-            return hashlib.sha256(proc.stdout).hexdigest()
-    except Exception as e:
-        logger.warning(f"Failed to decode frame {frame_index}: {e}")
-    # Fallback deterministic pseudo-hash derived from video + frame
-    return hashlib.sha256(f"{video_path.name}:{frame_index}:{time_sec}".encode("utf-8")).hexdigest()
+        proc = subprocess.run(
+            cmd, stdin=subprocess.DEVNULL, capture_output=True,
+            timeout=10.0,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ExportEngineError(f"Frame {frame_index} decoding failed: {exc}") from exc
+    if proc.returncode != 0 or not proc.stdout or len(proc.stdout) % 3:
+        raise ExportEngineError(f"Frame {frame_index} decoding failed or returned invalid RGB")
+    if expected_dimensions is not None:
+        width, height = expected_dimensions
+        if width <= 0 or height <= 0 or len(proc.stdout) != width * height * 3:
+            raise ExportEngineError(f"Frame {frame_index} decoding dimensions mismatch")
+    return hashlib.sha256(proc.stdout).hexdigest()
 
 
 def export_composition_to_video(
@@ -132,7 +135,7 @@ def export_composition_to_video(
 
     duration_sec = float(req.duration.to_seconds())
     fps_val = float(req.fps)
-    total_frames = int(round(duration_sec * fps_val))
+    total_frames = round(duration_sec * fps_val)
 
     req.output_path.parent.mkdir(parents=True, exist_ok=True)
     if req.output_path.exists():
@@ -160,8 +163,9 @@ def export_composition_to_video(
         else:
             cmd.extend(["-i", src_path])
     else:
-        # Fallback to test source pattern
-        cmd.extend(["-f", "lavfi", "-i", f"color=c=black:s={req.width}x{req.height}:r={fps_val}"])
+        raise ExportEngineError(
+            "No usable visual source; rendered composition required before export"
+        )
 
     filter_complex = f"scale={req.width}:{req.height}:force_original_aspect_ratio=decrease,pad={req.width}:{req.height}:(ow-iw)/2:(oh-ih)/2,format=yuv420p"
 
@@ -177,7 +181,7 @@ def export_composition_to_video(
     try:
         proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         _ACTIVE_RENDERS[req.project_id] = proc
-        stdout, stderr = proc.communicate(timeout=30.0)
+        _stdout, stderr = proc.communicate(timeout=30.0)
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.communicate()
@@ -200,7 +204,7 @@ def export_composition_to_video(
     sample_indices = [0, total_frames // 2 - 1, total_frames // 2, total_frames - 1]
     for f_idx in sample_indices:
         if 0 <= f_idx < total_frames:
-            verified_frames[f_idx] = _decode_frame_hash(req.output_path, f_idx, req.fps)
+            verified_frames[f_idx] = _decode_frame_hash(req.output_path, f_idx, req.fps, (req.width, req.height))
 
     receipt: dict[str, Any] = {
         "verified": True,
