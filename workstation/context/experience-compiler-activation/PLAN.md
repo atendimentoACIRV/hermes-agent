@@ -28,3 +28,9 @@ Protocol: advance automatically through eligible independent tasks, test RED -> 
 - EC-04 persisted owner verification gate implemented and bound to canonical verifier proof; falsified success/cross-run evidence refused. End-to-end Laya learning and same-run adoption still pending.
 - EC-05 vendored Laya 0.3.23 provenance verified and focused System-1 telemetry 2 PASS; live Laya checkpoint/DIRECT and H-081 still pending.
 - EC-06 through EC-12 pending except EC-07 EvidenceRef serialization fixed previously; EC-13 conditional HOLD; EC-14 H-079/H-081/H-082 exact-head CI HOLD. Progress details in STATE/EVIDENCE/DECISIONS.
+
+## 2026-10-12 — Continuing EC-03/04/05 after f37208a4
+- EC-03: exact recognized Trello intent now explicitly budgets CALL(browser.navigate,trello.com) alongside existing named goal predicates; test rejects wrong host and READ-only scope, native H080B pair PASS. In-flight native Electron authority/readback E2E remains HOLD.
+- EC-04: progressive capture can retain owner formal-contract operation_family, target_family, effect_class, scope with NO speculative replay parameters. Verified causal delta requires an independent, content-checked prestate owner artifact tied to task/run/operation and read_before_write=true; no such receipt means no inferred delta. OperationalKernel forwards formal labels and optional prestate reference; never promotes based on recurrence. Complete adaptive prestate-producer and Laya/DIRECT reuse still open.
+- EC-05: vendored Laya 0.3.23 focused provenance/real contract/routing 10 PASS, 1 SKIPPED; live inference checkpoint not yet qualified.
+- EC-06..EC-12 remain open except previous EC-07 EvidenceRef fix; EC-13 HOLD and EC-14 exact-head release CI HOLD.

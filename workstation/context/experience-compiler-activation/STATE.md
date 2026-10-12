@@ -75,3 +75,17 @@ Before ending update these files, git status, exact commit SHA, test outputs and
 - EC-04 code commit 3b9f18ac51528da329fb1fdfdaba5f98893b4e2a; native Lefthook lint PASS.
 - Both commits were authored on isolated feature worktree. Confirm remote push/PR HEAD after documentation commit; no merge was performed.
 - Latest full Python regression: 51 PASS, H080B pair 2 PASS, owner 7 PASS, System1 local Laya 2 PASS. Native qualified production/release HOLD.
+
+## 2026-10-12 — scoped Browser CALL and witnessed progressive state (continuation)
+- Local commit 40f8f82a66 follows f37208a4: fixes current_command_objective to budget exact CALL(browser.navigate,trello.com); native Lefthook PASS. PR #82 is still draft.
+- EC-03 intent tests: 10 PASS / Ruff PASS; H-080B pair after CALL 2 PASS (39.35s) and after progressive metadata 2 PASS (42.04s). No external authorization broadened to arbitrary sites.
+- EC-04: existing progressive sample stored only bare primitive and after-state; added formal-contract family/effect/scope, runtime tag and optional verified prestate delta. A merely caller-supplied prestate produced false causal delta (RED); now a distinct owner-persisted prestate receipt with matching task/run/operation is mandatory. Tests 24 PASS for progressive + OperationalKernel (before last negative scenarios), 3 targeted negative/positive proofs PASS. Replay arguments remain intentionally absent until bound to owner-issued evidence; no false mining claim.
+- In new EC-04 proof schema workstation.operational_prestate_readback.v1, check source observer/workstation.operational_prestate, state, read_before_write and identity; currently NOT a proven production producer, so EC-04 is not qualified end-to-end.
+- EC-05 source-locked Laya v0.3.23 tests (vendor provenance, real contract, routing): 10 PASS 1 SKIPPED. Real checkpoint/DIRECT/CI HOLD.
+- Final full safety suite after prestate gate pending local log .ec04_prestate_final_safety.log. Keep all .ec*.log untracked; checkout principal still dirty and untouched.
+
+## Final code checkpoint — EC-03/04 witnessed evidence (2026-10-12)
+- EC-03 exact host CALL native budget code committed: 40f8f82a663152bcbade0fea809352973edd1dc7 (hooks PASS). EC-04 family/delta witnessed prestate code committed: c3f87a84860615f2086f17191921605068c6932c (hooks PASS).
+- **Fresh full safety regression after prestate proof**: 56 passed in 221.83 seconds, exit 0. Log .ec04_prestate_final_safety.log (intentionally untracked). H080B after proof change 2 passed/24 deselected in 73.59 sec, exit 0. Owner tests 7 passed; Laya pinned 10 passed 1 skipped. Ruff PASS.
+- All substantive local changes are staged for publication through code commits. Final documentation commit may follow. PR #82 remains DRAFT and must NOT be merged.
+- No qualification of native Electron live effects, DIRECT real model checkpoint, full early-capture producer/verified same-run adoption, or exact-head CI. EC-13/14 HOLD.

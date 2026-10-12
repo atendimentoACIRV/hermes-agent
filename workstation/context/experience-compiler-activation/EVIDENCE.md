@@ -72,3 +72,18 @@ Status vocabulary: PASS, FAIL, SKIPPED, NOT RUN, BLOCKED, INCONCLUSIVE. Never in
 - EC-03 source+tests: git commit 065acd189b, Lefthook precommit lint PASS. First commit attempt blocked by 2 legacy RUF059 unused unpacked variables in test_online_compilability_safety.py; repaired by naming unused values with underscore and retry succeeded without bypass.
 - EC-04 source+tests: git commit 3b9f18ac51528da329fb1fdfdaba5f98893b4e2a, Lefthook precommit lint PASS.
 - No destructive git reset/clean. Local .ec*.log scratch excluded from commits.
+
+## 2026-10-12 — Native intent and progressive owner provenance
+- RED: new native named-site test found CALL(browser.navigate,trello.com) outside existing SET-only effect budget, failed 1. GREEN: 10 targeted tests PASS in 25.13s; native H-080B pair 2 PASS in 39.35s. Native hook approved local code commit 40f8f82a66.
+- RED: progressive source rejected operation_family/target_family labels; GREEN: 21 focused tests PASS (16.18s) after schema mapping.
+- RED: capture_progressive had no state_before and no causal delta; GREEN: 25 focused tests PASS (20.56s) after explicit state transition support, but critical review revealed forged prestate risk.
+- RED: arbitrary caller state_before without owner witness incorrectly generated changed exists False->True. GREEN: require separately persisted owner pre-readback proof matching task/run/operation and state; 3 targeted positive/negative cases PASS, including wrong-run, wrong-value, missing read_before_write. Independent real production prestate producer NOT yet delivered.
+- Updated Laya tests: 10 PASS, 1 SKIPPED, .ec05_vendored_laya_regression.log; real checkpoint not tested.
+- Full security suite .ec04_metadata_full_safety.log: 54 PASS (175.57s) before latest prestate witness restriction. Native H080B after metadata 2 PASS, 24 deselected.
+- Latest prestate full .ec04_prestate_final_safety.log and native .ec04_prestate_final_h080b.log running; record exact result before release.
+
+## Final verified outputs — 2026-10-12
+- `uvx --offline pytest -q -o addopts='' workstation/tests/test_online_compilability_safety.py workstation/tests/test_progressive_verified_gate.py workstation/tests/test_progressive_experience_capture.py workstation/tests/test_run_local_browser_effect_authority.py --tb=short`: **56 passed in 221.83s**, exit 0, scratch log `.ec04_prestate_final_safety.log`.
+- H080B paired: `test_real_browser_readback_validates_and_promotes_compiled_capability` **2 passed, 24 deselected in 73.59s**, exit 0, scratch log `.ec04_prestate_final_h080b.log`.
+- Owner factory: **7 unit tests PASS**. Laya vendor/real-contract/routing: **10 passed 1 skipped**, source pinned 0.3.23. Ruff current edited files PASS.
+- Native hooks: commit 40f8f82a66 PASS; commit c3f87a84860615f2086f17191921605068c6932c PASS. Do not interpret absence of PR-head CI runs as green.

@@ -2939,3 +2939,8 @@ Native regression at bb1888976e: existing headless-load contract passed with fou
 - EC-04: progressive VERIFIED_SUCCESS guarded by real persisted task/run/operation-bound verifier receipt with independent underlying evidence; Kernel supplies canonical verification proof. Full active TaskRun -> Laya -> offer -> VERIFIED_REUSE E2E remains pending.
 - EC-05: vendored Laya 0.3.23 lock provenance validated; System-1 telemetry 2 PASS on vendored source, no live DIRECT checkpoint yet.
 - EC-06+: open, especially explicit approved CALL budget for Browser native reuse; EC-13 HOLD. Exact-head CI, H-079/H-081/H-082 HOLD. Details in workstation/context/experience-compiler-activation/.
+
+### 2026-10-12 — EC-03 exact-site browser effect and EC-04 witnessed causal data
+- EC-03 recognized Trello open-site command explicitly budgets CALL(browser.navigate,trello.com); read authority and wrong-host denied. Local contract tests 10 PASS and H080B 2 PASS; native lease/restart/H-082 release remains HOLD.
+- EC-04 formal capability labels now flow into progressive capture; no arbitrary replay parameters are inferred. A verified poststate alone carries no causality; prestate delta requires independent persisted and scope-bound prestate receipt. Still missing native producer, actual in-flight Laya mined offer and VERIFIED_REUSE. Do not count local unit tests as productive release.
+- EC-05 locked Laya v0.3.23 three focused suites 10 PASS 1 SKIPPED; live checkpoint/DIRECT/CI HOLD. EC-06+ not completed. PR #82 draft; no merge.

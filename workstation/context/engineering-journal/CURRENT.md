@@ -5703,3 +5703,13 @@ continues on this branch with RED->GREEN per phase and separate upstream sync.
 - EC-04: fabricated progressive VERIFIED_SUCCESS via missing/stale/bad evidence RED; now requires E2+ persistent matched owner proof and canonical verifier linkage; 10 focused progressive/browser tests PASS. Kernel provides operation-bound canonical verification receipt.
 - H080B paired regression after changes 2 PASS. Prior full safety suite 49 PASS; final full regression for last race fix see activation EVIDENCE.md.
 - EC-05 vendored Laya 0.3.23 matches lock SHA 4aa6761be8173de4ce6d92c31b3e40b6eaf59a7c; 2 System-1 telemetry tests PASS. Real DIRECT/H-081/H-082/CI release gates remain HOLD. No main merge.
+
+## 2026-10-12 — EC-03 formal CALL + EC-04 intermediate provenance
+- RED->GREEN: named Trello navigation intent previously budgeted only SET goals while runtime adoption requires CALL external effect; add exact-host CALL, wrong-host/read-only tests; focused 10 PASS, native H080B pair 2 PASS, local commit 40f8f82a66 with Lefthook PASS.
+- RED->GREEN: verified progressive experience discarded operation/target families and did not store before/after delta. Kernel now forwards formal contract labels and only owner-known fields; refuses arbitrary replay parameters.
+- RED->GREEN: unattested caller-supplied prestate could invent causal deltas. Require independently persisted pre-readback proof with task/run/operation match and state agreement or leave delta empty. Proof schema currently has no qualified in-production producer. Negative wrong-run/wrong-value/before-false tests PASS.
+- Laya vendored 0.3.23 focused vendor+contract+routing: 10 PASS 1 SKIPPED. EC-04 full end-to-end, EC-05 live DIRECT, H-079/H-081/H-082, CI exact-head and merge remain HOLD.
+
+## 2026-10-12 — Latest EC-03/04 evidence and publication
+- Exact code commits on isolated PR #82 branch: 40f8f82a663152bcbade0fea809352973edd1dc7 and c3f87a84860615f2086f17191921605068c6932c, Lefthook native lint PASS.
+- Full regression after conservative witnessed-prestate gate: **56 PASS in 221.83s**. H080B native pair 2 PASS; owner 7 PASS, Laya focused 10 PASS /1 SKIPPED. Release authority and CI exact-head remain HOLD, no main merge.
