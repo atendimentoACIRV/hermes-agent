@@ -4445,3 +4445,14 @@ serialization. THIS IS ONLY THE VIEW SIDE: the secure Electron
 main/preload bridge to Python TaskRun canonical-open/apply-batch
 is still missing; the renderer cannot publish a canonical revision.
 Do not elevate H-C2 to integrated editor or qualified release.
+
+### 2026-10-12 H-C2 security boundary finding
+
+React can submit typed creative commands and consume verified Python
+HEAD response without local project mutation, but no reliable server
+proof currently associates the invoking Electron WebContents with a
+live claimed Kanban TaskRun. A default-deny main binding is safer than
+trusting taskId/sessionKey/actorId supplied in renderer JS. Current
+main resolver returns null and all live edits are refused.
+Add authenticated backend owner association and negative IPC/E2E tests
+before promoting H-C2. No general-purpose command shell is exposed.

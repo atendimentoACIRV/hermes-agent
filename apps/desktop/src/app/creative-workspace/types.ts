@@ -89,6 +89,12 @@ export interface CreativeWorkspaceContextValue {
   canonicalRevision: { revisionId: string; etag: string } | null
   acceptCanonicalHead: (head: unknown) => void
   clearCanonicalHead: () => void
+  openCanonicalProject: (projectId: string) => Promise<void>
+  submitCanonicalCommand: (command: {
+    commandId: 'layer.create' | 'layer.setProperty'
+    params: Record<string, unknown>
+    idempotencyKey: string
+  }) => Promise<void>
   setSelection: (selection: Partial<SelectionState>) => void
   setWorkspaceMode: (mode: WorkspaceMode) => void
   setPlayheadTime: (time: number) => void

@@ -189,3 +189,20 @@ Final frontend exact-source verification: 9 focused Vitest passed;
 4 pure Node/real-Python-schema tests passed; renderer TypeScript
 full-project tsconfig --noEmit exit 0; targeted ESLint exit 0;
 `git diff --check` exit 0. No Electron IPC binding qualified.
+
+### 2026-10-12 H-C2 Electron fail-closed boundary
+
+New typed IPC handler, restricted preload and React canonical
+open/apply display integration. Renderer cannot self-assign TaskRun
+session, actor or profile; main rejects all until independently
+verified TaskRun binding. Existing 4-file targeted Vitest confirmed
+11 passed, exit 0. UI test used synthetic IPC responses; NOT a real
+mouse edit/agent edit, native browser session or Electron E2E.
+Electron global TypeScript compilation remains blocked by unrelated
+existing simple-git type error at git-review-ops.test.ts:124.
+H-079 and CI unqualified.
+
+Final targeted verification: 4 Electron/React Vitest files,
+11 passed, 0 failed, exit 0; ESLint changed files exit 0.
+This verifies typed transport and presentation only. Real manual
+editing remains intentionally blocked by null server-trusted owner.

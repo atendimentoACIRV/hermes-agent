@@ -495,3 +495,75 @@ real quoted ETag and negative cases covered. Scoped frontend TypeScript
 `tsc -p tsconfig.json --noEmit` **UI_FINAL_TYPECHECK_EXIT=0**
 (118.34s). Targeted ESLint --fix completed UI_FINAL_ESLINT_EXIT=0;
 `git diff --check` exit 0. Main checkout and lockfile untouched.
+
+## Continuation 2026-10-12 — Electron H-C2 typed bridge (NOT live manual edit)
+
+Starting HEAD PR #81: 4af6c1177b0420063dbb84bc6f1ee67005369ac4.
+Isolated creative worktree was clean. Root C:\Github\hermes-agent at
+9fffa7f3ffcc2c50774654c271fe25e92ce459e8 and 34 dirty user changes
+was not edited.
+
+New Electron creative-canonical-ipc.ts: allowlist of two typed
+CreativeCommands (layer.create, layer.setProperty), exact envelope/param
+keys, bounded strings/IDs, no arbitrarily executable shell/FS access.
+Rejects injected renderer actor/session/task/owner metadata, untrusted
+renderer WebContents, missing trusted owner and backend 409 conflicts.
+Checks Python project_id/revision_id/source and strong quoted ETag
+before returning a post-command canonical HEAD; renderer receives no
+optimistic success without backend readback. TDD RED/GREEN verified.
+
+preload.ts exposes ONLY creativeCanonical.open/apply. main.ts registers
+two IPC channels but deliberately resolves main-attested TaskRun owner
+to null, as a secure connection between THIS renderer and live TaskRun
+has not yet been qualified. Consequently current real app refuses every
+creative mutation with creative_owner_unavailable. This is security
+intent, NOT a working manual editing E2E.
+
+React CreativeWorkspaceContext now provides openCanonicalProject and
+submitCanonicalCommand; both project by projectFromCanonicalHead only
+after backend result, with crypto.randomUUID transaction IDs and no
+local mutation of the canonical CreativeDocument. Context test with
+simulated trusted IPC readbacks confirmed revision changes in view.
+No real server/agent/editor E2E was run; do not promote H-C2.
+
+TDD baseline RED: nonexistent bridge, preload field, React method,
+response field naming mismatch and unregistered sender gate. Final
+selected Vitest 4 files, 11 passed / 0 failed / exit 0.
+Renderer tsc -p tsconfig.json --noEmit exit 0 (before final lint fixes).
+Electron global tsc -p tsconfig.electron.json --noEmit exit 2 due
+PREEXISTING unrelated git-review-ops.test.ts:124 simple-git module
+typing; no new Creative source error was emitted.
+ESLint scoped autofixes applied to new files; final lint receipt to
+be rechecked after last scoped fixes. No H-079, CI, app E2E, or main merge.
+
+H-C0 partial; H-C1 integrated native/canonical revision tests, not
+end-user app; H-C2 READBACK_UI+IPC_TRUST_CONTRACT_TESTED / LIVE_OWNER_BLOCKED;
+H-C3 partially native variables and rational time; H-C4 backend
+CAS/TaskRun exists, Electron authenticated actor not wired and native
+cross-engine distributed atomicity missing; H-C5 NOT_IMPLEMENTED;
+H-C6 partial native; H-C7 fingerprint only; H-C8 missing on-demand
+renderer; H-C9 no native nested/1920x1080 10s end-to-end final demo.
+
+First next executable action: bind Electron renderer to a verified
+server-owned TaskRun without accepting renderer-supplied session,
+actor_id, task_id or profile data. Add real backend typed
+canonical-open/apply gateway route under existing dashboard auth and
+TaskRun authority. Inject authenticated owner resolver in main only
+after independent E2E verification; then run true mouse->CAS->agent
+same document->reload->restart/human lease negatives. Keep current
+fail-closed resolver until qualification. No arbitrary shell IPC.
+
+Every incomplete session must produce a self-contained ready-to-copy
+continuation prompt with HEAD, tests, pending blockers, first exact
+step and this same recursive obligation until H-C0-H-C9 are qualified.
+
+### Final scoped H-C2 IPC validation receipt — 2026-10-12
+
+4 targeted Electron/React Vitest files: 11 passed, 0 failed,
+HCW_UI_FINAL_VITEST_EXIT=0. Selected changed-file ESLint:
+HCW_UI_FINAL_LINT_EXIT=0. Renderer tsc verified earlier exit 0.
+Global Electron tsc fails only on previously present unrelated
+simple-git type mismatch in git-review-ops.test.ts:124, exit 2.
+No trusted TaskRun owner binding, no genuine main-to-backend canonical
+RPC and no user/agent Electron E2E. The new main bridge is fail-closed.
+No full app CI or H-079 release qualification performed.

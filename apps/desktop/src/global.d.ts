@@ -1,7 +1,6 @@
 import type { GatewayWsUrlResult } from '@hermes/shared'
 import type { HermesSkin } from '@hermes/shared/skin'
 import type { TranslucencyState } from '@hermes/shared/translucency'
-import type { WorkstationBrowserBridge } from './app/browser/types'
 
 import type { ChallengeOutcome } from '../electron/challenge-window'
 import type { ScreenshotApi } from '../electron/command-screenshot-types'
@@ -14,6 +13,7 @@ import type { UpdateHoldWire } from '../electron/update-hold-types'
 import type { UpdateRunReport } from '../electron/updater/update-metrics'
 import type { WindowSizeMode } from '../electron/window-size-types'
 
+import type { WorkstationBrowserBridge } from './app/browser/types'
 import type { WakeIndicatorState } from './lib/wake-indicator'
 import type {
   PetOverlayBounds,
@@ -35,6 +35,20 @@ export type DesktopMachineProfile = MachineProfile
 declare global {
   interface Window {
     hermesDesktop: {
+      creativeCanonical: {
+        open: (payload: { projectId: string }) => Promise<unknown>
+        apply: (payload: {
+          projectId: string
+          expectedRevisionId: string
+          etag: string
+          transactionId: string
+          command: {
+            commandId: 'layer.create' | 'layer.setProperty'
+            params: Record<string, unknown>
+            idempotencyKey: string
+          }
+        }) => Promise<unknown>
+      }
       workstationBrowser: WorkstationBrowserBridge
       // Resolve a backend connection. Omit `profile` (or pass the primary) for
       // the window's backend; pass a named profile to lazily spawn/reuse that

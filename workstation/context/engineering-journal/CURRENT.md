@@ -5800,3 +5800,19 @@ Frontend verification final: 9 Vitest passed (2 files), 4 Node
 projection tests passed against real Python-generated HEAD;
 TypeScript renderer typecheck exit 0 (118.34s); scoped ESLint exit 0.
 No new Electron IPC or full E2E claims.
+
+### 2026-10-12 — Electron H-C2 typed UI readback seam
+
+Clean starting PR #81 SHA 4af6c117, main 34 dirty unchanged.
+Added strict IPC command adapter, preload surface and React methods
+which wait for backend readback. Main TaskRun owner resolver is
+intentionally null pending authentication, thus no real edit yet.
+Four targeted Vitest files 11 passed. Renderer TypeScript passed;
+global Electron TypeScript preexisting simple-git failure.
+Still needs real server route and trusted TaskRun ownership.
+No main merge or release qualification.
+
+Final H-C2 IPC and React tests: 4 Vitest files, 11 passed,
+0 failed, exit 0. Targeted ESLint exit 0, renderer TypeScript
+prior run exit 0; Electron global tsc has prior simple-git error.
+No real Electron manual edit, TaskRun binding or CI qualification.

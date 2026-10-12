@@ -62,6 +62,46 @@ export function CreativeWorkspaceProvider({ children }: { children: React.ReactN
 
   const clearCanonicalHead = useCallback(() => setCanonicalHead(null), [])
 
+  const openCanonicalProject = useCallback(async (projectId: string) => {
+    const bridge = window.hermesDesktop?.creativeCanonical
+
+    if (!bridge) { throw new Error('creative_canonical_bridge_unavailable') }
+    const verified = projectFromCanonicalHead(await bridge.open({ projectId }))
+
+    if (verified.project.projectId !== projectId) { throw new Error('creative_project_mismatch') }
+    setCanonicalHead(verified)
+  }, [])
+
+  const submitCanonicalCommand = useCallback(async (command: {
+    commandId: 'layer.create' | 'layer.setProperty'
+    params: Record<string, unknown>
+    idempotencyKey: string
+  }) => {
+    if (!canonicalHead) { throw new Error('creative_canonical_head_required') }
+    const bridge = window.hermesDesktop?.creativeCanonical
+
+    if (!bridge) { throw new Error('creative_canonical_bridge_unavailable') }
+    const transactionId = globalThis.crypto?.randomUUID?.().replaceAll('-', '')
+
+    if (!transactionId || !/^[a-f0-9]{32}$/.test(transactionId)) {
+      throw new Error('creative_secure_transaction_id_unavailable')
+    }
+
+    const next = projectFromCanonicalHead(await bridge.apply({
+      projectId: canonicalHead.project.projectId,
+      expectedRevisionId: canonicalHead.revisionId,
+      etag: canonicalHead.etag,
+      transactionId,
+      command
+    }))
+
+    if (next.project.projectId !== canonicalHead.project.projectId) {
+      throw new Error('creative_project_mismatch')
+    }
+
+    setCanonicalHead(next)
+  }, [canonicalHead])
+
   const setSelection = useCallback((partial: Partial<SelectionState>) => {
     setSelectionState(prev => {
       const next = { ...prev, ...partial }
@@ -206,6 +246,8 @@ export function CreativeWorkspaceProvider({ children }: { children: React.ReactN
     canonicalRevision,
     acceptCanonicalHead,
     clearCanonicalHead,
+    openCanonicalProject,
+    submitCanonicalCommand,
     selection,
     workspaceMode,
     playheadTime,
@@ -223,7 +265,8 @@ export function CreativeWorkspaceProvider({ children }: { children: React.ReactN
     clearSelection,
   }), [
     project, canonicalRevision, selection, workspaceMode, playheadTime, isPlaying,
-    pinnedPanels, acceptCanonicalHead, clearCanonicalHead, setSelection,
+    pinnedPanels, acceptCanonicalHead, clearCanonicalHead, openCanonicalProject,
+    submitCanonicalCommand, setSelection,
     setWorkspaceMode, setPlayheadTime, setIsPlaying, togglePinPanel,
     selectClip, selectTrack, selectLayer, selectKeyframe, clearSelection,
   ])

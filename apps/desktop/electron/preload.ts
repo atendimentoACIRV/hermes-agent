@@ -26,6 +26,10 @@ const localSkin = ipcRenderer.sendSync('hermes:skin:local')
 import { unwrapExpectedNotFound } from './api-expected-404'
 
 contextBridge.exposeInMainWorld('hermesDesktop', {
+  creativeCanonical: {
+    open: payload => ipcRenderer.invoke('hermes:creative:canonical:open', payload),
+    apply: payload => ipcRenderer.invoke('hermes:creative:canonical:apply', payload)
+  },
   workstationBrowser: {
     status: () => ipcRenderer.invoke('hermes:workstation-browser:status'),
     ensure: () => ipcRenderer.invoke('hermes:workstation-browser:ensure'),

@@ -3030,3 +3030,15 @@ or gateway endpoint, nor to an authorized live TaskRun identity.
 Next stage must implement that link (no arbitrary shell interface)
 and prove human mouse -> canonical HEAD -> agent command -> UI refresh
 with actual Electron E2E. All H-079 and exact-head CI gates remain.
+
+### H-C2 typed Electron contract — 2026-10-12
+
+New typed main/preload command allowlist and React view readback
+are unit/integration-contract tested but NOT live authenticated
+Electron-to-TaskRun integration. Current main resolver deliberately
+returns no owner. P0: implement and independently verify server-attested
+TaskRun owner lookup, authenticated canonical RPC; then update main
+resolver and run real human mouse -> CAS -> agent -> refreshed UI
+E2E including restart/conflict/lease fences. Native H-C1 prior
+tests remain valid; H-C4 distributed native transaction and H-C5-H-C9,
+H-079 and full CI remain incomplete.
