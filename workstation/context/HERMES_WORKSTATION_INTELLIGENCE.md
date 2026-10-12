@@ -1,5 +1,19 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## Inteligência preservada — transição estratégica 2026-10-12 (não significa release)
+
+A sessão de 11–12/10 demonstrou que a sensação de Hermes "travado" envolve um ciclo causal de **auto-admissão indevida de Task/TaskRun**, **efeitos mal classificados**, **handoffs de mutações incertas**, **SUPERSEDED** e **autoridade/UI nativa**. Não reduzir o problema a latência. A decisão D-045 separa conversa, Task durável e TaskRun; PRs #71–#83 implementaram fatias em draft que permanecem fora de main.
+
+**Aprendizados reutilizáveis:** Session-bound Browser não herda `task/run/operation_id` process-level; `PURE_READ`/`INTERACTIVE`/`MUTATION` precisam ser distinguidos por ação e argumentos; handoff scoped à TaskRun requer lock e readback independente; `verified_completed` demanda `acceptance_approved` e evidências vinculadas; `409 USER_CONTROL_ACTIVE` protege lease humano; restart não confere permissão a efeitos incertos. Perdido ACK após mutação real, jamais repetir a mesma mutação apenas porque faltou receipt.
+
+O checkpoint do PR #83 `22498a09db` mostra testes de concorrência, restart e mutação única com readback, mas não o caminho completo **HANDOFF agente → aprovação na UI → `evaluate_verification()` → continuação segura**. Dados antigos: 19 tasks atuais / 106 backup-only / 55 handoffs órfãos, apenas dry-run privado de #80. Histórico de ganhos de Browser deve distinguir redução de payload em fixture de economia real de tokens/latência/custo.
+
+**Outras frentes preservadas:** D-043 Creative kernel engine-neutral e CAS de edição ainda carecem de owner nativo atestado (#77/#81); One-Click fingerprint (#70) carece de packaged/offline; OPC/Experience Compiler (#82) carece de validação live, CI e não pode autopromover capacidades. Guardrails de source-of-truth continuam.
+
+Referências verificáveis: [handoff estratégico](HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md) · [dossiê](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md) · [ADR racional](HERMES_WORK_DECISION_RATIONALE_2026-10-12.md) · [PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). Frente **PAUSED_BY_STRATEGY**, issues tecnicamente abertos; não selecionar nova direção aqui.
+
+
+
 ## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser no Runtime e UX
 **Síntese de Implementação:** O ecossistema de navegação foi aprimorado sem introduzir novos engines concorrentes ao `TaskCompiler`, sem quebrar o lease `BrowserHumanControlLease`, sem reexecuções cegas de mutações incertas e sem violar o isolamento de perfis (§2 do `SECURITY.md`).
 - **Batch Actions (`browser_batch_actions`):** Execução sequencial estrita com assert de lease a cada passo, receipts rastreáveis (`BrowserOwnerReceipt`) e interrupção no primeiro efeito incerto.
