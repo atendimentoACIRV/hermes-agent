@@ -5703,3 +5703,15 @@ continues on this branch with RED->GREEN per phase and separate upstream sync.
 ### HCW-HYBRID-01 follow-up — transparent source and dependency contracts
 
 Pinned HF source `6ae1af7470133db72de6d9bbceeaf80e85695c68` cloned to isolated temporary location and Bun `--frozen-lockfile --ignore-scripts` dependencies installed (1,457 packages). Pinned EC Git FilmCraft dep fetched; Cargo build progressing. A direct attempt to execute the source HyperFrames CLI was refused by connector security, and was not bypassed. No engine E2E result/PNG/MP4 claimed. Added test-first RGBA footage validator, graph topology and declared-binding checks enforced on hybrid revision, and content-addressed render fingerprints. These are bounded source-only components, not a production render/cache/agent/editor integration. Preserve H-079 NO PROMOTION. See `../creative-workstation/evidence/HCW-HYBRID-01.md`.
+
+
+- Updated partial hybrid source regression (26 files, 21 legacy excluding yaml environment issue + 5 new): **121 passed, 1 Windows symlink skip**, exit 0, 100.62s. Native EffectCraft/HyperFrames E2E remains unexecuted and H-079 promotion still blocked.
+
+
+### 2026-10-12 — HCW-HYBRID-FINAL native build and import verification
+
+- Reused isolated PR #81 worktree; root checkout 34 dirty changes preserved.
+- Native EffectCraft CLI executable at C:\Temp\hcw-hybrid01-effectcraft-target\debug\effectcraft-cli.exe passed --help and actual --demo frame PNG render. Newly added opt-in real-engine pytest creates/saves/reopens .ecproj, uses native file.import with RGBA sequence and verifies different decoded pixels across time; avoids claiming Pillow frames came from HyperFrames.
+- Added strict effectcraft_import_invocation returning pinned CreativeInvocation for existing start_creative_process; confirmed RED missing function then native GREEN, pathname/output/binary fingerprint negatives.
+- HyperFrames SHA 6ae1af7470133db72de6d9bbceeaf80e85695c68: core/parsers/lint/studio-server/producer built from source with exit 0; CLI --version 0.8.143 exit 0. Full CLI build-copy needed studio dist; studio build in progress. Strict render of first 2s fixture refused missing_gsap_script; no HF output qualified. Remote HTML edit was denied by security settings and not bypassed.
+- Persistent checkpoint: creative-workstation/HCW_HYBRID_EXECUTION_STATE.md. H-079 NO PROMOTION. CI/native HF->EC E2E still pending.

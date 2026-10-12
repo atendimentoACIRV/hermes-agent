@@ -62,3 +62,30 @@ The user selected the EffectCraft + HyperFrames hybrid-composition approach as a
 - `creative_hybrid_footage.py`: validates real consecutive RGBA PNGs, actual transparency, visible compositable pixels, motion, dimensions, file hashes, and constructs an EffectCraft `file.import` command with explicit fps and `addToComp`. This neither invokes HyperFrames nor EffectCraft nor proves provenance of frames; H-C1 remains BLOCKED.
 - `creative_hybrid_graph.py`: source dependency topological planning and cycle rejection, explicit typed parameter bindings, content-based render key binding composition SHA, external asset SHA, output time/fps/dimensions, engine version and color profile; these validations are admitted into `save_hybrid_project_revision` before source storage. No runtime cache, native binding application or actual nested compositor has been built. **H-C3/H-C7/H-C9 partial UNIT_TESTED only.**
 - Local RED: unsupported APIs for graph/footage, invalid graph persisted on old store, missing asset/profile key; GREEN: 19 passing and 1 environment-permission skip across 3 new test files. Full scoped regression is to be re-run on exact pushed head and appended to PR; do not extrapolate this subset into CI qualification.
+
+
+## Full scoped regression (post-continuation source)
+
+Windows isolated `PYTHONPATH=<worktree>` and `HERMES_HOME=C:\Temp\hcw-hybrid01-home` with test runner `C:\Github\hermes-agent-p0-kanban-effects\.venv\Scripts\python.exe`: 26 test files (21 legacy `test_creative_*.py` excluding existing `test_creative_runtime.py` collection/environment issue, plus 5 `test_hcw_hybrid_*.py` files), **121 passed, 1 skipped**, 100.62 seconds, exit code 0. The one skip is a Windows symlink-creation test that could not acquire permission. The test ran on the complete source worktree before the corresponding documentation receipt commit; rerun exact-head qualification before promotion. This is not native engine E2E or Workstation full CI.
+
+
+### Native engine evidence, 2026-10-12 (development-only)
+
+EffectCraft 0.7.0 CLI executable completed --help and --demo render-frame on Windows, produced real 320x180 PNG. Real native integration pytest creates, saves and reopens .ecproj, imports three generated RGBA PNG frames with file.import, reopens and decodes distinguishable frames at t0 and t0.066667. Python's fixture creates the source RGBA pixels; this is NOT HyperFrames origin proof. Native argv is now generated through effectcraft_import_invocation with executable SHA and confined input/output; execution authority remains in start_creative_process. RED->GREEN seen for missing invocation function. Preliminary 9 passed / 1 platform symlink skip in focused tests, broader exact-head results to follow.
+
+HyperFrames source build: core/parsers/lint/studio-server/producer succeeded; CLI version 0.8.143 exit 0. Full cli build:copy initially failed without studio/dist; separate studio build attempted. Actual CLI render --format png-sequence --strict reached Chrome/lint and aborted with missing_gsap_script, and warnings about id/subcomposition. No HF frames were generated, no joint HF+EC composition, no production promotion. Security-filtered HTML patch was not retried through alternate paths. For checkpoint and exact next tasks see ../HCW_HYBRID_EXECUTION_STATE.md.
+
+
+### Subsequent native HyperFrames successful transparent fixture
+
+The pinned official HyperFrames 0.8.143 CLI completed full build with exit 0.
+Real CLI rendered its existing static transparency-regression source with
+--format png-sequence --fps 30 --workers 1 --strict --no-best-effort.
+Rendered 30 frames to C:\Temp\hcw-hybrid01-native-smoke\hf-official-alpha,
+exit 0. Independent Pillow verification of original PNGs:
+mode RGBA, 200x200, alpha min=0 max=255, corner fully transparent,
+center opaque red, unique file SHA count=1 because fixture was intentionally
+STATIC. No claim of 2s moving HyperFrames animation, EffectCraft composite,
+or H-C1 graduation. Full scoped regression newly run: 125 PASSED,
+1 Windows symlink SKIPPED, exit 0 in 107.51s over 27 files;
+historical YAML-dependent creative_runtime tests remain excluded.

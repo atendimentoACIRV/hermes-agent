@@ -98,3 +98,54 @@ def effectcraft_import_command(footage: HybridFootage, *, fps: int) -> dict:
             "addToComp": True,
         },
     }
+
+
+def effectcraft_import_invocation(
+    footage: HybridFootage, *, fps: int,
+    project_path: Path, output_path: Path, executable_path: Path, workspace_root: Path,
+):
+    """Build a pinned CLI operation for Hermes's existing creative process supervisor.
+
+    Call start_creative_process(config, scope, invocation), then validate the
+    resulting .ecproj with a native reopen before publishing a source revision.
+    Preparation is not an authority check or a project-store commit.
+    """
+    from workstation.creative_process import CreativeInvocation
+    import json
+
+    workspace = Path(workspace_root).resolve(strict=True)
+    if not workspace.is_dir() or workspace.is_symlink():
+        raise HybridFootageError("Invalid native import workspace")
+    project = Path(project_path)
+    target = Path(output_path)
+    executable = Path(executable_path)
+    source = Path(footage.first_frame)
+    if (not project.is_absolute() or not target.is_absolute() or not executable.is_absolute()
+            or not source.is_absolute() or project.suffix.lower() != ".ecproj"
+            or target.suffix.lower() != ".ecproj"):
+        raise HybridFootageError("Native import requires absolute .ecproj paths")
+    if project.is_symlink() or not project.is_file():
+        raise HybridFootageError("Native source project is missing or redirected")
+    if target.is_symlink() or target.exists():
+        raise HybridFootageError("Native output must be a new, absent .ecproj")
+    if not target.parent.is_dir() or target.parent.is_symlink():
+        raise HybridFootageError("Native output parent must already exist")
+    if (not project.resolve(strict=True).is_relative_to(workspace)
+            or not target.parent.resolve(strict=True).is_relative_to(workspace)
+            or not source.resolve(strict=True).is_relative_to(workspace)):
+        raise HybridFootageError("Native input or output escapes authorized workspace")
+    if executable.suffix.lower() not in {".exe", ""} or not executable.is_file():
+        raise HybridFootageError("EffectCraft executable not found")
+    payload = effectcraft_import_command(footage, fps=fps)
+    with executable.open("rb") as stream:
+        executable_sha = hashlib.file_digest(stream, "sha256").hexdigest()
+    return CreativeInvocation(
+        engine="effectcraft",
+        argv=(str(executable.resolve(strict=True)),
+              "--project", str(project.resolve(strict=True)),
+              "--save-as", str(target),
+              "exec", payload["command"], "--params",
+              json.dumps(payload["params"], ensure_ascii=False, separators=(",", ":")),
+              "--json"),
+        executable_sha256=executable_sha,
+    )

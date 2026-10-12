@@ -51,3 +51,45 @@ def test_footage_failure_cannot_be_promoted(tmp_path, problem):
             pytest.skip("Symlink creation not available in test environment")
     with pytest.raises(HybridFootageError):
         validate_rgba_footage(folder, frame_count=3, width=32, height=32)
+
+
+def test_native_import_invocation_cannot_escape_workspace(tmp_path):
+    from workstation.creative_hybrid_footage import effectcraft_import_invocation
+    folder = _frames(tmp_path / "frames")
+    inspected = validate_rgba_footage(folder, frame_count=3, width=32, height=32)
+    project = tmp_path / "safe.ecproj"
+    project.write_bytes(b"source")
+    exe = tmp_path / "effectcraft-cli.exe"
+    exe.write_bytes(b"native-test-executable")
+    expected = tmp_path / "output.ecproj"
+    argv = effectcraft_import_invocation(
+        inspected, fps=30, project_path=project, output_path=expected,
+        executable_path=exe, workspace_root=tmp_path,
+    )
+    assert argv.argv[0] == str(exe)
+    assert argv.argv[argv.argv.index("--params") + 1]
+    argv.validate()
+    with pytest.raises(HybridFootageError, match="escapes"):
+        effectcraft_import_invocation(
+            inspected, fps=30, project_path=project,
+            output_path=tmp_path.parent / "escaped.ecproj",
+            executable_path=exe, workspace_root=tmp_path,
+        )
+    exe.write_bytes(b"binary-drift")
+    with pytest.raises(PermissionError, match="fingerprint drift"):
+        argv.validate()
+
+
+def test_native_import_refuses_overwrite(tmp_path):
+    from workstation.creative_hybrid_footage import effectcraft_import_invocation
+    folder = _frames(tmp_path / "frames")
+    inspected = validate_rgba_footage(folder, frame_count=3, width=32, height=32)
+    project = tmp_path / "safe.ecproj"
+    project.write_bytes(b"source")
+    exe = tmp_path / "effectcraft-cli.exe"
+    exe.write_bytes(b"native-test-executable")
+    with pytest.raises(HybridFootageError, match="new, absent"):
+        effectcraft_import_invocation(
+            inspected, fps=30, project_path=project, output_path=project,
+            executable_path=exe, workspace_root=tmp_path,
+        )
