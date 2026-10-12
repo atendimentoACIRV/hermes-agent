@@ -2932,3 +2932,9 @@ GREEN: complete online safety file, 38 passed, zero failed, 149.0s. Config/expir
 Native regression at bb1888976e: existing headless-load contract passed with four real Electron/Chromium BrowserTasks (8.5s test; 1.6m including bootstrap under concurrent tests). Inference and pages are fixtures: native lifecycle/IPC evidence only, not E1 completion or measured product latency/cost. Broader Workstation regression still running; CI remains skipped by maintainer.
 ## 2026-10-11 — P0 authority / Browser / One-Click convergence (draft)
 An isolated integration of PRs #70–#75 is documented at `context/P0_INTEGRATION_2026-10-11.md`, including 116/116 combined Windows tests and an additional `TaskCompiler` canonical SQLite-owner fix (9 red → 10 green supersession E2E). **No main merge and no production qualification**: native Electron UI/Browser handoff/readback, offline One-Click, Studio without HyperFrames, exact-head CI and user data migration still held. Follow the ranked nine-front matrix in the integration dossier rather than relabeling earlier drafts as finished.
+
+## 2026-10-11 — P0.2, P0.3, P0.5 follow-through (separate draft)
+- Explicit trusted force-work marker now gates `force=True`; normal intelligent admission unaffected. Cross-worker CAS test remains.
+- Canonical completion admission requires matching task identity, optional run identity, status `verified_completed` AND accepted contract, otherwise fail closed (9 RED → 11 GREEN).
+- Read-only SQLite online snapshot and historical reconciliation manifest added. Live dry-run on user data: 19 current tasks, 106 backup-only (0 overlap), 55 orphan handoffs. **No actual deletion, restoration, closing or approvals.**
+- See `context/P0_PROOF_RECONCILIATION_2026-10-11.md`. No CI/packaged Electron proof. Remaining P0.3 typed evidence contracts, P0.5 scoped user-reviewed apply/rollback, H080B baseline, native UI and Browser gates hold release.
