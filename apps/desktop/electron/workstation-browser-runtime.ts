@@ -803,16 +803,24 @@ function pointScript(ref: string, focus: boolean, anchor?: { type?: string; valu
       var type = String(anchor.type || '');
       try {
         if (type === 'testid' || (!type && val)) {
-          el = document.querySelector('[data-testid="' + CSS.escape(val) + '"], [data-test="' + CSS.escape(val) + '"], [data-qa="' + CSS.escape(val) + '"]');
+          var matches0 = document.querySelectorAll('[data-testid="' + CSS.escape(val) + '"], [data-test="' + CSS.escape(val) + '"], [data-qa="' + CSS.escape(val) + '"]');
+          if (matches0.length > 1) return { success: false, error: "ambiguous_anchor" };
+          el = matches0[0];
         }
         if (!el && (type === 'name' || !type)) {
-          el = document.querySelector('[name="' + CSS.escape(val) + '"]');
+          var matches1 = document.querySelectorAll('[name="' + CSS.escape(val) + '"]');
+          if (matches1.length > 1) return { success: false, error: "ambiguous_anchor" };
+          el = matches1[0];
         }
         if (!el && (type === 'role' || !type)) {
-          el = document.querySelector('[role="' + CSS.escape(val) + '"]');
+          var matches2 = document.querySelectorAll('[role="' + CSS.escape(val) + '"]');
+          if (matches2.length > 1) return { success: false, error: "ambiguous_anchor" };
+          el = matches2[0];
         }
         if (!el && (type === 'label' || !type)) {
-          el = document.querySelector('[aria-label="' + CSS.escape(val) + '"], [placeholder="' + CSS.escape(val) + '"]');
+          var matches3 = document.querySelectorAll('[aria-label="' + CSS.escape(val) + '"], [placeholder="' + CSS.escape(val) + '"]');
+          if (matches3.length > 1) return { success: false, error: "ambiguous_anchor" };
+          el = matches3[0];
         }
         if (el && state && state.byRef) {
           state.byRef.set(${JSON.stringify(ref)}, el);
@@ -824,6 +832,24 @@ function pointScript(ref: string, focus: boolean, anchor?: { type?: string; valu
     if (${focus ? 'true' : 'false'}) { try { el.focus({ preventScroll: true }); } catch (err) { try { el.focus(); } catch (err2) {} } }
     var r = el.getBoundingClientRect();
     if (!r || r.width < 1 || r.height < 1) return { success: false, error: 'element_not_visible' };
+    // Playwright-inspired pre-dispatch actionability; never retry a mutation
+    // whose effect is uncertain. A receipt remains separate from verification.
+    if (el.matches(':disabled') || el.closest('[inert], [aria-disabled="true"]')) {
+      return { success: false, error: 'target_not_actionable' };
+    }
+    var style = getComputedStyle(el);
+    if (style.visibility === 'hidden' || style.display === 'none' || style.pointerEvents === 'none') {
+      return { success: false, error: 'target_not_actionable' };
+    }
+    var cx = r.left + r.width / 2;
+    var cy = r.top + r.height / 2;
+    if (cx < 0 || cy < 0 || cx >= innerWidth || cy >= innerHeight) {
+      return { success: false, error: 'target_outside_viewport' };
+    }
+    var hit = document.elementFromPoint(cx, cy);
+    if (!hit || (!el.contains(hit) && !hit.contains(el))) {
+      return { success: false, error: 'target_obscured' };
+    }
     var tag = String(el.tagName || '').toLowerCase();
     var role = String(el.getAttribute('role') || tag || 'element');
     var testid = String(el.getAttribute('data-testid') || el.getAttribute('data-test') || el.getAttribute('data-qa') || '').trim();
@@ -3371,7 +3397,16 @@ export class WorkstationBrowserRuntime {
     entry.mutationRevision++
     this.extractCache.invalidateTab(entry.id)
     const wc = entry.view.webContents
+    const expectedEpoch = entry.documentEpoch
+    const expectedUrl = wc.getURL()
     const point = await this.resolvePoint(entry, ref, true, anchor)
+    // A human may take over or a document may be replaced during read-only
+    // resolution. No mouse event may be emitted until this is rechecked.
+    if (!entry.ownerTaskId) throw new Error('browser_task_owner_required')
+    this.assertAgentControl(entry.ownerTaskId)
+    if (entry.documentEpoch !== expectedEpoch || wc.getURL() !== expectedUrl || wc.isDestroyed()) {
+      throw new Error('browser_document_changed')
+    }
     await this.cdpClick(wc, point.x, point.y)
     return { target: point.target }
   }
@@ -3390,7 +3425,14 @@ export class WorkstationBrowserRuntime {
     entry.mutationRevision++
     this.extractCache.invalidateTab(entry.id)
     const wc = entry.view.webContents
+    const expectedEpoch = entry.documentEpoch
+    const expectedUrl = wc.getURL()
     const point = await this.resolvePoint(entry, ref, true, options.anchor)
+    if (!entry.ownerTaskId) throw new Error('browser_task_owner_required')
+    this.assertAgentControl(entry.ownerTaskId)
+    if (entry.documentEpoch !== expectedEpoch || wc.getURL() !== expectedUrl || wc.isDestroyed()) {
+      throw new Error('browser_document_changed')
+    }
     const shouldClear = options.clear !== false && !options.append
     const mode = options.mode ?? 'insert_text'
 
