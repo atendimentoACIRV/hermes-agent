@@ -27,3 +27,13 @@
 
 ## Mandatory stop protocol
 Always return a **single ready-to-copy RESUME PROMPT** for the next AI invocation when any gate remains. Include exact worktree, branch, HEAD, PR URL, uncommitted state, latest pass/fail commands/counts, and precise next tests/source symbols. Instruct the next AI to work immediately, retain user changes, not weaken permissions, not retry uncertain writes, not restore deleted cards, and itself issue an updated continuation prompt if it must stop. Do not claim completion or promise background work.
+
+
+## Additional genuine Electron/Chromium E2E evidence (after core commit)
+
+From the **root worktree with existing user UI changes**, executed:
+`C:\Github\hermes-agent\node_modules\.bin\playwright.cmd test workstation-headless-load --grep "keeps four native Browser tasks" --reporter=line` (cwd `C:\Github\hermes-agent\apps\desktop`).
+
+Result: **1 PASSED (54.9s)**. This launched the real headless Electron runtime with a mock inference backend and deterministic loopback pages, navigated four BrowserTasks with distinct session IDs, and verified resource identity across authenticated controller and renderer IPC. This is stronger than unit tests, but uses the **root UI and backend**, not the stacked PR #83 branch, does not involve packaged Electron click events, and does not test human takeover→release→agent resume/cold restart. No real external services or user Kanban data were modified.
+
+For qualification, reproduce the same H013 fixture on the integrated candidate built from the stacked PR and extend a bounded native scenario covering safe manual takeover, release, switching chats and valid run continuation, with explicit failure diagnosis rather than loosening fences.
