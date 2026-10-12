@@ -8,8 +8,10 @@
 - Branch: `feat/creative-quality-capability-lab-20261012`
 - Base: `origin/main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`
 - First local commit: `03703b22a49fea0ca6626182615924a0b4e527bb`
+- Published draft PR #86: https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/86
+- Previously published checkpoint HEAD: `1c88fef68633a15db98fd1049a46ac88c1a33812`
 - The last checkpoint commit's resulting SHA must be obtained with `git rev-parse HEAD` (self-referential HEAD cannot be embedded in its own commit).
-- Latest PR #81 HEAD actually verified: `acb518e5ba227ae1fbabff7f88f0842533851ca6` (PR OPEN/DRAFT).
+- Latest PR #81 HEAD actually verified: `85b0448fa01261bf425764f188edf443d8194b8b` (PR OPEN/DRAFT).
 - PR #81 and main are **not owned** by this lab; original root checkout had pre-existing dirty changes and was not edited.
 
 ## Native evidence completed
@@ -22,6 +24,8 @@
 - Tests: `13/13` Python unit/native fixture regressions passed using existing venv. Three.js Chromium render experiment exit 0 including repeat-seek. CLI hybrid+text+blur exit 0. Pre-commit Python lint passed.
 - CQL-05 bounded baseline: 5 repeated full 60-frame decode checks, p50 **470.12 ms**, p95 nearest rank **937.25 ms**, mean 561.37 ms on this Windows machine. This measures verifier latency only; it is not the product's edit/render latency. See `reports/CQL_VIDEO_DECODE_BENCHMARK.json`.
 
+- CQL-03: UX acceptance scenarios are recorded in `scenarios/CQL_EDITOR_UX_ACCEPTANCE.md`; no native app E2E was run.
+
 ## Blocked / not asserted
 - No native authenticated Electron human↔agent TaskRun CAS round-trip: H-C2 belongs to PR #81, `BLOCKED_EXTERNAL_DEPENDENCY`.
 - No packaged Electron editor UX proof, no p50/p95 benchmarks; both `NOT_RUN`.
@@ -30,7 +34,7 @@
 - GLB includes a named animation with empty channels: real rotation is driven by Three.js scripting; glTF keyframe animation support not tested.
 
 ## Next exact action
-1. Commit and publish this checkpoint; open a **draft** PR targeted at main without merging.
+1. PR #86 is already published as draft. Continue CQL-03 native editor UX qualification without altering PR #81.
 2. Add tests/measurement for editor preview seek, layer selection, Inspector, Graph Editor, undo/redo, and absence of stale optimistic presentation. Add executable scenario descriptions; real native Electron tests only on valid PR #81 attestation.
 3. Build repeatable low-cost benchmark using the real `threejs`, PNG and EffectCraft fixtures (p50/p95 with counts and resources); do not share a parallel GPU-heavy job with the other agent.
 4. Recheck PR #81 HEAD; if attestation is ready, use separate exact-head checkout to perform human+agent CAS E2E. If not, record BLOCKED and continue independently.
