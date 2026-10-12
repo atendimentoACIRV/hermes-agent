@@ -85,7 +85,7 @@ def emit_native_browser_observation(
 
         payload: dict[str, Any] = {"action": action}
         for name in ("cdp_calls", "snapshot_chars", "delta_chars",
-                     "element_count", "renderer_memory_bytes",
+                     "element_count", "renderer_pid", "renderer_memory_bytes",
                      "main_rss_bytes", "main_cpu_us", "spa_waits",
                      "completed_steps", "verified_steps"):
             value = diagnostics.get(name) if name in diagnostics else data.get(name)

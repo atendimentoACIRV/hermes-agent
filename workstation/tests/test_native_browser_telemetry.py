@@ -46,6 +46,7 @@ class NativeBrowserObservationTests(unittest.TestCase):
                 "cdp_calls": 19, "duration_ms": 120.2,
                 "snapshot_chars": 6600, "delta_chars": 1300,
                 "renderer_memory_bytes": 10_000,
+                "renderer_pid": 8123,
                 "password": marker,
             }
         })
@@ -53,6 +54,7 @@ class NativeBrowserObservationTests(unittest.TestCase):
         self.assertEqual(row.payload["snapshot_source"], "ax")
         self.assertEqual(row.payload["cdp_calls"], 19)
         self.assertEqual(row.payload["snapshot_chars"], 6600)
+        self.assertEqual(row.payload["renderer_pid"], 8123)
         self.assertNotIn("password", row.payload)
         self.assertNotIn(marker.encode(), self.db.read_bytes())
 
@@ -115,7 +117,7 @@ class NativeBrowserObservationTests(unittest.TestCase):
                           'snapshot': 'VISIBLE_TO_MODEL', '__telemetry': {
                               'snapshot_source': 'dom', 'cdp_calls': 0,
                               'password': 'PRIVATE_NOT_MODEL'}}},
-                      Dict=typing.Dict, Any=typing.Any, Optional=typing.Optional)
+                      Dict=dict, Any=typing.Any, Optional=typing.Optional)
         with patch.dict(sys.modules, {'workstation.batch_detection': mock_batch}):
             exec(code, bridge)
             with patch.dict(os.environ, {}, clear=True):

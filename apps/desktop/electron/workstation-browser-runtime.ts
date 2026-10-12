@@ -3310,6 +3310,22 @@ export class WorkstationBrowserRuntime {
     this.lastSnapshotFrames.set(frameKey, currentFrame)
 
     const cpuTime = process.cpuUsage(telemetryCpuStarted)
+    // Electron main-process CPU/RSS are not renderer resource measurements.
+    // App process metrics report working-set memory in KiB; store bytes.
+    let rendererMemoryBytes: number | null = null
+    let rendererPid: number | null = null
+    try {
+      const pid = wc.getOSProcessId()
+      if (Number.isSafeInteger(pid) && pid > 0) {
+        rendererPid = pid
+        const metric = app.getAppMetrics().find(item => item.pid === pid)
+        if (metric && Number.isFinite(metric.memory.workingSetSize) && metric.memory.workingSetSize > 0) {
+          rendererMemoryBytes = Math.floor(metric.memory.workingSetSize * 1024)
+        }
+      }
+    } catch {
+      // Resource metrics are non-authoritative. Omit if renderer is closing.
+    }
     const diagnostics = {
       snapshot_source: telemetrySource,
       duration_ms: Math.max(0, performance.now() - telemetryStarted),
@@ -3318,7 +3334,9 @@ export class WorkstationBrowserRuntime {
       delta_chars: snapshotDelta ? JSON.stringify(snapshotDelta).length : 0,
       element_count: inv.elements.length,
       main_rss_bytes: process.memoryUsage().rss,
-      main_cpu_us: cpuTime.user + cpuTime.system
+      main_cpu_us: cpuTime.user + cpuTime.system,
+      renderer_pid: rendererPid,
+      renderer_memory_bytes: rendererMemoryBytes
     }
 
     return {

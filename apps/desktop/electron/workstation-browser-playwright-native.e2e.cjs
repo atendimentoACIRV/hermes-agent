@@ -44,8 +44,34 @@ async function run() {
   await contents.loadURL('data:text/html;charset=UTF-8,' + encodeURIComponent(html))
   const before = await runtime.snapshotForEntry(runtime.entries.get(tab.id), true)
   assert.equal(before.success, true, 'real Chromium inventory')
+  assert.ok(before.__telemetry.renderer_memory_bytes > 0, 'renderer memory is measured independently of MAIN')
+  assert.ok(before.__telemetry.renderer_pid > 0, 'renderer operating-system PID is identified')
   const button = before.elements.find(e => e.tag === 'button' && e.label === 'Click')
   assert.ok(button, 'snapshot contains clickable ref')
+  await contents.executeJavaScript(`(function(){
+    const overlay = document.createElement('div'); overlay.id = 'test-overlay';
+    Object.assign(overlay.style, { position: 'fixed', zIndex: '999999', inset: '0', background: 'transparent' });
+    document.body.append(overlay);
+  })()`)
+  await assert.rejects(runtime.clickRef(runtime.entries.get(tab.id), button.ref), /target_obscured|target_not_actionable/)
+  assert.equal(await contents.executeJavaScript('document.querySelector("#status").textContent'), 'waiting')
+  await contents.executeJavaScript('document.querySelector("#test-overlay").remove()')
+  await contents.executeJavaScript('document.querySelector("#act").disabled = true')
+  await assert.rejects(runtime.clickRef(runtime.entries.get(tab.id), button.ref), /target_not_actionable/)
+  await contents.executeJavaScript('document.querySelector("#act").disabled = false')
+  await contents.executeJavaScript('document.body.insertAdjacentHTML("beforeend", "<button data-testid=\\"dupe\\">A</button><button data-testid=\\"dupe\\">B</button>")')
+  await assert.rejects(runtime.resolvePoint(runtime.entries.get(tab.id), '@missing', false, { type: 'testid', value: 'dupe' }), /ambiguous_anchor/)
+  // Simulate a human takeover during async read-only target resolution.
+  const originalResolvePoint = runtime.resolvePoint
+  runtime.resolvePoint = async function (...args) {
+    const point = await originalResolvePoint.apply(this, args)
+    this.takeControl(taskId, 'offline-session')
+    return point
+  }
+  await assert.rejects(runtime.clickRef(runtime.entries.get(tab.id), button.ref), /USER_CONTROL_ACTIVE|human.control|under human control/i)
+  runtime.resolvePoint = originalResolvePoint
+  assert.equal(await contents.executeJavaScript('document.querySelector("#status").textContent'), 'waiting')
+  runtime.releaseControl(taskId)
   await runtime.clickRef(runtime.entries.get(tab.id), button.ref)
   const localReadback = await contents.executeJavaScript('document.querySelector("#status").textContent')
   assert.equal(localReadback, 'clicked', 'real renderer proves DOM effect')
@@ -53,6 +79,18 @@ async function run() {
   assert.throws(() => runtime.assertAgentControl(taskId), /USER_CONTROL_ACTIVE|human|control/i)
   const frameCount = await contents.executeJavaScript('document.querySelectorAll("iframe").length')
   assert.equal(frameCount, 1, 'iframe hosted in same browser view')
+  await contents.executeJavaScript('document.querySelector("iframe").remove()')
+  const extractArgs = { mode: 'inspect', selector: '#status', attributes: [] }
+  const first = await runtime.extractItemsForEntry(runtime.entries.get(tab.id), extractArgs)
+  const cached = await runtime.extractItemsForEntry(runtime.entries.get(tab.id), extractArgs)
+  assert.equal(first.cached, false)
+  assert.equal(cached.cached, true, 'stable DOM can reuse extraction')
+  const childCount = await contents.executeJavaScript('document.body.childElementCount')
+  await contents.executeJavaScript('document.querySelector("#status").textContent="updated"')
+  assert.equal(await contents.executeJavaScript('document.body.childElementCount'), childCount)
+  const changed = await runtime.extractItemsForEntry(runtime.entries.get(tab.id), extractArgs)
+  assert.equal(changed.cached, false, 'SPA text mutation invalidates old result')
+  assert.equal(changed.items[0].text, 'updated')
   process.stdout.write('NATIVE_E2E_PASS pid=' + process.pid + ' tab=' + tab.id + ' viewCount=' + matches.length + '\n')
 }
 app.whenReady().then(run).then(async () => {
