@@ -114,3 +114,71 @@ def test_uncertain_external_effect_requires_review_and_independent_readback(tmp_
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+
+def test_canonical_typed_readback_requires_matching_operation_run_and_persisted_source():
+    """The existing typed verifier is strict; this does not publish a UI approval."""
+    from dataclasses import replace
+    from datetime import UTC, datetime
+    from workstation.control_plane.verification import (
+        VerificationContract, VerificationEvidence, VerificationLifecycle,
+        VerificationStatus, evaluate_verification,
+    )
+    from workstation.execution_policy import EvidenceStrength
+
+    contract = VerificationContract(
+        observer="local_source_of_record_get",
+        source_kind="source_of_record",
+        covered_predicates=("external_effect_count",),
+        effect_classes=("external_mutation",),
+        resource_binding={"resource_id": "p0-loopback-effect"},
+        minimum_evidence=EvidenceStrength.INDEPENDENT_PERSISTED_READBACK,
+        allowed_trust=("trusted_owner",),
+        require_read_after_write=True,
+        transition_claim=True,
+        lifecycle=VerificationLifecycle.VALIDATED,
+    )
+    evidence = VerificationEvidence(
+        evidence_id="readback-after-timeout",
+        observer="local_source_of_record_get",
+        source_kind="source_of_record",
+        value=1,
+        evidence_strength=EvidenceStrength.INDEPENDENT_PERSISTED_READBACK,
+        trust_class="trusted_owner",
+        read_after_write=True,
+        observed_at=datetime.now(UTC).isoformat(),
+        covered_predicates=("external_effect_count",),
+        resource_id="p0-loopback-effect",
+        task_id="t-source",
+        run_id="run-source",
+        operation_id="op-source",
+    )
+    context = dict(
+        mutation_failure_domains={"native_mutation_http"},
+        expected_task_id="t-source",
+        expected_run_id="run-source",
+        expected_operation_id="op-source",
+    )
+
+    valid = evaluate_verification(contract, 1, [evidence], **context)
+    assert valid.status == VerificationStatus.VERIFIED
+    assert valid.transition_proven
+
+    wrong_run = evaluate_verification(contract, 1, [replace(evidence, run_id="run-stale")], **context)
+    assert wrong_run.status == VerificationStatus.INCONCLUSIVE
+    assert wrong_run.reason == "run_id_mismatch"
+
+    wrong_op = evaluate_verification(contract, 1, [replace(evidence, operation_id="op-foreign")], **context)
+    assert wrong_op.status == VerificationStatus.INCONCLUSIVE
+    assert "operation_id_mismatch" in wrong_op.reason
+
+    too_weak = evaluate_verification(
+        contract, 1, [replace(evidence, evidence_strength=EvidenceStrength.TOOL_ACK_ONLY)], **context)
+    assert too_weak.status == VerificationStatus.INCONCLUSIVE
+
+    stale = evaluate_verification(contract, 1, [replace(evidence, read_after_write=False)], **context)
+    assert stale.status == VerificationStatus.STALE
+
+    wrong_state = evaluate_verification(contract, 2, [evidence], **context)
+    assert wrong_state.status == VerificationStatus.FAILED

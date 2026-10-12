@@ -55,11 +55,18 @@ def workstation_tool_batch_admission(
                 get_hermes_home() / "workstation" / "human_handoffs.json"
             )
             from workstation.batch_detection import call_key
+            # A human review belongs to a specific canonical TaskRun, not
+            # merely to a chat/task and a repeatable tool argument shape.
+            # A newer run must never inherit the old run's consumed approval.
+            scope = {"operation_key": call_key(fn_name, fn_args)}
+            run_id = getattr(agent, "_canonical_work_run_id", None)
+            if run_id is not None:
+                scope["run_id"] = str(run_id)
             handoff = handoff_mgr.request(
                 task_id=task_id,
                 session_id=session_id,
                 reason="uncertain_mutation_requires_review",
-                scope={"operation_key": call_key(fn_name, fn_args)},
+                scope=scope,
             )
             if handoff.status == "ready":
                 handoff_mgr.consume(handoff.handoff_id)
@@ -67,7 +74,7 @@ def workstation_tool_batch_admission(
             synthetic = json.dumps({
                 "status": "human_review_completed" if reviewed else "handoff_requested",
                 "handoff_id": handoff.handoff_id,
-                "reason": ("Independent readback is required before retrying an uncertain external mutation"
+                "reason": ("Independent readback is required; human review alone cannot authorize replay of an uncertain external mutation"
                            if reviewed else "Human confirmation required before destructive mutation"),
                 "tool": fn_name,
                 "code": "uncertain_effect_requires_readback" if reviewed else "uncertain_mutation_requires_review",
@@ -75,9 +82,12 @@ def workstation_tool_batch_admission(
             batch_decisions.append(
                 BatchAdmissionDecision(
                     call_id=call_id,
-                    action=BatchAdmissionAction.HANDOFF,
+                    # A consumed review does not request another human popup.
+                    # It is readback guidance, never permission to replay a write.
+                    action=(BatchAdmissionAction.SYNTHETIC_RESULT if reviewed
+                            else BatchAdmissionAction.HANDOFF),
                     synthetic_result=synthetic,
-                    reason="require_human",
+                    reason="readback_required" if reviewed else "require_human",
                 )
             )
         elif decision == ep.CompilationDecision.REQUIRE_COMPILE:

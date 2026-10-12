@@ -135,10 +135,31 @@ let pageServer: http.Server | null = null
 let pageBaseUrl = ''
 let controller: ControllerFile | null = null
 let sustainedLoadEvidence: SustainedLoadEvidence | null = null
+// Isolated loopback side-effect counter for the uncertain native Browser proof.
+let uncertainNativeEffectCount = 0
 
 async function startDeterministicPageServer(): Promise<void> {
   pageServer = http.createServer((request, response) => {
+    if (request.url === '/p0-native-effect-state') {
+      response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+      response.end(JSON.stringify({ applied: uncertainNativeEffectCount }))
+      return
+    }
+    if (request.url === '/p0-native-effect-commit' && request.method === 'POST') {
+      uncertainNativeEffectCount += 1
+      response.writeHead(200, { 'content-type': 'text/plain' })
+      setTimeout(() => response.end('committed'), 300)
+      return
+    }
     const taskId = decodeURIComponent((request.url ?? '/').replace(/^\//, '')) || 'unknown'
+    if (taskId === 'p0-uncertain-native') {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      response.end(`<!doctype html><html><head><title>H013 ${taskId}</title></head><body>
+        <button type="button" data-testid="commit-once" onclick="fetch('/p0-native-effect-commit', {method:'POST'}).then(() => { document.getElementById('effect-state').textContent = 'COMMITTED'; })">Commit external side effect</button>
+        <output id="effect-state">PENDING external effect. This page is intentionally deterministic and local.</output>
+        </body></html>`)
+      return
+    }
 
     response.writeHead(200, {
       'content-type': 'text/html; charset=utf-8',
@@ -974,6 +995,60 @@ test('P0: Browser UI Take Control and Release Control buttons are actually click
   expect(result.result?.title).toBe('H013 p0-ui-clickability-resumed')
 })
 
+
+// Native Browser mutation tests must run before the deliberate cold restart
+// test, which closes and replaces the shared Electron E2E fixture.
+test('P0: native Browser mutation remains observable after lost controller acknowledgment', async () => {
+  if (!fixture || !controller) throw new Error('P0 native uncertainty fixture unavailable')
+  uncertainNativeEffectCount = 0
+  const taskId = 'p0-native-uncertain-effect'
+  const sessionId = 'p0-native-uncertain-session'
+  const otherTask = 'p0-native-independent-read'
+  const otherSession = 'p0-native-other-session'
+  const navigation = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-uncertain-native`)
+  expect(navigation.result?.title).toBe('H013 p0-uncertain-native')
+  const initial = await controllerRequest('/v1/action', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId, session_id: sessionId, arguments: {} })
+  })
+  const elements = (initial.result?.elements ?? []) as Array<{ ref?: string; testid?: string; label?: string }>
+  const target = elements.find(el => el.testid === 'commit-once' || el.label?.includes('Commit external'))
+  expect(target?.ref).toMatch(/^@e\d+$/)
+
+  // Dispatch the real controller mutation and intentionally lose the HTTP
+  // acknowledgement AFTER the external loopback server records the effect.
+  // A client timeout must not be taken as evidence of mutation failure.
+  const abandoned = new AbortController()
+  const pending = fetch(`${controller.url}/v1/action`, {
+    method: 'POST',
+    signal: abandoned.signal,
+    headers: { authorization: `Bearer ${controller.token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'browser_click', task_id: taskId, session_id: sessionId,
+      operation_id: 'p0-native-uncertain-op-1', arguments: { ref: target!.ref } })
+  }).then(() => 'acknowledged', () => 'client_timeout')
+  await expect.poll(async () => {
+    const read = await fetch(`${pageBaseUrl}/p0-native-effect-state`)
+    const body = await read.json() as { applied: number }
+    return body.applied
+  }, { timeout: 10000 }).toBe(1)
+  abandoned.abort(new Error('client_timeout_after_external_effect'))
+  expect(await pending).toBe('client_timeout')
+
+  // Independent read: do NOT resend browser_click to discover what happened.
+  await expect.poll(async () => {
+    const snap = await controllerRequest('/v1/action', { method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId, session_id: sessionId, arguments: {} })
+    })
+    return String(snap.result?.snapshot ?? '').includes('COMMITTED')
+  }, { timeout: 10000 }).toBe(true)
+  const recorded = await fetch(`${pageBaseUrl}/p0-native-effect-state`)
+  expect((await recorded.json() as { applied: number }).applied).toBe(1)
+  const unrelated = await browserAction(otherTask, otherSession, `${pageBaseUrl}/p0-independent-read-available`)
+  expect(unrelated.result?.title).toBe('H013 p0-independent-read-available')
+  expect(uncertainNativeEffectCount).toBe(1)
+})
 
 // A cold restart is only a BrowserTask persistence test when the BrowserTask
 // belongs to an actual persisted Hermes chat. Synthetic controller-only
