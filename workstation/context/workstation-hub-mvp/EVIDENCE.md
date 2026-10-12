@@ -1,0 +1,17 @@
+# HWH-001 — evidence ledger 2026-10-12
+- GitHub connector read #77, #81, #83, #85 and confirmed all OPEN/DRAFT/UNMERGED.
+- Remote Desktop Commander connected DESKTOP-3NA47UH; ran real git status/worktree list, fetch origin/upstream, inspected AGENTS/context and target code.
+- `origin/main`: a2b56db1bc9e0b5acf48d94fa86a9844a1005842.
+- `upstream/main`: 53df274b08f2bbbe82bb67bb50c7571952e95809.
+- `merge-base`: 66605471e9f0b0832abbefaf625ce08e948ca540.
+- `git rev-list --left-right --count origin/main...upstream/main`: 963 478.
+- `git diff --name-only 66605471..upstream/main -- <relevant owners>`: `apps/desktop/src/app/contrib/surfaces.tsx` changed, so upstream affects the Creative route.
+- `gh api repos/.../commits/a2b56db1.../check-runs -q .total_count`: 0 checks returned. No checks does NOT mean green CI.
+- Two separate isolated worktrees created from origin/main, root checkout preserved.
+- Stage A `git merge --no-commit --no-ff upstream/main`: five conflicts. Candidate resolutions applied by the script in C:\Temp, with markers removed from working files. Conflict index remains unmerged pending review.
+- `git diff --check`: no whitespace warnings printed, but this does NOT qualify the merge.
+- `uv lock --check --offline`: FAILED — un-cached Git dependency `misaki`; reproducible blocker, not asserted lock correctness.
+- `python -m py_compile agent/chat_completion_helpers.py tools/tool_search.py`: no error printed in compound command; standalone exit code not captured.
+- Focused `python -m pytest` attempt: platform tool safety block before execution; no result.
+- Renderer tests: NOT_RUN. Packaged Electron E2E A/B/C: NOT_RUN. GitHub exact-head required CI: NOT_VERIFIED. Feature code: NOT_WRITTEN.
+- Superpowers (TDD, executing plans, git-worktrees) and Community Agent Workflows (ECC harness) skills loaded; their methods informed the preflight.
