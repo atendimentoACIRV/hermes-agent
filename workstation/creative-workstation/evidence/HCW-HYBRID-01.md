@@ -227,3 +227,8 @@ Plan prioritization reviewed in ../HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
 ### P0A security verifier — partial TDD 2026-10-12
 
 New Electron-main-only creative-taskrun-attestation.ts tests backend proof vs exact main-owned window/connection/profile/session; 14 tests exercise valid proof, wrong sender, connection/profile/session mismatch, run inactive, human control active, missing actor, expired/overlong proof, bad run, navigation/rehome midflight and revocation. RED missing module exit 1; focused GREEN 25/25 across 3 files. Unit contract only: no actual authenticated backend proof, main registration, live Electron mouse->TaskRun->CAS or agent E2E. H-C2 remains unqualified.
+
+
+### HCW P0A backend TaskRun admission proof — 2026-10-12
+
+New `creative_taskrun_attestation.py` (no HTTP route): verifies authenticated account versus SessionDB record, bound gateway identity (ContextVar only), single claimed canonical live TaskRun and current claim expiries through the existing CreativeRunContext. Negative tests cover forged identities, competing claims, closed run, active human control and detached context. TDD RED: module absent, ambient key incorrectly admitted, and attestation expiry exceeded TaskRun lease. GREEN: 25/25 focused backend/CAS tests, exit 0. This proves only locally bound backend admission; not real HTTP auth, Electron, actor-to-window binding, UI edit, or native export. Remains DEVELOPMENT_ONLY, no H-C2 promotion.

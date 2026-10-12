@@ -4474,3 +4474,8 @@ creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
 ### 2026-10-12 HCW P0A owner verifier
 
 Added tested creative-taskrun-attestation.ts: verifies backend proof against Electron main window/session/connection/profile/navigation and enforces lease, principal and live TaskRun flags; 14 new TDD cases and 25 focused tests GREEN. No authenticated backend source yet: main canonical IPC continues deny-all; no human/agent E2E. Cannot elevate contract test to P0A completion. Backend must derive principal/TaskRun/lease from trusted authenticated transport, never renderer identity.
+
+
+### HCW P0A trusted backend admission — 2026-10-12
+
+TaskRun admission source now exists in `workstation/creative_taskrun_attestation.py`: only a canonical claimed run with a matching backend session record, authenticated actor, explicit trusted human-control clearance and ContextVar-bound gateway identity can produce a short-lived owner proof. Proof lifetime never outlives claim lease. Helper is NOT exposed by an authenticated gateway route; detached HTTP handlers fail closed and cannot borrow ambient HERMES_SESSION_* values. Production main still deny-all. 25 focused Python regressions GREEN, no Electron E2E or exact-head CI. The OAuth/cookie session principal, canonical SessionDB owner and live TaskRun gateway context must be joined without synthetic identities before enabling edits.

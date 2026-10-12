@@ -3061,3 +3061,8 @@ creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
 ### HCW-HYBRID P0A — 2026-10-12 partial attestation contract
 
 Electron main-side verifier validates fresh backend proof against main-owned webContents/navigation/connection/profile/session, TaskRun live flags, actor principal and lease expiry. 14 TDD tests new; 25 focused GREEN. Production owner resolver remains null/deny-all until authenticated backend attestation and main sender registry exist. NOT H-C2 integrated or usable editor. Next P0A endpoint + main binding; then P0B human/agent CAS E2E. H-079 and release gates unchanged.
+
+
+### HCW P0A backend-bound TaskRun admission (2026-10-12)
+
+Added `creative_taskrun_attestation.py` using existing Kanban/CreativeRunContext with a verified session-record identity, ContextVar-only gateway key, short proof lifetime fenced by actual task/run claim leases, and rejection of competing runs or detached context. 25 focused Python backend/CAS regressions passed. This is **not** a production authenticated endpoint, nor an Electron main-owned sender binding, therefore P0A/H-C2 remain unqualified and `resolveTrustedOwner: () => null` remains intentional. Next: authenticated HTTP/gateway principal + actor mapping, main-owned window connection/session binding, bounded canonical RPC and native E2E. H-079 unchanged.

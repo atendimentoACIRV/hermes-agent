@@ -5834,3 +5834,8 @@ HCW ledger. No H-079 promotion or merge.
 ### 2026-10-12 — HCW P0A attestation groundwork
 
 PR #81 starting a3527baa7a, clean isolated worktree. TDD RED/GREEN delivered main-side creative-taskrun-attestation.ts verifier, 14 new negative/positive cases; 25 focused tests passed. Backend attestor, trusted main sender-scope registry and actual live Electron UI/CAS remain missing. main.ts null owner remains deny-all; do not promote H-C2. Preserve D-043, H-079 and protected checkout; see HCW ledger.
+
+
+### 2026-10-12 — HCW P0A continued after acb518e5ba
+
+Implemented a test-first backend TaskRun admission helper (`workstation/creative_taskrun_attestation.py`) and `gateway.session_context.get_bound_session_env` to forbid environment/approval-key impersonation outside a gateway ContextVar. Admission uses a verified actor matching canonical SessionDB identity, existing Kanban claim + CreativeRunContext policy and a trusted lease predicate; its proof TTL is capped at the shortest claim expiry. Three RED cases observed (missing module, unbound ambient identity accepted, proof overlong); 25 focused Python backend/CAS tests passed. This is NOT an authenticated production HTTP endpoint and NOT P0A complete. Production Electron main IPC remains deny-all; prioritize principal/session binding and main window mapping, then real E2E. No H-079 promotion.

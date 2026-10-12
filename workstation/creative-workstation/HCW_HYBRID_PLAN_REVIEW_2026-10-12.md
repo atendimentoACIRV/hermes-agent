@@ -128,3 +128,8 @@ and exact-HEAD CI. No merge into main without explicit authorization.
 ## P0A checkpoint — 2026-10-12
 
 Verified first contract-only increment: main-side attestation verifier 14 new tests / 25 creative Electron tests GREEN; no authenticated backend attestor or trustworthy main per-window lifecycle registry wired. Production IPC remains deny-all. This does not satisfy P0A or enable P0B. First remaining action: implement genuinely authenticated backend TaskRun+principal+lease attestation, bind it to main-owned window connection/profile/session and reverify on navigation/rehome/cancellation; only then wire canonical-open/apply-batch to the existing main bridge.
+
+
+## P0A backend continuation — 2026-10-12
+
+The missing backend-bound admission helper was implemented with TDD: user/session record equality, unique live Kanban claim, CreativeRunContext.validate, ContextVar-only gateway key and TTL bounded by task/run leases. 25 focused Python backend/CAS tests passed; three meaningful RED failures recorded. **Remaining blocker:** an authenticated HTTP principal is not automatically the TaskRun gateway principal and cannot legitimately conjure its session key; `main.ts` still has no verified sender-scoped window/session/connection binding. No server RPC wired, no real Electron manual/agent E2E, no H-C2 promotion. Immediate next action is to prove authenticated request-to-TaskRun binding using native gateway transport, implement narrowly scoped canonical RPC and only then connect `creative-taskrun-attestation.ts` to the main handler. Keep deny-all when binding fails.
