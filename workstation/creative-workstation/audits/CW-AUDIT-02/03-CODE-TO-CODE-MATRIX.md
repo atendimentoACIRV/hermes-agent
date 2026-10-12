@@ -1,0 +1,44 @@
+# 03 — Matriz code to code: melhor solução por capacidade
+
+Paths das referências são relativos a referências/01-Criacao-Visual-Video-3D; paths Hermes a workstation/ ou apps/desktop/. EVIDÊNCIA significa implementação existente e símbolo lido/buscado, não equivalência comportamental. Status atual main a2b56db1bc + PR #77 isolado. LEGAL: COPY_ALLOWED sempre HOLD até exame de dependências/assets. Abreviações: KEEP_HERMES, ADAPT_CONTRACT, ADAPT_ALGORITHM, ADAPT_CODE, WRAP_ENGINE, REFERENCE_ONLY, REJECT.
+
+| ID | Requisito e Hermes hoje (path:símbolo/linha) | Referência mais útil (path:símbolo/linha) | Lacuna, decisão e teste de saída |
+|---|---|---|---|
+| M01 | documento versionado; creative_document.py:144 + creative_project_store.py:284 | EffectCraft engine/src/lib.rs:351,572; project model; PhotoCraft crates/doc/src/lib.rs:776 | KEEP_HERMES owner e adaptar schema de propriedades, não trocar arquivo por .ecproj; roundtrip sem perder IDs/unknown fields |
+| M02 | um projeto humano+IA; PR77 CreativeWorkspaceContext.tsx:42–105 vs creative_commands.py:52 | EffectCraft engine/src/commands/mod.rs:94 CommandSpec + engine/src/lib.rs:572 | ADAPT_CONTRACT: UI/IA fazem SAME command+receipt; teste equivalência JSON e crash/reopen |
+| M03 | strict tool schema; creative_commands.py:52–90 registry handlers | EffectCraft engine/src/commands/mod.rs:339 check_params + :131 command_specs | ADAPT_CONTRACT: JSON Schema, reject unknown, enabled(reason), descoberta bounded; invalid args never mutate |
+| M04 | atomic batch + references; creative_transactions.py:32–72 | EffectCraft engine/src/commands/batch.rs:16 reference, :42 substitute, :54 batch, :97 fold | ADAPT_CONTRACT: $N.key e única undo, preservar 409; falha step3/4 = zero efeito |
+| M05 | history shared; creative_transactions.py:74–134 | EffectCraft engine/src/history.rs:27 History, :193 record, :276 goto_history | ADAPT_ALGORITHM merge_key/branch. Precisa durable transaction journal Hermes; undo após restart |
+| M06 | revisão concorrente; creative_transactions.py:89 | EffectCraft Session history snapshots | KEEP_HERMES expectedRevision/CAS (ainda completar persistência); corrida r4/r5 bloqueada |
+| M07 | assets hash; creative_project_store.py:177 + creative_document.py:93 | PhotoCraft doc/src/lib.rs:776; VectorCraft doc/src/lib.rs:535 | KEEP_HERMES source hash/provenance; exigir media types, fonts, native linked original; hash readback |
+| M08 | import/raster adjustments; creative_scene_adapters.py:86 apenas SVG simples | PhotoCraft doc/src/lib.rs:548 LayerContent + raster/src/lib.rs:87 Surface | ADAPT_ALGORITHM Adjustment + tiles CoW/caches; a edição deve preservar source original |
+| M09 | design vetorial shapes; PR77 creative-mvp-model.ts:58 retângulo/texto | VectorCraft doc/src/lib.rs:345 Artboard, :535 Document; crates/pathops/src/lib.rs | ADAPT_ALGORITHM path Boolean/snap/artboard; roundtrip vector path layers sem flatten |
+| M10 | seleção/snapping/alinhamento; PR77 CreativePreview.tsx + toolbar | VectorCraft doc/src/lib.rs:193 snap_to_ruler_tick; Penpot canvas | ADAPT_ALGORITHM coords/snap; gesto em canvas vira command com stable layerId |
+| M11 | tipografia e fontes; PR77 renderCreativeSvg:138 | PhotoCraft doc LayerContent::Text; EffectCraft crates/text | ADAPT_CONTRACT font file+font readiness e shaping; fonte faltante não marca PNG verified |
+| M12 | keyframe linear/easing; PR77 creative-mvp-model.ts:110 sampledTransform | EffectCraft crates/keyframe/src/lib.rs:23 Interp, :43 Ease, :220 ease_progress, :461 evaluate | ADAPT_ALGORITHM temporal Bezier/hold/velocity; fps fraction + seek out-of-order |
+| M13 | Graph Editor; PR77 CreativeGraphEditor.tsx value/easing | EffectCraft crates/ui-egui/src/panels/graph.rs:188 show, :601 handle.ease; keyframe/src/lib.rs:533 velocity | ADAPT_ALGORITHM math + React own interaction; pointer tangents to same command, undo 1 drag |
+| M14 | spatial motion; creative_scene_adapters.py:45 interpolation simples | EffectCraft keyframe/src/lib.rs:228 SpatialSeg, :295 spatial_tangents, :394 retime_roving | ADAPT_ALGORITHM roving/spatial arc length; trajectory same @ arbitrary seek |
+| M15 | NLE source mapping; creative_timeline.py, creative_commands.py:456–541 | FilmCraft crates/edit/src/lib.rs:95 split_track_at, :705 trim, :863 roll, :910 slip, :923 slide, :1003 rate_stretch | ADAPT_ALGORITHM invariants/speed/reverse/ripple; linked A/V intact, mixed FPS |
+| M16 | timeline consistency; creative_timeline.py | FilmCraft crates/project/src/lib.rs:805,1092 Sequence.check | ADAPT_CONTRACT: validate track locks, overlap, linked group before commit; property tests |
+| M17 | web NLE/agent bridge; existing native Python | OpenReel packages/core/src/actions/action-executor.ts:1015 rippleDelete + packages/agent/src/loop.ts:91 runTurn | REFERENCE_ONLY for UI abstraction/approvals; não copiar floats/ripple sem provas |
+| M18 | masks/effects; incomplete Layer schemas | EffectCraft crates/render/src/lib.rs:comp_frame, crates/effects/src/lib.rs:registry | WRAP_ENGINE effects qualified or adapt plugin contract; no rewrite 300 effects; compare pixel oracle |
+| M19 | raster cache; creative_render_adapters.py:121 | PhotoCraft raster/src/lib.rs:40 Tile, :87 Surface; EffectCraft render/src/cache.rs | ADAPT_ALGORITHM invalidation per layer hash + RAM/disk LRU; visual compare cached/uncached |
+| M20 | GLB parsing; creative_3d.py:137 inspect_glb_bytes | Three.js editor/js/commands/AddObjectCommand.js:4 + editor/js/History.js:3 | ADAPT_CODE contract/scene controls, not privileged editor embed; editable layer + camera |
+| M21 | 3D frame; creative_scene_adapters.py:133 ThreeJsSceneAdapter (DICT ONLY) | Three.js WebGLRenderer and editor scene objects; Blender bpy as optional specialist | WRAP_ENGINE isolated WebGL frame renderer; GLB+câmera atualizados por same timebase |
+| M22 | procedural effects; creative_scene_adapters.py:114 CanvasEffectAdapter (DICT ONLY) | PixiJS runtime (MIT), p5.js (LGPL), Graphite node graph | ADAPT_CONTRACT Canvas eval sandbox; NO arbitrary JS in privileged Electron; frame seed |
+| M23 | visual DAG; creative_scene_adapters.py:187 CompositeScene only descriptor graph | Natron Engine/Node.h DAG; Graphite node graph/nodes | REFERENCE_ONLY Natron GPL; ADAPT_ALGORITHM Graphite procedural render graph; node cycles rejected |
+| M24 | editor de UI; PR77 CreativeWorkspacePage.tsx | Penpot UI and AI Kit (MPL/CC-BY-4.0) | ADAPT_CONTRACT selection/inspector/AI context; Penpot MCP as external adapter, never second project owner |
+| M25 | still export; PR77 renderCreativeSvg:138 frame text | Hermes creative_render_adapters.py:121 Electron; Three.js WebGL | KEEP_HERMES orchestration + real PNG renderer; await fonts/GLB, decode, compare pixel hash |
+| M26 | MP4 verified; creative_export.py:88–215 FALLBACK BUG | FFmpeg separate binary; FilmCraft codec pipeline; Remotion renderer | KEEP_HERMES supervised FFmpeg from decoded ordered RGBA frames; FAIL CLOSED on decode; ffprobe frame exact |
+| M27 | audio/video synchronization; creative_document.py:58,78 | FilmCraft linked TrackItem; Tone.js instruments | ADAPT_ALGORITHM audio/clip source maps; compare waveform offset and sample duration |
+| M28 | render engines | creative_render_adapters.py:76,121,207,272 | EffectCraft headless/CLI/MCP; Remotion; HyperFrames; FFmpeg | WRAP_ENGINE by capability; uniform prepare/seek/ready/snapshot/cancel/dispose and provenance |
+| M29 | AI operational economy | TaskRun, Experience Compiler | EffectCraft command list/describe + script __query/__exec; Penpot AI Kit | ADAPT_CONTRACT bounded capability list; one batch not dozens calls; benchmark tokens |
+| M30 | safeguards | scoped policy, ArtifactStore/journal/TaskRun, project_store source SHA | EffectCraft sandbox; Three.js editor History | KEEP_HERMES authority; never ask renderer/MCP reference to mint permission; negative cross-profile tests |
+| M31 | photo lens/RAW/inpaint | Hermes mainly GLB/media and SVG | LightCraft crates/develop, denoise, raw, inpaint | WRAP_ENGINE optional photo preprocessing with asset provenance; P2 after usable editor |
+| M32 | CAD geometry | Hermès 3D metadata | Replicad sketch/CAD API, partmode AGPL | ADAPT_CONTRACT optional procedural CAD, REJECT copying AGPL core; no P0 |
+
+## Critérios de decisão
+- O mesmo subsistema não deve ter dois owners. Preferir KEEP_HERMES para autoridade, identidade do projeto, idempotência e contrato de export verificado; trocar só algoritmo que medições/bug evidenciam fraco.
+- EffectCraft Rust/egui não é componente React nativo; usar engine CLI/headless seria PoC independente com autorização de processo, schema e recepção frame; primeiro adaptar contratos e math.
+- GPL/AGPL e Remotion licenciamento não autorizam COPY_ALLOWED. MIT/Apache também exige revisar NOTICE, dependências, assets e alterações.
+- Qualificação depende de E2E real, não do número de ferramentas nem contagens de efeitos.
