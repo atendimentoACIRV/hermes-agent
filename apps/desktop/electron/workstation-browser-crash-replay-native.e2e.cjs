@@ -63,6 +63,25 @@ async function execute() {
   await new Promise(resolve => setTimeout(resolve, 750))
   const check = await (await fetch(base + '/count')).json()
   assert.equal(check.effects, 1, 'do not redispatch HTTP navigation after uncertain effect')
+  // A read-only snapshot must not implicitly replay a pending navigation by
+  // lazily restoring the old task URL after the owner crashed mid-operation.
+  window = new BrowserWindow({ show: false, width: 840, height: 640, webPreferences: { sandbox: true } })
+  await window.loadURL('data:text/html,<title>Hermes restored crash fixture host</title>')
+  runtime.showTask('crash-task', window, { x: 0, y: 0, width: 800, height: 600 })
+  const snapshotTimeout = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('restored_readonly_snapshot_timed_out')), 10000).unref?.()
+  })
+  const restoredSnapshot = await Promise.race([runtime.executeControlRequest({
+    action: 'browser_snapshot', task_id: 'crash-task',
+    session_id: 'crash-session', run_id: 'crash-run', arguments: {}
+  }), snapshotTimeout])
+  assert.equal(restoredSnapshot.success, true, 'blank restored page supports read-only snapshot')
+  const restored = runtime.state().tabs.find(tab => tab.ownerTaskId === 'crash-task')
+  assert.ok(restored)
+  assert.equal(runtime.getWebContents(restored.id).getURL(), 'about:blank', 'uncertain navigation is not restored')
+  await new Promise(resolve => setTimeout(resolve, 750))
+  const afterSnapshot = await (await fetch(base + '/count')).json()
+  assert.equal(afterSnapshot.effects, 1, 'read-only recovery must not cause a second external effect')
   process.stdout.write('CRASH_REPLAY_CHILD_B_PASS effects=' + check.effects + '\n')
 }
 app.whenReady().then(execute).then(async () => {

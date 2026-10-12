@@ -1352,3 +1352,26 @@ test('CRASH-02 runtime: an older navigation ID cannot replay after an interleave
   await assert.rejects(controller(request('op-a', 'https://example.test/different')), /operation_identity_collision/)
   await runtime.destroy()
 })
+
+test('CRASH-ID: generated navigation admission and receipt use the same stable operation ID', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const execute = (runtime as any).executeControlRequest.bind(runtime) as (
+    request: Record<string, unknown>
+  ) => Promise<Record<string, any>>
+  const result = await execute({
+    action: 'browser_navigate',
+    task_id: 'generated-operation-id',
+    session_id: 'generated-session',
+    arguments: { url: 'https://example.test/generated-operation-id' }
+  })
+  const receipt = result.receipt as { operationId: string; tabId: string }
+  assert.ok(receipt?.operationId)
+  const snapshot = (runtime as any).sessionStatePersistence().load()
+  const records = Object.values(snapshot.operationAdmissions ?? {}) as Array<{
+    operationId: string; tabId: string; action: string
+  }>
+  const admission = records.find(item => item.tabId === receipt.tabId && item.action === 'browser_navigate')
+  assert.equal(admission?.operationId, receipt.operationId)
+  await runtime.destroy()
+})

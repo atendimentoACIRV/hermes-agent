@@ -1498,7 +1498,9 @@ export class WorkstationBrowserRuntime {
       this.activateTab(id)
     }
 
-    if (url !== 'about:blank') {
+    if (url !== 'about:blank' || (restoredTab?.safeUrl && url === 'about:blank')) {
+      // A deferred recovery still needs a committed empty document for CDP
+      // snapshot; never load the unreconciled, previously saved external URL.
       void view.webContents.loadURL(url).catch(error => this.recordError(error))
     }
 
@@ -2438,7 +2440,8 @@ export class WorkstationBrowserRuntime {
 
       let receipt: BrowserOwnerReceipt | undefined
       if (entry) {
-        const opId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+        // One operation identity spans admission, receipt and future recovery.
+        const opId = admittedId
         const rawReceipt: BrowserOwnerReceipt = {
           operationId: opId,
           taskId,
@@ -3166,7 +3169,14 @@ export class WorkstationBrowserRuntime {
       }
     }
 
-    this.createTabEntry(restored?.safeUrl ?? 'about:blank', !this.activeTabId, taskId, restored)
+    // A read-only snapshot after a crash must not implicitly replay an
+    // unacknowledged navigation when lazily recreating its previous tab.
+    // Preserve sanitized safeUrl metadata for explicit reconciliation but
+    // start a blank view until the owner has an appropriate receipt.
+    const restoreUrl = restored && this.shouldDeferRestoredNavigation(restored)
+      ? 'about:blank'
+      : (restored?.safeUrl ?? 'about:blank')
+    this.createTabEntry(restoreUrl, !this.activeTabId, taskId, restored)
     const id = this.taskTabs.get(taskId)
     const entry = id ? (this.entries.get(id) ?? null) : null
 
@@ -3175,6 +3185,22 @@ export class WorkstationBrowserRuntime {
     }
 
     return entry
+  }
+
+  private shouldDeferRestoredNavigation(restored: BrowserSessionTab): boolean {
+    if (!restored.browserTaskId) return false
+    const persisted = this.sessionStatePersistence().load()
+    if (!persisted) return true
+    const navigations = Object.values(persisted.operationAdmissions ?? {}).filter(
+      operation => operation.action === 'browser_navigate' &&
+        operation.tabId === restored.id &&
+        operation.taskId === restored.browserTaskId
+    )
+    const latest = navigations[navigations.length - 1]
+    if (!latest) return false
+    const receipt = persisted.receipts?.[restored.browserTaskId] ??
+      persisted.browserTasks.tasks.find(task => task.taskId === restored.browserTaskId)?.lastReceipt
+    return receipt?.operationId !== latest.operationId || receipt?.action !== latest.action
   }
 
   private recordActionReceipt(
