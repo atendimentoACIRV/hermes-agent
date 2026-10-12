@@ -754,6 +754,15 @@ def _dispatch(
     if card_id and not task_id:
         key = card_id
 
+    # A partial explicit binding has no canonical authorization. Do not
+    # downgrade it to an unbound Browser session or forward a card-only hint.
+    if bool(card_id) != bool(rid):
+        raise WorkstationBrowserError(
+            'Incomplete TaskRun binding cannot control BrowserTask',
+            error_code='STALE_RUN', retryable=False, state_changed=False,
+            recommended_action='RECONCILE_BINDING',
+        )
+
     if card_id and rid:
         from hermes_cli import kanban_db
         from hermes_cli.kanban_db_connect import connect
@@ -761,9 +770,10 @@ def _dispatch(
 
         try:
             task = kanban_db.get_task(conn, card_id)
-            if task and (str(task.current_run_id) != str(rid)
-                         or task.status != 'running'
-                         or (session_id is not None and task.session_id != session_id)):
+            if (task is None
+                    or str(task.current_run_id) != str(rid)
+                    or task.status != 'running'
+                    or (session_id is not None and task.session_id != session_id)):
                 raise WorkstationBrowserError('Stale TaskRun cannot control BrowserTask',
                     error_code='STALE_RUN', retryable=False, state_changed=False,
                     recommended_action='RECONCILE_BINDING')
