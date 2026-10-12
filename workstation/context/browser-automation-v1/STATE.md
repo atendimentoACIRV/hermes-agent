@@ -15,3 +15,10 @@ The experimental controller harness was extended (not production runtime). New f
 
 ## Publicação — 2026-10-12
 PR #85 DRAFT: https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/85; commit principal d1d867a3a22fa6e77a45000992f54784c71954f2. GitHub HEAD sem combined statuses e sem PR workflow runs na checagem; CI exact-head NÃO qualificado. Leia git rev-parse HEAD para o último SHA, pois o checkpoint documental pode ter commit posterior.
+
+## Continuation state — 2026-10-12 BAV04
+- Code-only commit: 5448f889fe94af43c0534b26a0243364be1a078e, branch feat/hermes-browser-automation-v1-20261012, PR #85 Draft (verify final HEAD after documentation commit).
+- Changed test-only apps/desktop/electron/workstation-browser-bav1-memory.worker.py and controller.runner.cjs, plus new workstation-browser-bav1-recovery.contract.test.cjs, workstation/tests/bav04_experimental_recovery.py and test_bav04_experimental_recovery.py. No production modules modified.
+- Python crash worker dies os._exit(37) after effect but before evidence checkpoint. Existing append-only ExecutionJournal boundary:'acceptance' survives, and a new Python worker consults independent snapshot + server counter before producing an ArtifactStore resume_ref and using the canonical DeterministicRoutineRunner to skip the click.
+- Full product restart/TaskRun remint/real lease revocation/CI exact-head remain unverified. The fixture admission map is synthetic and explicitly NOT an authority token.
+- Local statuses: tracked changes were committed; scratch .bav*.log untracked and preserved, not staged. Current exact HEAD must be re-read.

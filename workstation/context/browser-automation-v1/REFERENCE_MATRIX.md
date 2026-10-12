@@ -13,3 +13,7 @@
 | Hermes workstation/memory.py | WebProcedure/ProceduralMemory | Next persistent procedure catalog |
 | Hermes workstation-browser-batch.ts | executeAuthorizedBatch | Reuse owner, but ACK not independent proof |
 | Parallel feat/playwright-c2c-kits-20261012 | Native crash/lease tests | Preserve; release Stage A HOLD |
+
+| Hermes ExecutionJournal | Durable append with integrity chain and acceptance-boundary fsync | BAV04 test-only mutation-pending record before effect; production approval pending H-079 |
+| Hermes ArtifactStore + DeterministicRoutineRunner.resume_ref | Canonical artifact checkpoint + skip previously verified steps | BAV04 green in disposable fixture, no new persistence engine |
+| Hermes native BrowserTask bearer controller | Existing singleton owner, 400 on unauthorized run mismatch | BAV04 used same genuinely admitted fixture BrowserTask; different-run qualification pending |

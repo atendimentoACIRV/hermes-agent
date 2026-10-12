@@ -1,51 +1,71 @@
-# CONTINUE HERMES BROWSER AUTOMATION V1 — BAV-05 → BAV-12
-**ORDEM DE EXECUÇÃO. NÃO REINICIE AUDITORIA. NÃO REFAÇA BAV01/BAV03 OU O GREEN BAV05. NÃO FAÇA MERGE NA MAIN.**
-Use GitHub, Remote Desktop Commander, Superpowers e Community Agent Workflows quando disponíveis. Execute o máximo possível por sessão com RED→GREEN, evidências reais, documentação e o próximo prompt obrigatório.
+# CONTINUE HERMES BROWSER AUTOMATION V1 — PR #85 / BAV04 HOLD → BAV12
 
-## Localização e proteção
-- Repositório: C:\Github\hermes-agent (checkout principal sujo com modificações paralelas; nunca editar/resetar/limpar).
-- Worktree: C:\Github\hermes-agent\.worktrees\browser-automation-v1-20261012
-- Branch: feat/hermes-browser-automation-v1-20261012
-- Base original: a2b56db1bc9e0b5acf48d94fa86a9844a1005842 (origin/main). **Execute git rev-parse HEAD e git status -sb para descobrir o HEAD atual; nunca assuma o SHA base após os commits.**
-- PR #82 Experience Compiler, independente, DRAFT; outra worktree Playwright C2C também independente. Não mover suas alterações.
-- Gate H-079 Stage A upstream-first / CI exact-head / H-081/H-082 permanecem HOLD. Nenhum código produtivo BAV autorizado ou certificado neste checkpoint. A autorização de local-dev da outra branch não se transfere. Revise gate antes de mudar runtime e não declare qualificação sem evidência.
+**ORDEN DE EXECUÇÃO DIRETA. NÃO RECOMEÇAR AUDITORIAS NEM BAV01/BAV03/BAV05/BAV04 EXPERIMENTAL. NÃO FAZER MERGE NA MAIN.**
+Use GitHub, Remote Desktop Commander, Superpowers e Community Agent Workflows. TDD RED→GREEN, testes reais, gates de autoridade, commits pequenos, push na branch da PR apenas e handoff recursivo.
 
-## Fonte da verdade
-Leia primeiro AGENTS.md, workstation/AGENTS.md, workstation/context/README.md, workstation/context/UPSTREAM_FIRST_CHANGE_GATE_2026-09-20.md, e os arquivos PLAN.md, STATE.md, EVIDENCE.md, DECISIONS.md, METRICS.md, REFERENCE_MATRIX.md, NEXT_PROMPT.md desta pasta. Depois ROADMAP.md, engineering-journal/CURRENT.md e os arquivos de implementação selecionados.
-Princípio: **automação funcional → procedimento persistente → aprendizado → otimização**. Nenhum segundo BrowserRuntime, owner, scheduler, registry, engine ou bypass CDP. Playwright connectOverCDP BAV01 só é compatibilidade experimental.
+## Baseline exata e isolamento
+- Repo: `kevynlucasprofissional-stack/hermes-agent`; original: `C:\Github\hermes-agent` (checkout principal com trabalho paralelo; NÃO editar, limpar, resetar ou sobrescrever).
+- Worktree BAV: `C:\Github\hermes-agent\.worktrees\browser-automation-v1-20261012`
+- Branch: `feat/hermes-browser-automation-v1-20261012`
+- PR #85: https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/85 — OPEN DRAFT, sem merge.
+- Base `origin/main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`.
+- HEAD antes de documentação: `5448f889fe94af43c0534b26a0243364be1a078e`, código test-only de BAV04. **O HEAD desta documentação pode ser posterior: verifique git rev-parse HEAD, status -sb, git log e branch remota ao iniciar**.
+- Scratch logs locais `.bav*.log`: preservar, nunca adicionar. Não incluir secrets ou dogfood.
+- Paralelas: PR #82 Experience Compiler + C2C Playwright worktree separada. Não cherry-pick indiscriminado, não editar outras worktrees.
 
-## O que já foi demonstrado (não repetir)
-- BAV01: Playwright connectOverCDP em WebContentsView de perfil descartável; 1 efeito. Não há permissão para Playwright externo na produção.
-- BAV03: singleton real getWorkstationBrowserRuntime + controller bearer-auth; mesmo procedimento Alpha/Beta, duas mutações verificadas, 12 chamadas ao controller e 0 LLM no harness.
-- BAV05 anterior: ref stale recuperada por data-testid na fixture. JSON versão 1 inicialmente DISCOVERED.
-- BAV05 desta continuação: teste RED de persistência falhou porque runner emitia só BAV03. Novo worker Python JSON-lines test-only exercita **ProceduralMemory.persist/load**, **RoutinePromotionService.validate/promote fixture-only** e **DeterministicRoutineRunner.run_matching**, usando apenas o controller autenticado existente. Em Electron real isolado: Alpha seed + Beta replay + Gamma replay, efeitos independentes 3/3; dois processos Python distintos recarregaram memória persistente. GREEN do node --test electron/workstation-browser-bav1-persistence.contract.test.cjs: 1 passed em ~42s; 0 chamadas ao modelo dentro do harness.
-- Segurança demonstrada: ao inventar run_id 'bav-test-seed-Alpha', controller recusou 'BrowserTask run mismatch' HTTP 400 CAPABILITY_MISSING. Preservar 'bav-run' do fixture. Não tratar o teste como cross-TaskRun ou como validação de promoção produtiva.
-- Laya em worker emite aviso de provenance por apontar para a vendorização no checkout principal; não tratar como runtime Laya qualificado.
-- Arquivos test-only: apps/desktop/electron/workstation-browser-bav1-controller.runner.cjs (extensão), workstation-browser-bav1-memory.worker.py, workstation-browser-bav1-persistence.contract.test.cjs, os demais BAV01 e JSON fixture existentes.
-- Logs .bav*.log ficam locais e jamais são commitados.
+## Leia primeiro
+`AGENTS.md`, `workstation/AGENTS.md`, `workstation/context/README.md`, `workstation/context/UPSTREAM_FIRST_CHANGE_GATE_2026-09-20.md`, e pasta `workstation/context/browser-automation-v1/`: `PLAN.md`, `STATE.md`, `EVIDENCE.md`, `DECISIONS.md`, `REFERENCE_MATRIX.md`, `METRICS.md`, `NEXT_PROMPT.md`. Depois `workstation/ROADMAP.md`, `workstation/context/engineering-journal/CURRENT.md` e `workstation/context/ID_DISAMBIGUATION.md`.
 
-## Próxima ação obrigatória
-1. Verificar git status/HEAD e H-079 Stage A real. Se continuar NÃO QUALIFICADO, permanecer em testes experimentais e documentação, sem alterar runtime produtivo; documentar bloqueio. Qualifique Stage A em lane própria se viável, sem misturar com BAV.
-2. Primeiro RED: novo BrowserTask/TaskRun **realmente admitido**, em vez de trocar run_id arbitrariamente; depois selecionar ProceduralMemory promovida via run_matching com parâmetros distintos, autoridade válida, escopo e readback independente. Provar que browser lease revogado, drift, TaskRun antigo, cross-scope, restart e falta de prova falham fechados; especialmente evitar duplicação quando mutação é UNCERTAIN.
-3. BAV04: checkpoint persistente e restauração pós-crash SEM repetir mutações de resultado incerto. Reutilizar DurableTaskStore/ExecutionJournal/reasoning_handoff; não criar segunda store. BAV05 ampliar somente após segurança.
-4. BAV06: gravação opt-in redigida; BAV07 recuperação limitada por âncora sem bypass; BAV08 conectar PR #82 sem recriar compiler; BAV09 Trello somente em quadro de teste com autorização específica, leitura primeiro; BAV10 UI Electron; BAV11 benchmarks pareados medidos (latência/tokens/chamadas/efeito), BAV12 gates exact-head. BAV02 CDP nativo opcional, se necessário.
+## Evidências aprovadas (não repetir do zero)
+BAV01: test-only Playwright CDP ↔ Electron WebContentsView em perfil descartável: 1 efeito; **CDP externo não autorizado na produção**.
+BAV03: autenticado controller + singleton native Browser, Alpha/Beta, 12 controller calls, 2 efeitos independentes, 0 chamadas ao modelo pelo harness.
+BAV05: Procedure JSON v1, data-testid para ref stale; ProceduralMemory + RoutinePromotionService (somente fixture) + DeterministicRoutineRunner.run_matching, Alpha seed e Beta/Gamma replay com duas recargas de memória por novos processos Python, 3 efeitos, 0 model calls harness.
+BAV04 desta sessão: **test-only crash/reconcile GREEN**. RED Python por ausência de recovery fence; RED Node emitia só marcador BAV03; RED de contador baseline recusou argumento. Implementou `workstation/tests/bav04_experimental_recovery.py` (NÃO é código de produção), teste `test_bav04_experimental_recovery.py` e runner Electron `workstation-browser-bav1-recovery.contract.test.cjs`, estendendo worker/runner BAV05 test-only. Usa ExecutionJournal canônico (mutation pending, acceptance/fsync) + ArtifactStore + DeterministicRoutineRunner.resume_ref. No Electron WebContentsView descartável: Alpha seed, Beta click com efeito no servidor, Python `os._exit(37)` antes da persistência de readback, novo worker reconciliou via snapshot + contador de efeitos e prosseguiu sem segundo click. 2 efeitos totais; 0 chamadas LLM dentro do harness.
+Verificações: `test_bav04_experimental_recovery.py` 11/11 PASS; `test_bav04... + test_routines.py` 13/13; adicionais test_memory_replay/test_memory/test_kanban_journal/test_artifacts_and_verbosity 16/16; Node recovery+persistence 2/2; Ruff F,UP, pre-commit, Node --check, py_compile, diff check PASS.
+**NÃO alegar** Electron main crash; nova TaskRun/admissão/lease produtivos; release CI; economia real, token cost; Laya provada. Admissão de recuperação no fixture é dicionário sintético e mesma BrowserTask original, jamais substitui token autenticado. Não fazer mutação em Trello real sem autorização específica.
 
-## Comandos confiáveis no Windows
-Use PowerShell:
+## Gate H-079 — bloquear alteração produtiva
+`ls-remote upstream refs/heads/main`: `9f63a6fe5cfe39adc7a8f1936fbdcffffbec1d74` observado em 12/10; cached upstream/main estava em `835c3dd038d903182a66ecc45e34bf5e0de65f00`. `ls-remote origin refs/heads/main`: `a2b56db1bc9e0b5acf48d94fa86a9844a1005842`; merge-base cacheado `66605471e9f0b0832abbefaf625ce08e948ca540`. CI main exact-head não demonstrado: GitHub retornou statuses=[] e PR workflow_runs=[] (isto **NÃO é verde**). Status Stage A QUALIFIED não existe nesta branch; HOLD.
+Sem baseline H-079 Stage A qualificada, **não modificar runtime produtivo**. Se possível, qualificar Stage A em lane separada e com critérios completos (pin upstream, merge real, seams classificados, CI verde). Documente antes de tocar produção. Não usar permissão local-dev de outras branches como waiver. Não misturar upstream merge e feature.
+
+## Próximo RED prioritário — Autoridade real/restart BAV04
+Examinar diretamente as fronteiras de produção:
+- `workstation/routines.py::DeterministicRoutineRunner.run` / `resume_ref`
+- `workstation/journal.py::ExecutionJournal`
+- `workstation/artifacts.py::ArtifactStore`
+- `workstation/reasoning_handoff.py`
+- `workstation/run_adoption.py` / `workstation/task_compiler.py`
+- `apps/desktop/electron/workstation-browser-runtime.ts`
+- `apps/desktop/electron/workstation-browser-batch.ts`
+- `tools/browser_workstation.py`
+- BrowserTask/TaskRun lease/owner supervisor
+
+Primeiro teste RED deve criar **nova BrowserTask/TaskRun real, autenticada e admitida**, não forjar `run_id`, e tentar recuperar uma mutação `UNCERTAIN` após restart. Sem autoridade válida o replay deve ser bloqueado. Com autoridade renovada, prova externa independente e checkpoint íntegro/escopado, retomar sem duplicar efeitos; registrar cada dispatch antes do efeito e confirmar depois por readback. Verificar revogação, outro owner, outro run/session, outro host/scope, versão/fingerprint, drift DOM, arquivo de journal corrompido, falta de verificador, ACK sem efeito, crash Electron main (não somente worker), e retomada sob SHADOW/DIRECT. Reusar os owners e stores existentes; não criar um segundo BrowserRuntime/scheduler/ProcedureDB/engine ou bypass de lease/CDP. Se Stage A continuar bloqueado, faça testes e documentação de contrato, não mudança produtiva.
+
+## Ordem restante
+1. BAV04: verdadeiro recovery com autoridade/lease/restart; apenas quando H-079 qualificado.
+2. BAV05: promoção canônica, reutilização entre TaskRuns distintas com readback externo e real admissão.
+3. BAV06: gravação opt-in com redaction e sem persistir segredos.
+4. BAV07: recuperação bounded de âncoras e drift, sem auto-bypass.
+5. BAV08: integração à frente existente Experience Compiler PR #82, sem duplicar compilador.
+6. BAV09: Trello somente test board expressamente autorizado; leitura primeiro, mutação após aprovação.
+7. BAV10: UI Electron visualização, parametrização, revisão e handoff.
+8. BAV11: benchmarks pareados com chamadas LLM, tokens, custo e latência por efeito verificado.
+9. BAV12: gates H079/H081/H082, regressões, segurança, dogfood, CI exact-head e release.
+
+## Comandos iniciais (PowerShell)
+```powershell
 $w='C:\Github\hermes-agent\.worktrees\browser-automation-v1-20261012'
 Set-Location $w
-git status -sb; git rev-parse HEAD; git log -5 --oneline
+git status -sb
+git rev-parse HEAD
+git log -5 --oneline
+$env:PYTHONPATH='C:\Github\hermes-agent\.venv\Lib\site-packages;' + $w
+uvx --offline pytest -q -o addopts='' workstation/tests/test_bav04_experimental_recovery.py workstation/tests/test_routines.py --tb=short
 $env:NODE_PATH='C:\Github\hermes-agent\node_modules;C:\Github\hermes-agent\apps\desktop\node_modules'
 Set-Location "$w\apps\desktop"
-node --test electron/workstation-browser-bav1-persistence.contract.test.cjs
-node electron/workstation-browser-bav1-controller.runner.cjs
-Set-Location $w
-$env:PYTHONPATH='C:\Github\hermes-agent\.venv\Lib\site-packages;' + $w
-uvx --offline pytest -q -o addopts='' workstation/tests/test_routines.py --tb=short
+node --test electron/workstation-browser-bav1-recovery.contract.test.cjs electron/workstation-browser-bav1-persistence.contract.test.cjs
+```
 
-## Checkpoint obrigatório, recursivo
-Atualize PLAN/STATE/EVIDENCE/DECISIONS/METRICS/NEXT_PROMPT e ROADMAP/journal de engenharia. Termine com testes realmente executados (PASS/FAIL/SKIP), HEAD completo verificado, branch/worktree/remote/PR, diff/dirty, gates H-079/H-081/H-082, próxima etapa/RED e incertezas. Faça commits pequenos sem segredos/logs/artefatos gerados. Push apenas na branch experimental apropriada, nunca main, e sem alegar release aprovado.
-**OBRIGATORIAMENTE entregue ao usuário um NOVO PROMPT COMPLETO PRONTO PARA COPIAR/COLAR em toda interrupção. Cada prompt deverá incluir todas estas regras e obrigar a próxima sessão a gerar outro prompt, até BAV-12 integralmente qualificado.**
-
-## Estado remoto confirmado após o primeiro commit
-PR de trabalho **#85** DRAFT, https://github.com/kevynlucasprofissional-stack/hermes-agent/pull/85. Código+testes+documentação publicados no commit d1d867a3a22fa6e77a45000992f54784c71954f2. GitHub retornou 0 combined statuses e 0 workflow runs nesse commit; isto NÃO significa verde. Um commit somente documental posterior pode avançar HEAD: confirmar a SHA na primeira chamada Git.
+## Finalização obrigatória e recursiva
+Execute o máximo possível nesta sessão, TDD RED→GREEN, teste nativo e negativo, lint/hooks/CI quando disponível. Mantenha `PLAN/STATE/EVIDENCE/DECISIONS/METRICS/REFERENCE_MATRIX/NEXT_PROMPT`, `ROADMAP.md` e `engineering-journal/CURRENT.md` sincronizados. Commits pequenos e push apenas na branch PR #85 (sem main merge, sem arquivos .bav ou dados sensíveis). Relate HEAD SHA completo efetivamente verificado, remote/PR, files dirty, PASS/FAIL/SKIP/NOT RUN, H079/081/082, próxima função + RED exato, risco remanescente. **AO ENCERRAR SEMPRE DEVOLVA UM NOVO PROMPT COMPLETO, PRONTO PARA COPIAR/COLAR, QUE CONTENHA ESTA MESMA REGRA DE CONTINUIDADE RECURSIVA até BAV12 comprovadamente qualificado.**

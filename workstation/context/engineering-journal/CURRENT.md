@@ -1,5 +1,16 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-12 — Hermes Browser Automation V1, BAV04 crash-window experiment (PR #85)
+
+**Status: TEST-ONLY GREEN / PRODUCT RELEASE HOLD.** Worktree `feat/hermes-browser-automation-v1-20261012`, code checkpoint `5448f889fe94af43c0534b26a0243364be1a078e`. Production Browser runtime unchanged; existing BAV01/BAV03/BAV05 experiments preserved.
+
+- Hypothesis: an effectful Browser click followed by worker process loss before recording independent proof must not silently replay. Test RED: missing recovery contract; native Electron contract initially emitted only legacy BAV03 success marker; independent baseline-bound proof initially failed TypeError.
+- Experimental adaptation: canonical `ExecutionJournal` append/fsync pending intent *before* effect, `ArtifactStore` safe checkpoint only after independent fixture server readback, and existing `DeterministicRoutineRunner.resume_ref` to skip already verified mutation. No new engine, database or Browser owner.
+- GREEN: real disposable Electron `WebContentsView`/singleton with bearer-auth control. Alpha seed (server effects=1); Beta click (effects=2); Python worker `os._exit(37)` after external result but before persisting proof. Fresh Python process reconciles from journal + native snapshot + separate server counter, resumes without duplicate; effects remain 2. Node BAV04 E2E 1 passed; paired BAV04/BAV05 Electron 2 passed. Python recovery test suite 11 passed; Python targeted BAV04+routines 13 passed; additional memory/journal/artifacts 16 passed. Ruff F/UP, Node syntax, py_compile, git diff check and pre-commit lint passed.
+- Critical LIMITS: worker crash **not** Electron main crash; same already-admitted BrowserTask throughout; admission dict test-only synthetic and NOT authenticated lease, no real cross-TaskRun reuse; local test effect counter and zero model calls do not prove productive savings. H-079 Stage A remains blocked: live observed upstream main `9f63a6fe5cfe39adc7a8f1936fbdcffffbec1d74`; downstream origin/main `a2b56db1bc9e0b5acf48d94fa86a9844a1005842`; exact-head CI not demonstrated. No `main` merge.
+- Next RED: instantiate truly new authorized BrowserTask/TaskRun and prove fail-closed revoked lease / wrong owner / restart / uncertain click with authenticated source. First qualify H-079 Stage A in separate lane; only then consider downstream runtime changes. See `workstation/context/browser-automation-v1/NEXT_PROMPT.md` for recursive handoff.
+
+
 ## 2026-10-11 — Hermes Work: Aceleração Operacional, Redução de Redundâncias e Custo (D-043 / P0–P2)
 
 **Classificação: IMPLEMENTAÇÃO COMPLETA, TESTES E QUALIFICAÇÃO INTEGRADOS.**

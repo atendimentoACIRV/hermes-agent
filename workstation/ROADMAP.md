@@ -2936,3 +2936,7 @@ Native regression at bb1888976e: existing headless-load contract passed with fou
 
 <!-- BAV05 local checkpoint 2026-10-12 -->
 - Hermes Browser Automation V1: isolated BAV-05 fixture E2E now persists a test-only procedure using canonical ProceduralMemory, reloads it in two new Python processes and replays via DeterministicRoutineRunner under the authenticated singleton controller. Three independent local-server effects; same BrowserTask, no cross-run authority qualification. H-079 Stage A, production promotion and BAV-04/06..12 remain HOLD.
+
+
+<!-- BAV04 2026-10-12 experiment, PR85 Draft -->
+- BAV-04 experimental crash-window test: using canonical ExecutionJournal + ArtifactStore + existing DeterministicRoutineRunner.resume_ref, a disposable Electron WebContentsView/authorized native controller fixture recovered after Python worker os._exit(37), independently reconciled server effect and avoided duplicate mutation (2 effects total). 11/11 Python guard tests, 2/2 paired Electron, 13/13 targeted Python + 16/16 memory/journal regression. **Test-only**, not production authority/restart/CI; H-079 baseline & exact-head release remain HOLD. Next: authentic new BrowserTask/TaskRun admission, real lease fencing and Electron main crash safety after Stage A qualified.
