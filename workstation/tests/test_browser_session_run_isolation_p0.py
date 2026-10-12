@@ -38,14 +38,15 @@ def test_session_only_browser_command_does_not_borrow_process_env_run(monkeypatc
     assert "run_id" not in dispatch[0]
 
 
-def test_explicit_canonical_identity_is_preserved(monkeypatch, dispatch):
+def test_explicit_canonical_identity_is_preserved(tmp_path, monkeypatch, dispatch):
+    task_id, run_id = _claimed_task(tmp_path, monkeypatch)
     bw._dispatch(
-        "browser_snapshot", {}, task_id="browser-task", session_id="chat-2",
-        kanban_card_id="explicit-card", run_id="explicit-run",
+        "browser_snapshot", {}, task_id="browser-task", session_id="chat-a",
+        kanban_card_id=task_id, run_id=run_id,
     )
     assert dispatch[0]["task_id"] == "browser-task"
-    assert dispatch[0]["kanban_card_id"] == "explicit-card"
-    assert dispatch[0]["run_id"] == "explicit-run"
+    assert dispatch[0]["kanban_card_id"] == task_id
+    assert dispatch[0]["run_id"] == run_id
 
 
 def _claimed_task(tmp_path, monkeypatch):
@@ -88,3 +89,22 @@ def test_new_session_browser_operation_does_not_replay_prior_global_operation_id
     bw._dispatch("browser_navigate", {"url": "https://example.com"}, session_id="new-chat")
     assert dispatch[0]["operation_id"] != "op_old_chat_1234"
     assert dispatch[0]["operation_id"].startswith("op_browser_navigate_")
+
+
+@pytest.mark.parametrize("card_id, run_id", [
+    ("missing-card", "12345"),
+    ("missing-card", None),
+    (None, "12345"),
+])
+def test_nonexistent_or_incomplete_explicit_binding_fails_closed(
+    tmp_path, monkeypatch, dispatch, card_id, run_id,
+):
+    """Unverifiable explicit run/card binding must not reach Electron."""
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    with pytest.raises(bw.WorkstationBrowserError) as err:
+        bw._dispatch(
+            "browser_snapshot", {}, session_id="chat-a",
+            kanban_card_id=card_id, run_id=run_id,
+        )
+    assert err.value.error_code == "STALE_RUN"
+    assert dispatch == []
