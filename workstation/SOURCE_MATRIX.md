@@ -1,5 +1,8 @@
 # Source reuse matrix
 
+## 2026-10-12 — Browser C2C follow-up reuse
+Commits `1c46a508d3`, `3793c46a15`, `b9addc487a`: KEEP/EXTEND native BrowserSessionState, TaskRun/BrowserTask authority, existing ExecutionJournal and CertifiedDispatcher verification contracts. Adapt Playwright-style ambiguous input handling without shipping Playwright or creating another browser owner. Local ACK never promotes to external VERIFIED. [Checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
 ## 2026-10-12 — P0 replay/crash patch lineage
 
 `20acf1d2e9` and `da3ca49569`: **KEEP/EXTEND Hermes** BrowserSessionState/BrowserTask authority ownership and native Electron harness, **INSPIRE** Playwright Electron test patterns, **no Playwright runtime source copied**. Concurrency lock is a synchronization marker in the same durable projection, not second journal. Test evidence and release gaps in [continuity checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md); Stage A exception local, NOT_RELEASE_QUALIFIED.

@@ -1,5 +1,8 @@
 # Current State
 
+## 2026-10-12 — Browser C2C causal ACK/journal + CDP pointer safety
+Last tested code HEAD `b9addc487abc9852368d927cbcc25b588e8b108d`. Native mutation B is refused when A same TaskRun is unresolved after crash; local owner ACK is NOT VERIFIED. Controller status is observed via existing ExecutionJournal, not a second authoritative store. CDP pointer cleanup on uncertain press or takeover is best effort, never claims successful effect. 174/174 Browser Vitest, native Electron E2Es, 5 Python journal and 7 telemetry PASS. Ruff baseline 19 preexisting errors, TypeScript simple-git TS2349, Stage A PENDING_WITH_MAINTAINER_AUTHORIZATION for local development; no push/merge. [Checkpoint](../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
 ## 2026-10-12 — P0-02 interprocess replay and recoverability guard
 
 Worktree `feat/playwright-c2c-kits-20261012`; code HEAD `da3ca495690bc56b26088fb40d8a2c594348d30a`. A lock shared by BrowserSessionState writes protects concurrent admissions and stale session projections; native Electron recovery refuses an unconfirmed navigation URL, loads local about:blank for read-only snapshot, and retains normal URL restore if admitted ID matches receipt. **168/168 Vitest** and native crash/replay + regular Electron E2E PASS. Still not a terminal verifier or remote exactly-once; no CI or Stage A release qualification. **Stage A explicitly PENDING_WITH_MAINTAINER_AUTHORIZATION** (do not sync upstream during local work). Full [continuity checkpoint](../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).

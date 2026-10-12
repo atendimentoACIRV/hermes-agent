@@ -1,5 +1,8 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-12 — RED→GREEN P0-02 + P0-03, exact code HEAD b9addc487a
+`1c46a508d3`: two-process crash A effect/lost receipt, new B ID RED accepted → GREEN RECONCILIATION_REQUIRED with one effect; direct ACK forgery blocked; matching persisted owner receipt acknowledged without promoting VERIFIED. `3793c46a15`: canonical ExecutionJournal projection with private-content canary, 5 unittest PASS and 7 existing telemetry PASS; Ruff strict 19 baseline preexisting errors independently proven via git show; LEFTHOOK=0 for this one Python commit and gate OPEN. `b9addc487a`: CDP partial pointer errors and human takeover RED→GREEN 3 tests, no blind press retry, best-effort cleanup marks UNCERTAIN. Full Browser Vitest 174 PASS; Electron native E2Es PASS. Global tsc only known simple-git TS2349. No main changes/push/merge; Stage A authorized pending, NOT_RELEASE_QUALIFIED. [Checkpoint](../../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
 ## 2026-10-12 — P0-02 RED→GREEN: interprocess exclusivity and lazy recovery
 
 `20acf1d2e9`: CRASH-03 fixture proved two processes both admitted same operation before lock (RED), then one admitted / one refused after exclusive create-only lock; new stale-owner session save test proved ledger erasure (RED), fixed shared lock across saves plus admission reconciliation. `da3ca49569`: native two-process crash/replay test exposed duplicated HTTP GET via lazy URL restoration even when explicit operation replay was fenced (RED 2 vs 1); fixed early replay check and pending navigation restoration as about:blank, with Chromium initial blank load to avoid stuck snapshot. Existing recovery test RED exposed randomly different receipt ID for generated admission; fixed same ID and new CRASH-ID assertion. Final **19/168 Vitest PASS** and native crash/replay + ordinary Electron PASS; typecheck only known simple-git TS2349 failure. All work local, no main/UI changes, no push. Stage A authorized pending, NOT_RELEASE_QUALIFIED. [Evidence](../../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
@@ -120,7 +123,7 @@ Base/Pin Upstream: `66605471e9f0b0832abbefaf625ce08e948ca540` verificado como an
 7. **UX (Melhorias inspiradas no BrowserOS):**
    - Painel `workstation-browser-pane.tsx` atualizado com banner de transição segura para controle humano, barra de progresso para carregamento/execução, identificador de tarefas em segundo plano e acesso integrado ao `TaskJournalDrawer`.
 8. **OPT-05 (Importação de Sessões Chrome - HOLD):**
-   - Mantido estritamente em HOLD por motivos de privacidade e conformidade com §2 do `SECURITY.md`.
+   - Mantido estritamente em HOLD por motivos de privacidade e conformidade com `2 do `SECURITY.md`.
    - Documento de análise de risco e requisitos mandatórios registrado em `workstation/context/OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`.
 9. **OPT-07 / OPT-11 (Drift & Backends Python — DIAGNOSED, sem mudança de runtime):**
    - 32 arquivos `tools/browser*.py` + `workstation/browser*.py` classificados por responsabilidade em `workstation/context/OPT_07_11_DRIFT_BACKEND_CLASSIFICATION_2026-10-11.md`: 2 runtimes sempre presentes (agent-browser local; Electron Workstation), demais = drivers opcionais sob demanda, roteadores, fachadas, guardas de política e suporte. Nada removível com segurança.
