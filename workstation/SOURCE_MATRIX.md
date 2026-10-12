@@ -1,5 +1,11 @@
 # Source reuse matrix
 
+## 2026-10-12 — Playwright Browser Nativo: auditoria C2C com hash e licença
+
+| Projeto local | Evidência analisada | Classificação | Produto / ressalva |
+|---|---|---|---|
+| Playwright `1.65.0-next`, Apache-2.0 sem `.git` local | `packages/playwright-core/src/{client/locator.ts,server/dom.ts,server/frames.ts,server/progress.ts,server/chromium/crPage.ts}`, `packages/injected/src/injectedScript.ts`, `server/trace/recorder/snapshotterInjected.ts`, `tests/electron/*` | **ADAPT** actionability/iframe/SPA; **COPY** somente pequenos test fixtures sob NOTICE; **REJECT** runtime browser paralelo | [C2C com hashes, 16 oportunidades e gates](research/playwright-code-to-code-2026-10-12/00-RESUMO-EXECUTIVO.md). AUDIT_ONLY, NOT_RELEASE_QUALIFIED; owner TaskRun/BrowserTask inalterado |
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — D-043 Creative source status / no preselected engine
 | Referência | Código/contrato a investigar | Uso no CW | Evidência |
