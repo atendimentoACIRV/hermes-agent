@@ -64,3 +64,10 @@ Verification in this continuation: 16/16 independent Python tests passed, includ
 New external dependency qualification: inspected PR #81 Electron main.ts which still registers resolveTrustedOwner: () => null and throws creative_owner_unavailable for open/apply. Therefore CQL-04 authenticated human+agent native E2E remains BLOCKED_EXTERNAL_DEPENDENCY, no surrogate identities were fabricated.
 
 NEXT ACTION: after committing and pushing this checkpoint, run exact-head PR #81 negative/positive integration tests only if owner provides real sender-bound TaskRun attestation; otherwise build lightweight independent preview-vs-export and rational-FPS regression coverage under quality-lab/tests or measurement harness, without modifying PR #81. On next session recheck PR #81 SHA; if changed inspect only touched creative seams and rerun CQL-03 probe against a dedicated isolated candidate checkout. Never silently overwrite immutable old evidence.
+
+
+## Publication and integrator delivery receipt — 2026-10-12
+
+- CQL-03 code/evidence commit successfully published on branch and PR #86: `909188474871916b8aba30e30cc4648e3a67b7bb` (the final docs-only checkpoint commit may advance HEAD; verify via Git before executing).
+- Integrator PR #81 received a non-code diagnostic comment, GitHub comment ID `6132312505`, referencing our source-hash-bound Chromium evidence, 5 PASS_UNIT / 4 FAIL, and proposed fixes. No production files modified.
+- Continue only from the latest appended checkpoint and verified Git SHA. Remaining CQL-03 native UI, CQL-04 authentic Electron TaskRun E2E, and product-level CQL-05 benchmarks are not yet qualified.

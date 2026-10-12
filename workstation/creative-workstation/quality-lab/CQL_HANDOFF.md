@@ -61,3 +61,10 @@ New findings: F-008 Graph Editor breaks React hook ordering after selecting keye
 EXACT NEXT EXECUTABLE ACTION: first verify new CQL branch HEAD and PR #81 HEAD and ensure working tree clean. Then create a bounded independent fixture/test in quality-lab/tests for preview pixel-vs-export fidelity or a rational-FPS timeline test against unchanged candidate sources. Do not duplicate the PR #81 owner tests. For PR #81 SHA changes, use separate read-only exact-head checkout and update evidence path to new immutable SHA. Only enable UX native Electron H-C2 tests after backend TaskRun owner and positive human+agent canonical CAS flow can be proven.
 
 Remaining: CQL-03 full native UX still blocked; CQL-04 native authenticated Electron TaskRun E2E blocked; CQL-05 product performance and preview/export pixel parity not run; CQL-06 final closeout not qualified. Never modify main, root checkout, PR #81, canonical Document/TaskRun, production editor/renderer, or falsely classify mocks as native. At any interruption update state/handoff, commit/push coherent work, and return a new fully self-contained resumption prompt with exact SHAs and next file/test.
+
+
+## Publication and integrator delivery receipt — 2026-10-12
+
+- CQL-03 code/evidence commit successfully published on branch and PR #86: `909188474871916b8aba30e30cc4648e3a67b7bb` (the final docs-only checkpoint commit may advance HEAD; verify via Git before executing).
+- Integrator PR #81 received a non-code diagnostic comment, GitHub comment ID `6132312505`, referencing our source-hash-bound Chromium evidence, 5 PASS_UNIT / 4 FAIL, and proposed fixes. No production files modified.
+- Continue only from the latest appended checkpoint and verified Git SHA. Remaining CQL-03 native UI, CQL-04 authentic Electron TaskRun E2E, and product-level CQL-05 benchmarks are not yet qualified.
