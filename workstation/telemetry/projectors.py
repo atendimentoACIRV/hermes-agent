@@ -157,3 +157,54 @@ def project_operation_economics(events: list[TelemetryEventV1]) -> dict:
         "cost_usd": cost, "cost_sources": sorted({e.cost_source for e in billed if e.cost_source}),
         "cost_per_verified_outcome_usd": cost / len(verified) if cost is not None and verified else None,
     }
+
+
+def project_native_browser_profile(events: list[TelemetryEventV1]) -> dict:
+    """Summarize measured native-browser attempts; never mistake ACK for outcome.
+
+    Timing scope is Python loopback boundary; CPU/RSS are Electron main process
+    snapshots. All missing data remain None, not zero.
+    """
+    browser = [e for e in events
+               if e.event_type == TelemetryEventType.BROWSER_OPERATION_OBSERVED
+               and e.route == "native_browser"]
+    attempted = [e for e in browser if e.status == "REQUEST_ATTEMPTED"]
+    finished = [e for e in browser if e.status != "REQUEST_ATTEMPTED"]
+
+    def identity(e: TelemetryEventV1) -> tuple:
+        return (e.session_id, e.task_id, e.run_id, e.operation_id, e.phase)
+
+    attempt_ids = {identity(e) for e in attempted if e.operation_id}
+    terminal_ids = {identity(e) for e in finished if e.operation_id}
+    delays = sorted(e.duration_ms for e in finished
+                    if e.duration_ms is not None and math.isfinite(e.duration_ms)
+                    and e.duration_ms >= 0)
+    source = Counter(e.payload.get("snapshot_source") for e in finished
+                     if e.payload.get("snapshot_source"))
+    cdp = [e.payload["cdp_calls"] for e in finished
+           if isinstance(e.payload.get("cdp_calls"), int)]
+    snapshots = [e for e in finished if e.payload.get("snapshot_source")]
+    cache = [e for e in finished if isinstance(e.payload.get("cached"), bool)]
+    return {
+        "attempts": len(attempted),
+        "terminal_observations": len(finished),
+        "unresolved_attempts": len(attempt_ids - terminal_ids),
+        "uncertain_batches": sum(e.phase == "browser_batch_actions"
+                                 and e.status == "UNCERTAIN" for e in finished),
+        "acknowledged_actions": sum(e.status == "ACKNOWLEDGED" for e in finished),
+        "local_verified_batches": sum(e.status == "LOCAL_VERIFIED" for e in finished),
+        "failed_actions": sum(e.status == "ERROR" for e in finished),
+        "verified_external_outcomes": None,
+        "latency_scope": "python_loopback_and_electron",
+        "latency_samples": len(delays),
+        "latency_ms_p50": statistics.median(delays) if delays else None,
+        "latency_ms_p95": delays[math.ceil(.95 * len(delays)) - 1] if delays else None,
+        "cdp_calls_known": len(cdp),
+        "cdp_calls_total_observed": sum(cdp) if cdp else None,
+        "snapshot_engines": dict(source),
+        "snapshot_samples": len(snapshots),
+        "cache_observations": len(cache),
+        "cache_hits": sum(e.payload["cached"] for e in cache),
+        "response_bytes_total": sum(e.result_bytes for e in finished
+                                    if e.result_bytes is not None),
+    }

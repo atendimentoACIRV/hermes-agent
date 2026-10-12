@@ -812,14 +812,55 @@ def _dispatch(
         payload["kanban_card_id"] = card_id
     if rid:
         payload["run_id"] = rid
-    response = _request_json(
-        "POST",
-        "/v1/action",
-        payload,
-        timeout=max(0.25, timeout),
-        action=action,
-    )
-    result = _force_redact(response.get("result"))
+    started_at = time.perf_counter()
+    request_bytes = len(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+    try:
+        from workstation.telemetry.browser_observation import emit_native_browser_observation
+        emit_native_browser_observation(
+            action=action, result=None, session_id=session_id, task_id=key,
+            run_id=rid, operation_id=str(op_id), duration_ms=None,
+            request_bytes=request_bytes, stage="attempt",
+        )
+    except Exception:
+        pass
+    try:
+        response = _request_json(
+            "POST", "/v1/action", payload,
+            timeout=max(0.25, timeout), action=action,
+        )
+    except Exception as exc:
+        try:
+            from workstation.telemetry.browser_observation import emit_native_browser_observation
+            emit_native_browser_observation(
+                action=action, result=None, session_id=session_id, task_id=key,
+                run_id=rid, operation_id=str(op_id),
+                duration_ms=(time.perf_counter() - started_at) * 1000,
+                request_bytes=request_bytes,
+                error_code=getattr(exc, "error_code", "OTHER_ERROR"),
+            )
+        except Exception:
+            pass
+        raise
+
+    raw_result = response.get("result")
+    try:
+        from workstation.telemetry.browser_observation import (
+            emit_native_browser_observation, strip_private_browser_telemetry,
+        )
+        response_bytes = len(json.dumps(raw_result, ensure_ascii=False).encode("utf-8"))
+        emit_native_browser_observation(
+            action=action, result=raw_result if isinstance(raw_result, dict) else None,
+            session_id=session_id, task_id=key, run_id=rid, operation_id=str(op_id),
+            duration_ms=(time.perf_counter() - started_at) * 1000,
+            request_bytes=request_bytes, response_bytes=response_bytes,
+        )
+        raw_result = strip_private_browser_telemetry(raw_result)
+    except Exception:
+        # Private browser metrics must never become model-facing even when the
+        # analytics projection is unavailable.
+        if isinstance(raw_result, dict):
+            raw_result = {k: v for k, v in raw_result.items() if k != "__telemetry"}
+    result = _force_redact(raw_result)
     # Any successful internal action proves this task/session is using the
     # persistent Workstation Browser. Bind immediately so later controller loss
     # fails closed even after an agent-process restart/reconnect that resumes an

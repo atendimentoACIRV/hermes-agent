@@ -665,6 +665,7 @@ test('browser_extract_items extracts structured cards via controller request', a
   })
 
   assert.equal(extracted.success, true)
+  assert.equal(extracted.cached, false)
   assert.equal(extracted.count, 1)
   assert.equal(extracted.selector_used, 'article')
   assert.equal((extracted.items as Array<Record<string, unknown>>)[0].title, 'Item 1')

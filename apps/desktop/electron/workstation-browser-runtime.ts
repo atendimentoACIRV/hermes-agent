@@ -3110,6 +3110,10 @@ export class WorkstationBrowserRuntime {
       throw new Error('browser_tab_destroyed')
     }
 
+    const telemetryStarted = performance.now()
+    const telemetryCpuStarted = process.cpuUsage()
+    let telemetryCdpCalls = 0
+    let telemetrySource: 'ax' | 'dom' | 'dom_fallback' = 'dom'
     const maxText = full ? FULL_TEXT_CHARS : COMPACT_TEXT_CHARS
     const maxElements = full ? FULL_ELEMENTS : COMPACT_ELEMENTS
 
@@ -3118,17 +3122,22 @@ export class WorkstationBrowserRuntime {
       try {
         inv = await tryAccessibilitySnapshot(
           wc,
-          (method, params) => this.cdp(wc, method, params),
+          (method, params) => {
+            telemetryCdpCalls++
+            return this.cdp(wc, method, params)
+          },
           full,
           maxText,
           maxElements
         )
+        if (inv) telemetrySource = 'ax'
       } catch {
         inv = null
       }
     }
 
     if (!inv) {
+      if (telemetryCdpCalls > 0) telemetrySource = 'dom_fallback'
       inv = (await wc.executeJavaScript(
         inventoryScript(maxText, maxElements),
         true
@@ -3269,8 +3278,21 @@ export class WorkstationBrowserRuntime {
 
     this.lastSnapshotFrames.set(frameKey, currentFrame)
 
+    const cpuTime = process.cpuUsage(telemetryCpuStarted)
+    const diagnostics = {
+      snapshot_source: telemetrySource,
+      duration_ms: Math.max(0, performance.now() - telemetryStarted),
+      cdp_calls: telemetryCdpCalls,
+      snapshot_chars: formattedSnapshot.length,
+      delta_chars: snapshotDelta ? JSON.stringify(snapshotDelta).length : 0,
+      element_count: inv.elements.length,
+      main_rss_bytes: process.memoryUsage().rss,
+      main_cpu_us: cpuTime.user + cpuTime.system
+    }
+
     return {
       success: true,
+      __telemetry: diagnostics,
       runtime: 'electron-chromium',
       task_id: entry.ownerTaskId,
       tab_id: entry.id,
@@ -3859,6 +3881,7 @@ export class WorkstationBrowserRuntime {
 
     const finalResult = {
       success: true,
+      cached: false,
       runtime: 'electron-chromium',
       task_id: entry.ownerTaskId,
       tab_id: entry.id,

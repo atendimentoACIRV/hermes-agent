@@ -1303,3 +1303,26 @@ test('cross-session isolation: chat attaching without preferred task does not le
 
   await runtime.destroy()
 })
+
+test('BROW-TEL: native snapshot exposes structural diagnostics without page text in telemetry', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const executeControlRequest = (runtime as any).executeControlRequest.bind(runtime) as (
+    request: Record<string, unknown>
+  ) => Promise<Record<string, any>>
+  await executeControlRequest({
+    action: 'browser_navigate',
+    task_id: 'telemetry-task',
+    arguments: { url: 'https://example.com' }
+  })
+  const result = await executeControlRequest({ action: 'browser_snapshot', task_id: 'telemetry-task', arguments: {} })
+  const diagnostics = result.__telemetry
+  assert.equal(diagnostics.snapshot_source, 'dom')
+  assert.equal(diagnostics.cdp_calls, 0)
+  assert.ok(diagnostics.snapshot_chars > 0)
+  assert.ok(diagnostics.duration_ms >= 0)
+  assert.equal(typeof diagnostics.main_cpu_us, 'number')
+  assert.equal(typeof diagnostics.main_rss_bytes, 'number')
+  assert.equal(JSON.stringify(diagnostics).includes('Hello world'), false)
+  await runtime.destroy()
+})
