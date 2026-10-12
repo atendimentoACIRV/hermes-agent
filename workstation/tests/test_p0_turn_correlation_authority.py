@@ -70,3 +70,21 @@ def test_new_durable_turn_without_correlation_cannot_reuse_previous_run(claimed_
     assert result.requires_task
     assert agent._canonical_work_run_id is None
     assert agent._work_blocked_task_id == task_id
+
+
+def test_matching_nonempty_turn_correlation_preserves_owned_active_run(claimed_task):
+    objective = "Implemente a API e depois escreva testes."
+    task_id, run_id = claimed_task(objective)
+    agent = _agent(task_id, run_id)
+    agent._canonical_work_turn_id = "turn-verified"
+
+    envelope = MessageEnvelope(
+        MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK,
+        "chat-a", objective, correlation_id="turn-verified",
+    )
+    result = prepare_turn_work(agent, objective, envelope=envelope)
+
+    assert result.requires_task
+    assert agent._canonical_work_task_id == task_id
+    assert str(agent._canonical_work_run_id) == run_id
+    assert agent._work_blocked_task_id is None
