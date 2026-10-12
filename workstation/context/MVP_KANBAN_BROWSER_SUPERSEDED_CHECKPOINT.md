@@ -62,6 +62,30 @@ Current branch `workstation/batch_detection.py::prepare_mutation` checks **every
 
 The turn admission path `agent/turn_tool_round.py` admits whole batches and uses `scoped_execution` from `agent/scoped_execution.py`. Separately, `run_agent.py::_execute_tool_calls` can admit intervention decisions. Need inspect the actual Workstation registration and invocation of `workstation/work_intent.py::prepare_turn_work`, including turn boundary and the clearing of obsolete agent fields; instrument **which fence produced the user-visible SUPERSEDED** before patching. There is no evidence yet that `agent/scoped_execution.py` itself is responsible.
 
+## 2026-10-12 continuation — source-confirmed absent-correlation run reuse
+
+**New confirmed code-level vulnerability, NOT confirmed as the emitter of the user-reported SUPERSEDED error:**
+
+1. `agent/turn_ingress.py::TurnIngress.correlation_id` defaults to `None`; `agent/conversation_loop.py` constructs the fallback trusted TurnIngress without specifying a correlation ID.
+2. `workstation/integrations/hermes/turn_admission.py::workstation_turn_admission` passes `ingress.correlation_id` into the MessageEnvelope, and invokes `workstation/work_intent.py::prepare_turn_work`.
+3. The old `prepare_turn_work` compared `prior_turn_id == envelope.correlation_id` and `pinned_turn == envelope.correlation_id` without requiring a nonempty correlation value. Two unrelated turns with both IDs `None` could satisfy a same-turn authority guard if the old canonical task/run, session and objective remained equal, permitting accidental run reuse.
+4. `agent/turn_tool_round.py::run_tool_round` invokes full tool admission and `workstation.integrations.hermes.scoped_execution`; `workstation/integrations/hermes/tool_observer.py::workstation_pre_dispatch_hook` invokes `prepare_mutation` on final authorized args. Its canonical TaskRun fence applies to non-Browser mutating tools too. **This establishes a plausible cross-tool propagation route, not definitive production attribution.**
+
+Changes published to PR #88:
+
+- Test-only precursor `f46454706af6a2fd7e9ef572e8181e8b08291069`: `workstation/tests/test_p0_turn_correlation_authority.py` exercises (a) repeated point action with missing correlation and (b) new durable request with identical text but absent correlation.
+- Minimal source patch `a1b75c0bf3780c2e67fd8a96ba336b4ebdc5d7e4`: `workstation/work_intent.py::prepare_turn_work` requires a truthy incoming `envelope.correlation_id` for **both** existing TaskRun continuation guards; a true same-turn nonempty correlation can still match, and a missing one fails closed.
+- Regression follow-up `082ee7df08be167679c76f8841fad0b207b3d92b`: verifies a correctly correlated, still-running canonical TaskRun remains reusable. Do not claim any RED or GREEN run; none could execute with Windows offline.
+
+**Execution and qualification remain blocked**. In this follow-up session, Desktop Commander once again listed `DESKTOP-3NA47UH` as Online, but `ping` request `fb75c8c0-574d-4d97-b5f0-46d5cbd13c37` ultimately failed with `Timeout - no response from device`. Direct container `git ls-remote` also failed due missing DNS/network, so local cloning and actual pytest on the new commits were impossible. The repository Windows state/worktrees remain unverified. All eight full MVP acceptance gates remain unverified. Keep PR DRAFT and do not merge.
+
+**First required test command once remote execution is available** (after separate clean worktrees for the commit under test and the latest branch, and repository-approved Python venv setup):
+`pytest -q workstation/tests/test_p0_turn_correlation_authority.py workstation/tests/test_browser_session_run_isolation_p0.py`.
+
+Prove RED for the first two absent-correlation tests at `f46454706...` (before source patch), then GREEN for all three at current head. Run adjacent WorkIntent, smart task admission, Kanban concurrent claim and Electron owner regression. Fix only actual failure output; be prepared to revise the source patch if legit callers relied on untracked correlation, using a trusted unique turn ID rather than weakening the guard.
+
+**Next true SUPERSEDED reproduction remains P0-2**: trace full Google/search → timeout after dispatch → new YouTube request → terminal/write_file, distinguishing a cancelled turn owner vs. stale TaskRun vs. native controller. Do not pretend this source-level correction resolves the incident without real evidence.
+
 ## Immediate next step — do this before writing more code
 
 1. Restore responsiveness of authorized Desktop Commander computer; `list_devices` saying Online is not enough. Confirm with `ping`, then run a read-only `git status --short`, `git rev-parse HEAD`, and `git worktree list --porcelain` in `C:\Github\hermes-agent`.
