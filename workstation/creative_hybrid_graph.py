@@ -99,6 +99,7 @@ def validate_hybrid_bindings(
 def hybrid_render_key(
     composition_sources: dict[str, str], parameters: dict[str, Any],
     frame_index: int, engine_version: str, *, width: int, height: int, fps: tuple[int, int],
+    asset_hashes: dict[str, str] | None = None, color_profile: str = "srgb",
 ) -> str:
     """Stable content signature for a single frame, NOT proof of pixel parity.
 
@@ -115,9 +116,17 @@ def hybrid_render_key(
             or len(fps) != 2 or any(type(part) is not int or part <= 0 for part in fps)
             or not isinstance(engine_version, str) or not engine_version.strip()):
         raise HybridGraphError("Invalid render frame specification")
+    asset_hashes = asset_hashes or {}
+    if (not isinstance(asset_hashes, dict)
+            or any(not isinstance(k, str) or not k or not isinstance(v, str)
+                   or not _SHA.fullmatch(v) for k, v in asset_hashes.items())
+            or not isinstance(color_profile, str) or not color_profile):
+        raise HybridGraphError("Invalid asset fingerprints or color profile")
     payload = {
-        "sources": composition_sources, "parameters": parameters, "frame": frame_index,
+        "sources": composition_sources, "assets": asset_hashes,
+        "parameters": parameters, "frame": frame_index,
         "engine_version": engine_version, "width": width, "height": height, "fps": fps,
+        "color_profile": color_profile,
     }
     try:
         encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, allow_nan=False).encode("utf-8")

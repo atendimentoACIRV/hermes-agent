@@ -5698,3 +5698,8 @@ continues on this branch with RED->GREEN per phase and separate upstream sync.
 - EffectCraft CLI `cargo build --offline --locked -p effectcraft-cli` exit 1, missing pinned FilmCraft Git dependency. No real HyperFrames+EffectCraft media render evidence; H-C1 BLOCKED.
 - Test-first functionality: `save_hybrid_project_revision` and canonical `save_creative_document(..., native_files=...)` preserve hashed EffectCraft/HyperFrames source bytes under a single revision, with negative source/path/ETag tests; `HybridTimeMapping` uses exact rational clocks; `creative_export` fails closed on no source and undecodable frame (previous pseudo-hash and black fallback).
 - Regression and exact verification results: see `../creative-workstation/evidence/HCW-HYBRID-01.md` and PR test report. No Electron E2E or release claim.
+
+
+### HCW-HYBRID-01 follow-up — transparent source and dependency contracts
+
+Pinned HF source `6ae1af7470133db72de6d9bbceeaf80e85695c68` cloned to isolated temporary location and Bun `--frozen-lockfile --ignore-scripts` dependencies installed (1,457 packages). Pinned EC Git FilmCraft dep fetched; Cargo build progressing. A direct attempt to execute the source HyperFrames CLI was refused by connector security, and was not bypassed. No engine E2E result/PNG/MP4 claimed. Added test-first RGBA footage validator, graph topology and declared-binding checks enforced on hybrid revision, and content-addressed render fingerprints. These are bounded source-only components, not a production render/cache/agent/editor integration. Preserve H-079 NO PROMOTION. See `../creative-workstation/evidence/HCW-HYBRID-01.md`.

@@ -49,3 +49,19 @@ def test_cache_refuses_nondeterministic_or_invalid_sources():
         hybrid_render_key({A: "wrong"}, {}, 1, "engine:a", width=640, height=360, fps=(30, 1))
     with pytest.raises(HybridGraphError):
         hybrid_render_key({A: "1" * 64}, {}, -1, "engine:a", width=640, height=360, fps=(30, 1))
+
+
+def test_render_key_changes_when_external_media_or_color_profile_changes():
+    base = {A: "1" * 64}
+    params = {"color": "#ff7d3b"}
+    common = dict(width=640, height=360, fps=(30000, 1001))
+    one = hybrid_render_key(base, params, 12, "effectcraft=0.7/hyperframes=0.8",
+                            asset_hashes={"asset1": "2" * 64}, color_profile="srgb", **common)
+    other = hybrid_render_key(base, params, 12, "effectcraft=0.7/hyperframes=0.8",
+                              asset_hashes={"asset1": "3" * 64}, color_profile="srgb", **common)
+    wide = hybrid_render_key(base, params, 12, "effectcraft=0.7/hyperframes=0.8",
+                             asset_hashes={"asset1": "2" * 64}, color_profile="display-p3", **common)
+    assert one != other != wide != one
+    with pytest.raises(HybridGraphError):
+        hybrid_render_key(base, params, 12, "effectcraft=0.7",
+                          asset_hashes={"asset1": "invalid"}, color_profile="srgb", **common)

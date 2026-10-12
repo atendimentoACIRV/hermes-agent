@@ -2942,3 +2942,15 @@ This lane extends D-043, preserving Hermes as the project/TaskRun owner. **DEVEL
 | H-C8/H-C9 | NOT_IMPLEMENTED | on-demand frame bridge and nested compositions after H-C1 proof |
 
 P0 export verification defects were addressed in development-only source: failed decode no synthetic hash; missing source no silent black fallback. Existing first-clip export is **not** a qualified multilayer compositor.
+
+
+### HCW-HYBRID-01 continuation — narrowed contract proof (development-only)
+
+- H-C0: pinned HyperFrames source and locked dependencies prepared in isolated temporary folder; EffectCraft pinned FilmCraft dependency recovered, build progressing. Real native-engine integration and H-079 Stage A still blocking.
+- H-C1/H-C6 partial **UNIT_TESTED SOURCE CONTRACT**: validate numbered RGBA frames + alpha + visible change and prepare `file.import` payload. No native frame producer/real EffectCraft proof.
+- H-C3 partial **UNIT_TESTED SCHEMA**: declared typed bindings checked on project revision save; cross-engine updates NOT IMPLEMENTED.
+- H-C7 partial **UNIT_TESTED FINGERPRINT**: per-frame source/asset SHA, fps, renderer version/profile cache key; actual bounded cache/invalidator NOT IMPLEMENTED.
+- H-C9 partial **UNIT_TESTED GRAPH**: dependency topological order, maximum depth, cycle/missing-node rejections; runtime nested compositions NOT IMPLEMENTED.
+- H-C4/H-C5/H-C8 remain NOT_IMPLEMENTED. Do not promote as complete.
+
+Evidence: `creative-workstation/evidence/HCW-HYBRID-01.md`.

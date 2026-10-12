@@ -53,3 +53,12 @@ The user selected the EffectCraft + HyperFrames hybrid-composition approach as a
 3. Locate/admit HyperFrames producer installation; generate alpha-preserving 30 fps frames using real `hf-seek`/CLI.
 4. Run the H-C1 test with a real edited EffectCraft project, a visibly modified effect and decoded PNG/MP4; compare frames/source files.
 5. Connect persisted subproject refs to TaskRun-admitted typed commands and a real Electron UI before declaring H-C2/H-C3 product-complete.
+
+
+## Continuation — local source-only infrastructure, H-C1 renderer still BLOCKED
+
+- HyperFrames official repository cloned in isolated `C:\Temp\hcw-hybrid01-hyperframes-src` and checked out at **exact SHA `6ae1af7470133db72de6d9bbceeaf80e85695c68`**; `bun install --frozen-lockfile --ignore-scripts` completed with exit 0 and 1,457 packages in the isolated reference directory. No build/run of its real frame producer is yet proven; attempted direct source CLI execution was refused by connector security and was not bypassed.
+- EffectCraft Rust `cargo build --locked -p effectcraft-cli` resolved the earlier FilmCraft pinned Git dependency and compiled multiple workspace crates; final executable status must be checked separately. This is toolchain progress, **not** an imported/composited media proof.
+- `creative_hybrid_footage.py`: validates real consecutive RGBA PNGs, actual transparency, visible compositable pixels, motion, dimensions, file hashes, and constructs an EffectCraft `file.import` command with explicit fps and `addToComp`. This neither invokes HyperFrames nor EffectCraft nor proves provenance of frames; H-C1 remains BLOCKED.
+- `creative_hybrid_graph.py`: source dependency topological planning and cycle rejection, explicit typed parameter bindings, content-based render key binding composition SHA, external asset SHA, output time/fps/dimensions, engine version and color profile; these validations are admitted into `save_hybrid_project_revision` before source storage. No runtime cache, native binding application or actual nested compositor has been built. **H-C3/H-C7/H-C9 partial UNIT_TESTED only.**
+- Local RED: unsupported APIs for graph/footage, invalid graph persisted on old store, missing asset/profile key; GREEN: 19 passing and 1 environment-permission skip across 3 new test files. Full scoped regression is to be re-run on exact pushed head and appended to PR; do not extrapolate this subset into CI qualification.
