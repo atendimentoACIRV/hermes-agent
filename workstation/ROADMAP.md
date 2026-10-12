@@ -1,5 +1,9 @@
 # Workstation roadmap
 
+## 2026-10-12 — P0 Browser C2C CRASH-03 / lazy restore safety — LOCAL GREEN
+
+Code commits `20acf1d2e9` and `da3ca49569`: serialized BrowserSessionState writes/admissions across processes, retained admission history during stale session saves, fenced replay before lazy WebContentsView materialization and prevented unacknowledged navigation reload on read-only snapshot. Fixed generated admission/receipt ID mismatch so normal multi-task recovery remains intact. RED→GREEN native fixture uses two actual Electron PIDs; lock concurrency fixture uses two OS Node processes. Final 19 files / **168 Browser tests PASS**, native crash/restart PASS with only one fixture effect, normal E2E PASS. **P0-02 only PARTIAL:** cross-layer CertifiedDispatcher/ExecutionJournal terminal verifier, new operation ID after uncertain prior effect, creative/extension coverage, stale lock reconciliation and performance still open; no external exactly-once claim. Typecheck blocked by pre-existing simple-git TS2349. Stage A `PENDING_WITH_MAINTAINER_AUTHORIZATION` local only; no push/merge. [Current checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
 ## 2026-10-12 — Browser C2C P0-01/P0-02 admission/replay fence
 
 Local commit `81a16ed00b`: persistent pre-dispatch admission in existing BrowserSessionState, replay returns UNCERTAIN, mismatched operation IDs rejected, corrupted state fails closed; 164/164 Vitest tests and offline native Electron E2E passed. Test runner now isolates Workstation state per test. P0-01/P0-02 remain PARTIAL: two-process crash/restart, full canonical journal and external verifier pending. Stage A deferred with maintainer authorization for local development, not waived for release. No push or merge. See [continuity checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).

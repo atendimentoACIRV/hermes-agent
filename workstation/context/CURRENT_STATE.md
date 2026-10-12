@@ -1,5 +1,9 @@
 # Current State
 
+## 2026-10-12 — P0-02 interprocess replay and recoverability guard
+
+Worktree `feat/playwright-c2c-kits-20261012`; code HEAD `da3ca495690bc56b26088fb40d8a2c594348d30a`. A lock shared by BrowserSessionState writes protects concurrent admissions and stale session projections; native Electron recovery refuses an unconfirmed navigation URL, loads local about:blank for read-only snapshot, and retains normal URL restore if admitted ID matches receipt. **168/168 Vitest** and native crash/replay + regular Electron E2E PASS. Still not a terminal verifier or remote exactly-once; no CI or Stage A release qualification. **Stage A explicitly PENDING_WITH_MAINTAINER_AUTHORIZATION** (do not sync upstream during local work). Full [continuity checkpoint](../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
 ## 2026-10-12 — P0 durable admission progress (NOT_RELEASE_QUALIFIED)
 
 Local `feat/playwright-c2c-kits-20261012`: commit `81a16ed00b78b7f741c331ee90a3bf06b003942f` adds persistence of mutation admissions through existing BrowserSessionState (SHA256 args only), blocks uncertain replay after interleaved effects and detects ownership/id collisions/corrupt state. GREEN: 164/164 Browser Vitest and native Electron offline harness; RED tests archived in repo. **Partial not exactly-once external**; tests still lack real two-process crash injection, Python CertifiedDispatcher/ExecutionJournal reconciliation, complete coverage and benchmarks. Vitest runner now makes HERMES_WORKSTATION_HOME temporary per test. Stage A is explicitly **PENDING_WITH_MAINTAINER_AUTHORIZATION** for local development, obligatory before release; main untouched, no push. Full [handoff checkpoint](../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).

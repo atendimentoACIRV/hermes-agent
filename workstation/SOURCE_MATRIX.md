@@ -1,5 +1,9 @@
 # Source reuse matrix
 
+## 2026-10-12 — P0 replay/crash patch lineage
+
+`20acf1d2e9` and `da3ca49569`: **KEEP/EXTEND Hermes** BrowserSessionState/BrowserTask authority ownership and native Electron harness, **INSPIRE** Playwright Electron test patterns, **no Playwright runtime source copied**. Concurrency lock is a synchronization marker in the same durable projection, not second journal. Test evidence and release gaps in [continuity checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md); Stage A exception local, NOT_RELEASE_QUALIFIED.
+
 ## 2026-10-12 — Playwright C2C implementation reuse decision
 
 The new admission fence (`81a16ed00b`) is **KEEP/EXTEND Hermes** existing BrowserSessionState, not a copied Playwright mutation retry. Playwright's Electron native WebContentsView testing pattern was previously **ADAPT** for existing fixture; no Playwright runtime shipped or source code transplanted in this increment. Evidence: [P0 local GREEN checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md). Stage A upstream-first exception pending; NOT_RELEASE_QUALIFIED.
