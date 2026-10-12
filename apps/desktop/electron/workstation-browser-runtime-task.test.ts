@@ -1326,3 +1326,29 @@ test('BROW-TEL: native snapshot exposes structural diagnostics without page text
   assert.equal(JSON.stringify(diagnostics).includes('Hello world'), false)
   await runtime.destroy()
 })
+
+test('CRASH-02 runtime: an older navigation ID cannot replay after an interleaved receipt', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const request = (operation_id: string, url: string) => ({
+    action: 'browser_navigate', task_id: 'durable-task', session_id: 'session-durable',
+    run_id: 'run-durable', operation_id, arguments: { url }
+  })
+  const controller = (runtime as unknown as {
+    executeControlRequest(request: Record<string, unknown>): Promise<Record<string, unknown>>
+  }).executeControlRequest.bind(runtime)
+
+  await controller(request('op-a', 'https://example.test/a'))
+  await controller(request('op-b', 'https://example.test/b'))
+  const tab = runtime.state().tabs.find(item => item.ownerTaskId === 'durable-task')
+  assert.ok(tab)
+  const contents = runtime.getWebContents(tab.id)
+  assert.ok(contents)
+  assert.equal(contents.getURL(), 'https://example.test/b')
+  const blocked = await controller(request('op-a', 'https://example.test/a'))
+  assert.equal(blocked.status, 'uncertain')
+  assert.equal(blocked.reason, 'prior_operation_requires_reconciliation')
+  assert.equal(contents.getURL(), 'https://example.test/b', 'must not redispatch stale effect')
+  await assert.rejects(controller(request('op-a', 'https://example.test/different')), /operation_identity_collision/)
+  await runtime.destroy()
+})

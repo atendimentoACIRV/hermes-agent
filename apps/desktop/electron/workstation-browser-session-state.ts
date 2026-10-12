@@ -52,6 +52,28 @@ export interface BrowserSessionTab {
   recoveryReason: BrowserSessionTabRecoveryReason
 }
 
+/** Structural idempotency fence owned by BrowserSessionState, NOT an effect verifier. */
+export interface BrowserMutationAdmission {
+  operationId: string
+  taskId: string
+  sessionId: string
+  runId: string
+  tabId: string
+  action: string
+  argumentsDigest: string
+}
+
+const MAX_BROWSER_OPERATION_ADMISSIONS = 4096
+
+function validateAdmission(value: unknown): value is BrowserMutationAdmission {
+  if (!value || typeof value !== 'object') return false
+  const op = value as Record<string, unknown>
+  for (const key of ['operationId','taskId','sessionId','runId','tabId','action']) {
+    if (typeof op[key] !== 'string' || !validIdentifier(op[key])) return false
+  }
+  return typeof op.argumentsDigest === 'string' && /^[a-f0-9]{64}$/.test(op.argumentsDigest)
+}
+
 export interface BrowserSessionStateSnapshot {
   version: typeof BROWSER_SESSION_STATE_VERSION
   savedAt: string
@@ -59,6 +81,8 @@ export interface BrowserSessionStateSnapshot {
   tabs: BrowserSessionTab[]
   browserTasks: BrowserTaskSnapshot
   receipts?: Record<string, BrowserOwnerReceipt>
+  /** Admission without terminal effect proof remains uncertain after restart. */
+  operationAdmissions?: Record<string, BrowserMutationAdmission>
 }
 
 type BrowserSessionStateFileSystem = Pick<
@@ -412,13 +436,27 @@ export function normalizeBrowserSessionState(value: unknown): BrowserSessionStat
     }
   }
 
+  const admissions: Record<string, BrowserMutationAdmission> = {}
+  const rawAdmissions = (raw as { operationAdmissions?: unknown }).operationAdmissions
+  if (rawAdmissions !== undefined) {
+    if (!rawAdmissions || typeof rawAdmissions !== 'object' || Array.isArray(rawAdmissions)) return null
+    const entries = Object.entries(rawAdmissions as Record<string, unknown>)
+    if (entries.length > MAX_BROWSER_OPERATION_ADMISSIONS) return null
+    for (const [key, value] of entries) {
+      // Never silently drop damaged history: that would permit replay.
+      if (!validateAdmission(value) || key !== value.operationId) return null
+      admissions[key] = { ...value }
+    }
+  }
+
   return {
     version: BROWSER_SESSION_STATE_VERSION,
     savedAt: raw.savedAt,
     activeTabId: requestedActiveTabId && tabIds.has(requestedActiveTabId) ? requestedActiveTabId : null,
     tabs,
     browserTasks,
-    receipts: Object.keys(receipts).length > 0 ? receipts : undefined
+    receipts: Object.keys(receipts).length > 0 ? receipts : undefined,
+    operationAdmissions: Object.keys(admissions).length > 0 ? admissions : undefined
   }
 }
 
@@ -430,7 +468,8 @@ function cloneSnapshot(snapshot: BrowserSessionStateSnapshot): BrowserSessionSta
       ...snapshot.browserTasks,
       tasks: snapshot.browserTasks.tasks.map(task => ({ ...task }))
     },
-    receipts: snapshot.receipts ? { ...snapshot.receipts } : undefined
+    receipts: snapshot.receipts ? { ...snapshot.receipts } : undefined,
+    operationAdmissions: snapshot.operationAdmissions ? Object.fromEntries(Object.entries(snapshot.operationAdmissions).map(([key, value]) => [key, { ...value }])) : undefined
   }
 }
 
@@ -442,6 +481,7 @@ export class BrowserSessionStateFilePersistence {
   // from regressing BrowserTask or tab state.
   private cached: BrowserSessionStateSnapshot | null = null
   private preserveUnsupportedVersion = false
+  private admissionPersistenceFailed = false
   private readonly taskAdapter: BrowserTaskPersistence
 
   constructor(
@@ -516,6 +556,55 @@ export class BrowserSessionStateFilePersistence {
       tabs,
       receipts: Object.keys(mergedReceipts).length > 0 ? mergedReceipts : undefined
     })
+  }
+
+  /**
+   * Synchronous, fail-closed pre-dispatch fence, committed through the existing
+   * BrowserSessionState authority projection. Never return 'admitted' unless
+   * the record was flushed to disk. A match is NOT success or VERIFIED.
+   */
+  admitBrowserMutation(identity: BrowserMutationAdmission): 'admitted' | 'reconciliation_required' {
+    if (!validateAdmission(identity)) throw new Error('browser_admission_invalid_identity')
+    if (this.admissionPersistenceFailed) throw new Error('browser_admission_persistence_unavailable')
+    const snapshot = this.load()
+    if (!snapshot && this.io.existsSync(this.filePath)) {
+      throw new Error('browser_admission_state_unavailable')
+    }
+    if (this.preserveUnsupportedVersion) throw new Error('browser_admission_unsupported_version')
+    const current = snapshot ?? emptyBrowserSessionState(this.now)
+    const prior = current.operationAdmissions?.[identity.operationId]
+    if (prior) {
+      if (Object.keys(identity).some(key =>
+        prior[key as keyof BrowserMutationAdmission] !== identity[key as keyof BrowserMutationAdmission]
+      )) throw new Error('operation_identity_collision')
+      return 'reconciliation_required'
+    }
+    if (Object.keys(current.operationAdmissions ?? {}).length >= MAX_BROWSER_OPERATION_ADMISSIONS) {
+      throw new Error('browser_admission_capacity_reached_reconciliation_required')
+    }
+    try {
+      this.save({
+        ...current,
+        savedAt: this.now().toISOString(),
+        operationAdmissions: {
+          ...(current.operationAdmissions ?? {}),
+          [identity.operationId]: { ...identity }
+        }
+      })
+      // Flush the atomic replacement before allowing any external mutation.
+      // If the filesystem cannot acknowledge durability, do not dispatch.
+      const syncIO = this.io as typeof fs
+      if (!syncIO.openSync || !syncIO.fsyncSync || !syncIO.closeSync) {
+        throw new Error('durable_sync_unavailable')
+      }
+      // Windows FlushFileBuffers requires a writable handle; r+ does not truncate.
+      const fd = syncIO.openSync(this.filePath, 'r+')
+      try { syncIO.fsyncSync(fd) } finally { syncIO.closeSync(fd) }
+    } catch (error) {
+      this.admissionPersistenceFailed = true
+      throw new Error('browser_admission_persistence_unavailable', { cause: error })
+    }
+    return 'admitted'
   }
 
   browserTaskPersistence(): BrowserTaskPersistence {

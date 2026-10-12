@@ -2187,6 +2187,19 @@ export class WorkstationBrowserRuntime {
     this.viewportHost = null
   }
 
+  private admitDurableControllerEffect(
+    entry: BrowserEntry, action: string, args: Record<string, unknown>,
+    taskId: string, sessionHost: string | null, runId: string | null, operationId: string
+  ): 'admitted' | 'reconciliation_required' {
+    // Retain only a digest of action parameters; never persist DOM, passwords
+    // or raw page content in the session-state authority projection.
+    const argumentsDigest = crypto.createHash('sha256').update(JSON.stringify(args)).digest('hex')
+    return this.sessionStatePersistence().admitBrowserMutation({
+      operationId, action, argumentsDigest,
+      taskId, sessionId: sessionHost ?? 'unbound', runId: runId ?? 'unbound', tabId: entry.id
+    })
+  }
+
   private async executeControlRequest(request: BrowserControlRequest): Promise<Record<string, unknown>> {
     const action = typeof request.action === 'string' ? request.action : ''
 
@@ -2246,12 +2259,17 @@ export class WorkstationBrowserRuntime {
     }
 
     if (operationId && mutating.has(action)) {
-      const lastReceipt = this.lastReceipts.get(taskId)
-      if (lastReceipt && lastReceipt.operationId === operationId && lastReceipt.action === action) {
-        const entry = this.entryForTask(taskId, false, sessionHost, kanbanCardId, runId)
-        const snap = entry ? await this.snapshotForEntry(entry, false) : {}
+      const lastReceipt = this.lastReceipts.get(taskId) ?? this.taskLifecycle().task(taskId)?.lastReceipt
+      if (lastReceipt && lastReceipt.operationId === operationId) {
+        const boundEntry = this.entryForTask(taskId, false, sessionHost, kanbanCardId, runId)
+        if (boundEntry) {
+          // Also reject a colliding digest for the most recent operation.
+          this.admitDurableControllerEffect(boundEntry, action, args, taskId, sessionHost, runId, operationId)
+        }
+        // A local ACK/receipt is not proof the remote effect was committed.
         return {
-          ...snap,
+          status: 'uncertain',
+          reason: 'prior_operation_requires_reconciliation',
           idempotent_replay: true,
           operation_id: operationId,
           ...(callKey ? { call_key: callKey } : {}),
@@ -2347,6 +2365,13 @@ export class WorkstationBrowserRuntime {
     if (action === 'browser_navigate') {
       const entry = this.entryForTask(taskId, true, sessionHost, kanbanCardId, runId)!
       const url = normalizeWorkstationBrowserTarget(String(args.url ?? ''))
+      const admittedId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+      if (this.admitDurableControllerEffect(entry, action, args, taskId, sessionHost, runId, admittedId) !== 'admitted') {
+        return {
+          status: 'uncertain', reason: 'prior_operation_requires_reconciliation',
+          idempotent_replay: true, operation_id: admittedId
+        }
+      }
       await entry.view.webContents.loadURL(url)
 
       if (
@@ -2455,6 +2480,23 @@ export class WorkstationBrowserRuntime {
       await entry.view.webContents.loadURL(optionsUrl)
 
       return { ...verified, options_url: optionsUrl }
+    }
+
+    const guardedControllerActions = new Set([
+      'browser_click', 'browser_type', 'browser_scroll', 'browser_back',
+      'browser_press', 'browser_batch_actions'
+    ])
+    if (guardedControllerActions.has(action)) {
+      const admittedId = operationId ?? `op_${action}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+      if (this.admitDurableControllerEffect(entry, action, args, taskId, sessionHost, runId, admittedId) !== 'admitted') {
+        const batchReplay = action === 'browser_batch_actions'
+        return {
+          status: 'uncertain',
+          reason: batchReplay ? 'prior_batch_effect_requires_reconciliation' : 'prior_operation_requires_reconciliation',
+          idempotent_replay: true, operation_id: admittedId,
+          ...(batchReplay ? { completed_steps: 0, verified_steps: 0, stopped_at: 0, receipts: [] } : {})
+        }
+      }
     }
 
     switch (action) {

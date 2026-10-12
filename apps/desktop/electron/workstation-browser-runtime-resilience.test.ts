@@ -750,7 +750,9 @@ test('idempotent duplicate mutation replay with same operation_id returns previo
     arguments: { ref: '@e1', text: 'first run', clear: true }
   })
 
-  assert.equal(replayType.success, true)
+  assert.equal(replayType.success, undefined, 'a receipt does not certify the external effect')
+  assert.equal(replayType.status, 'uncertain')
+  assert.equal(replayType.reason, 'prior_operation_requires_reconciliation')
   assert.equal(replayType.idempotent_replay, true)
   assert.equal(replayType.operation_id, operationId)
   assert.deepEqual(replayType.receipt, firstType.receipt)
