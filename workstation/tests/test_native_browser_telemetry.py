@@ -113,6 +113,10 @@ class NativeBrowserObservationTests(unittest.TestCase):
                       _task_key=lambda task_id, session_id: 'test-task',
                       _force_redact=lambda value: value,
                       _bind=lambda key: events.append('bound'),
+                      _record_browser_controller_outcome=lambda **kw: (
+                          events.append('mutation-journal') if kw.get('action') != 'browser_snapshot' else None
+                      ),
+                      logger=types.SimpleNamespace(warning=lambda *a, **kw: events.append('journal-degraded')),
                       _request_json=lambda *a, **kw: {'result': {
                           'snapshot': 'VISIBLE_TO_MODEL', '__telemetry': {
                               'snapshot_source': 'dom', 'cdp_calls': 0,

@@ -713,6 +713,60 @@ def resolve_browser_type_text(
     args.pop("artifact_ref", None)
 
 
+# Projection only: the Electron BrowserSessionState is authoritative for
+# crash/replay admission. This canonical ExecutionJournal entry is not a
+# CertifiedDispatcher certificate and can never make an ACK externally VERIFIED.
+_MUTATING_NATIVE_BROWSER_ACTIONS = frozenset({
+    "browser_navigate", "browser_click", "browser_type", "browser_scroll",
+    "browser_back", "browser_press", "browser_batch_actions",
+    "browser_extension_load", "browser_extension_remove", "browser_extension_open_options",
+    "browser_creative_render", "browser_creative_studio_open",
+})
+
+
+def _record_browser_controller_outcome(
+    *, action: str, task_id: str | None, session_id: str | None,
+    run_id: str | None, operation_id: str | None, result: Any,
+    journal: Any = None,
+) -> None:
+    """Append only bounded, causal status metadata; never browser payload data."""
+    if action not in _MUTATING_NATIVE_BROWSER_ACTIONS:
+        return
+    if not all((task_id, session_id, run_id, operation_id)):
+        return
+    from workstation.contracts import ExecutionEventKind
+    from workstation.journal import ExecutionJournal
+    raw = result if isinstance(result, dict) else {}
+    reported = str(raw.get("status") or "").lower()
+    if reported == "reconciliation_required":
+        status = "RECONCILIATION_REQUIRED"
+    elif reported in {"uncertain", "failed", "error"} or raw.get("success") is False:
+        status = "UNCERTAIN"
+    else:
+        # Native reply/owner receipt is ONLY an ACK. Never trust a remote
+        # payload's 'verified' flag as an independent verification result.
+        status = "ACKNOWLEDGED"
+    metadata = {
+        "source_owner": "native_browser_controller",
+        "action": action,
+        "run_id": str(run_id),
+        "operation_id": str(operation_id),
+        "status": status,
+        "externally_verified": False,
+    }
+    blocked = raw.get("blocked_operation_id")
+    if status == "RECONCILIATION_REQUIRED" and isinstance(blocked, str) and len(blocked) <= 128:
+        if blocked.isascii() and all(ch.isalnum() or ch in "-_" for ch in blocked):
+            metadata["blocked_operation_id"] = blocked
+    # Uncertain boundaries need a durable marker; the native admission is
+    # still the only pre-effect atomic gate.
+    if status != "ACKNOWLEDGED":
+        metadata["boundary"] = "acceptance"
+    owner = journal if journal is not None else ExecutionJournal(str(task_id), str(session_id))
+    owner.record(ExecutionEventKind.TOOL_CALL, "Native Browser controller disposition",
+                 metadata=metadata)
+
+
 def _dispatch(
     action: str,
     args: Dict[str, Any],
@@ -830,6 +884,13 @@ def _dispatch(
         )
     except Exception as exc:
         try:
+            _record_browser_controller_outcome(
+                action=action, task_id=key, session_id=session_id,
+                run_id=rid, operation_id=str(op_id), result={"status": "uncertain"}
+            )
+        except Exception:
+            logger.warning("native Browser journal projection unavailable after controller error")
+        try:
             from workstation.telemetry.browser_observation import emit_native_browser_observation
             emit_native_browser_observation(
                 action=action, result=None, session_id=session_id, task_id=key,
@@ -843,6 +904,16 @@ def _dispatch(
         raise
 
     raw_result = response.get("result")
+    try:
+        _record_browser_controller_outcome(
+            action=action, task_id=key, session_id=session_id,
+            run_id=rid, operation_id=str(op_id), result=raw_result
+        )
+    except Exception:
+        # The native Browser owner has the authoritative admission state. A
+        # journal projection failure is telemetry degradation, not a new
+        # reason to risk redispatch of an already executed browser mutation.
+        logger.warning("native Browser journal projection unavailable")
     try:
         from workstation.telemetry.browser_observation import (
             emit_native_browser_observation, strip_private_browser_telemetry,
