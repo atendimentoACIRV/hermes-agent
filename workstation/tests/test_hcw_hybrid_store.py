@@ -92,3 +92,37 @@ def test_canonical_creative_document_save_reopens_hybrid_native_sources(tmp_path
         assert len(revision.native_files) == 3
     finally:
         reset_hermes_home_override(token)
+
+
+def test_hybrid_dependency_cycle_rejected_before_persistence(tmp_path):
+    token = set_hermes_home_override(tmp_path / "profile")
+    try:
+        source, native = _sources()
+        source["metadata"]["native_dependencies"] = [
+            {"parent": "a" * 32, "child": "b" * 32},
+            {"parent": "b" * 32, "child": "a" * 32},
+        ]
+        with pytest.raises(ValueError, match="cycle"):
+            save_hybrid_project_revision(source, native_files=native)
+        root = tmp_path / "profile" / "workstation" / "creative" / "projects"
+        assert not root.exists() or not list(root.iterdir())
+    finally:
+        reset_hermes_home_override(token)
+
+
+def test_declared_parameter_bindings_are_validated_on_hybrid_commit(tmp_path):
+    token = set_hermes_home_override(tmp_path / "profile")
+    try:
+        source, native = _sources()
+        source["metadata"]["native_parameters"] = {"title": {"type": "string", "value": "Hello"}}
+        source["metadata"]["native_bindings"] = [
+            {"parameter": "title", "composition_id": "a" * 32, "property_path": "text/source"},
+            {"parameter": "title", "composition_id": "b" * 32, "property_path": "params/title"},
+        ]
+        saved = save_hybrid_project_revision(source, native_files=native)
+        assert load_creative_revision(saved.project_id, saved.revision_id) == saved
+        source["metadata"]["native_bindings"][1]["composition_id"] = "c" * 32
+        with pytest.raises(ValueError, match="unknown"):
+            save_hybrid_project_revision(source, native_files=native)
+    finally:
+        reset_hermes_home_override(token)

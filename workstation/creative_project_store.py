@@ -357,6 +357,21 @@ def save_hybrid_project_revision(
             raise ValueError("Hybrid native source digest mismatch")
     if engines != {"effectcraft", "hyperframes"}:
         raise ValueError("Hybrid project requires EffectCraft and HyperFrames")
+    from workstation.creative_hybrid_graph import plan_hybrid_dependencies, validate_hybrid_bindings
+
+    metadata = source["metadata"]
+    edges = metadata.get("native_dependencies", [])
+    if not isinstance(edges, list):
+        raise ValueError("Invalid native_dependencies declaration")
+    deps = []
+    for edge in edges:
+        if not isinstance(edge, dict) or set(edge) != {"parent", "child"}:
+            raise ValueError("Invalid native dependency")
+        deps.append((edge["parent"], edge["child"]))
+    plan_hybrid_dependencies(sorted(ids), deps)
+    validate_hybrid_bindings(
+        ids, metadata.get("native_parameters", {}), metadata.get("native_bindings", [])
+    )
     return save_creative_revision(
         source,
         project_id=project_id,
