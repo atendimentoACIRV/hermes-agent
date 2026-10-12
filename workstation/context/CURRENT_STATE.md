@@ -1,5 +1,9 @@
 # Current State
 
+## 2026-10-12 — MAINTAINER EXCEPTION: Playwright C2C Stage A upstream sync deferred
+
+**PASS_WITH_AUTHORIZATION — implementação local somente; NOT_RELEASE_QUALIFIED.** O mantenedor autorizou explicitamente em 12/10/2026 a **pular temporariamente a sincronização upstream, a escolha de novo pin e a reconciliação das first-party seams**, tratando Stage A como **PENDÊNCIA ABERTA**. Escopo: desenvolvimento dos kits C2C-I01..I06 no worktree isolado `feat/playwright-c2c-kits-20261012`, derivado de `dbf3c44f1e` (auditoria local anterior), sem alteração em `main`, sem push/merge e sem equivaler a qualificação de release. Baseline local: `main@a2b56db1`, `upstream/main@835c3dd0` observado, pin ancestral `66605471`, 963 ahead/245 behind. A exceção **não** isenta testes RED→GREEN, controle humano `409`, TaskRun/BrowserTask, privacy, native-E2E, CI exact-head e aprovação de promoção. Antes de integrar para `main`, executar [Stage A pendente](../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md), reconciliar seams e qualificar novamente sobre pin fixo. Progresso técnico deve separar IMPLEMENTADO LOCAL de E2E/RELEASE comprovado.
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — D-043 Creative Workstation: arquitetura e implementação engine-neutral
 **Decisão:** HyperFrames não é motor canônico mandatório; D-043 projeta Creative Document, Command Bus comum UI/IA/headless, timebase racional, NLE linked A/V, Semantic Edit Plan, freeform seek e adapters. [Arquitetura](../creative-workstation/ENGINE_NEUTRAL_ARCHITECTURE_2026-10-10.md) · [Handoff](../creative-workstation/ENGINE_NEUTRAL_IMPLEMENTER_HANDOFF_2026-10-10.md).

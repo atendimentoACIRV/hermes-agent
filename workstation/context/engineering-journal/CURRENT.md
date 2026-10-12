@@ -1,5 +1,9 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-12 — Autorização mantenedor para diferir Stage A Playwright C2C
+
+**PASS_WITH_AUTHORIZATION / NOT_RELEASE_QUALIFIED.** O mantenedor expressamente mandou marcar como pendência a sincronização upstream, seleção do pin e reconciliação de seams; permitiu avançar com testes e patches técnicos em worktree separado sem sincronizar. Isto substitui **apenas o bloqueio de entrada para implementação local**, não transforma baseline antiga em qualificada e não autoriza merge/push/release nem suprime CI/E2E. Estado anterior: `main@a2b56db1`, upstream local `835c3dd0` com 245 commits à frente do pin ancestral `66605471`. Retomar Stage A antes de promoção, conforme [remediação](../../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md).
+
 ## 2026-10-12 — Playwright C2C Stage A gate: BLOCKED (sem runtime edits)
 
 Preflight em worktree isolado `audit/playwright-c2c-20261012`: `main@a2b56db1`, `upstream/main@835c3dd0` local, merge-base `66605471`, 963 ahead/245 behind. `tools/browser_tool.py` mudou upstream, registry contém Browser legacy seam REMOVE sem comprovação de remoção/paridade, e exact-head CI required não estava comprovado (API combined statuses `[]`, PR-triggered runs `[]`, não é afirmação de red CI). Tentativa de ref remoto `ls-remote` bloqueada pela ferramenta; ausência de pin fresco/Stage A e qualificação exige **BLOCKED** por H-079.2. O prompt proíbe implementar I01..I06 nessas condições. Checkout principal e UI de outros agentes preservados. [Provas do gate](../../research/playwright-code-to-code-2026-10-12/07-GATE-0-BLOCKED-2026-10-12.md) · [Plano Stage A](../../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md).

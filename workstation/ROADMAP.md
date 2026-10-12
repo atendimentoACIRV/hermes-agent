@@ -1,5 +1,9 @@
 # Workstation roadmap
 
+## 2026-10-12 — Playwright C2C Stage A: PENDÊNCIA AUTORIZADA / próxima etapa I01
+
+**PENDENTE (PASS_WITH_AUTHORIZATION somente desenvolvimento).** Por ordem explícita do mantenedor, postergada a sincronização com upstream, seleção do próximo pin e reconciliação das costuras. A exceção autoriza **iniciar I01–I06 isoladamente sem Stage A agora**, mas exige fechar Stage A/H-079/CI exact-head e Windows native E2E **antes** de qualquer release/merge. Base congelada `main@a2b56db1`, upstream local `835c3dd0`, ancestral `66605471`; branch isolada `feat/playwright-c2c-kits-20261012`. Não sobrescrever UX/browser Hub/right rail em desenvolvimento por outros agentes. Decisão canônica também em [CURRENT_STATE](context/CURRENT_STATE.md).
+
 ## 2026-10-12 — C2C-I01–I06: execução do Gate 0 — BLOCKED
 
 **RUNTIME NÃO MODIFICADO.** Local `main@a2b56db1`, upstream/main observado `835c3dd0`, merge-base/pin `66605471`, divergência **963 ahead / 245 behind**. O upstream alterou `tools/browser_tool.py`, o registry de seams ainda possui disposições REMOVE, e o CI required exact-head de `main@a2b56db1` não tem prova de GREEN (consulta de statuses e PR workflow runs sem resultados; não equivale a FAILURE). A checagem live do upstream via `ls-remote` foi bloqueada pela camada de segurança; sem pin fresco, Stage A qualificada ou exceção formal. A própria ordem do implementador obriga parar aqui. Registro: [Gate 0](research/playwright-code-to-code-2026-10-12/07-GATE-0-BLOCKED-2026-10-12.md) e [Remediação](research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md). Nenhum E2E, benchmark ou feature kit executado.

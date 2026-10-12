@@ -1,5 +1,9 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-12 — Exceção de Stage A concedida pelo mantenedor (Playwright C2C)
+
+Stage A upstream refresh/pin/seam reconciliation agora é uma **pendência autorizada** para esta trilha. Pode-se implementar localmente C2C-I01–I06 a partir de worktree isolado sem falsificar H-079, mas qualquer promoção/release permanece bloqueada até Stage A verdadeira, CI exact-head, testes de regressão, Electron Windows E2E e revisão de autoridade/privacidade. `BrowserTask`/`TaskRun`/lease são owners obrigatórios; telemetry não é journal de efeitos. Decisão registrada em [CURRENT_STATE](CURRENT_STATE.md) e jornal de engenharia.
+
 ## 2026-10-12 — Gate 0 Playwright: impedimento de qualificação upstream-first
 
 A implementação I01–I06 permanece suspensa pelos contratos canônicos: pin ancestral `66605471` com upstream local 245 commits à frente, Stage A true merge/reconciliação ainda não executada, `tools/browser_tool.py` alterado upstream, legacy Browser seam REMOVE pendente de paridade e GitHub required exact-head CI não comprovado. Não confundir ausência de recibo com falha concreta dos testes. O checkout principal continua dirty em Browser Hub/right rail sob responsabilidade de outros agentes. Entregue somente documentação do [diagnóstico Gate 0](../research/playwright-code-to-code-2026-10-12/07-GATE-0-BLOCKED-2026-10-12.md) e [remediação](../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md); 0 code runtime changes.
