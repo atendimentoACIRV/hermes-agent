@@ -874,3 +874,160 @@ test('restores the selected chat BrowserTask on the first real viewport attach w
     )
   }
 })
+
+
+test('P0: native two-session human takeover denies writes with 409 then safely resumes', async () => {
+  if (!fixture || !controller) {
+    throw new Error('P0 native authority fixture is not ready')
+  }
+
+  // This test runs in a fresh isolated HERMES_HOME with real Electron
+  // WebContentsViews, controller HTTP, renderer IPC, and loopback pages.
+  const a = { taskId: 'p0-native-a', sessionId: 'p0-session-a' }
+  const b = { taskId: 'p0-native-b', sessionId: 'p0-session-b' }
+  const first = await browserAction(a.taskId, a.sessionId, `${pageBaseUrl}/p0-native-a`)
+  const second = await browserAction(b.taskId, b.sessionId, `${pageBaseUrl}/p0-native-b`)
+  expect(first.result?.title).toBe('H013 p0-native-a')
+  expect(second.result?.title).toBe('H013 p0-native-b')
+
+  const owner = await fixture.page.evaluate(async ({ taskId, sessionId }) => {
+    const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
+      WorkstationBridge & { takeControl: (id: string, session: string) => Promise<Record<string, unknown>> }
+    return bridge.takeControl(taskId, sessionId)
+  }, a)
+  // Global controlOwner projects the active tab (session B), not every task.
+  // Lease authority is owned per BrowserTask; verify A explicitly.
+  const ownedTasks = owner.tasks as Array<BrowserTaskRecord & { humanControlLease?: { owner?: string } }>
+  expect(ownedTasks.find(task => task.taskId === a.taskId)?.humanControlLease?.owner).toBe('human')
+
+  const denied = await fetch(`${controller.url}/v1/action`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${controller.token}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      action: 'browser_navigate',
+      arguments: { url: `${pageBaseUrl}/p0-denied-should-not-load` },
+      task_id: a.taskId,
+      session_id: a.sessionId
+    })
+  })
+  const deniedBody = (await denied.json()) as Record<string, unknown>
+  expect(denied.status).toBe(409)
+  expect(deniedBody.error_code).toBe('USER_CONTROL_ACTIVE')
+
+  // The unrelated session must remain operable while the human owns A.
+  const unaffected = await browserAction(b.taskId, b.sessionId, `${pageBaseUrl}/p0-native-b-continued`)
+  expect(unaffected.result?.title).toBe('H013 p0-native-b-continued')
+
+  const released = await fixture.page.evaluate(async taskId => {
+    const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
+      WorkstationBridge & { releaseControl: (id: string) => Promise<Record<string, unknown>> }
+    return bridge.releaseControl(taskId)
+  }, a.taskId)
+  expect(released.controlOwner).toBe('agent')
+
+  const resumed = await browserAction(a.taskId, a.sessionId, `${pageBaseUrl}/p0-native-a-resumed`)
+  expect(resumed.result?.title).toBe('H013 p0-native-a-resumed')
+  const readback = await controllerRequest('/v1/action', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'browser_snapshot',
+      task_id: a.taskId,
+      session_id: a.sessionId,
+      arguments: { full: false }
+    })
+  })
+  expect(readback.result?.url).toBe(`${pageBaseUrl}/p0-native-a-resumed`)
+  const resources = await controllerRequest('/resources')
+  const taskResources = (resources.resources ?? []).filter(resource => resource.resource_type === 'browser_task')
+  expect(taskResources.find(resource => resource.task_id === a.taskId)?.session_id).toBe(a.sessionId)
+  expect(taskResources.find(resource => resource.task_id === b.taskId)?.session_id).toBe(b.sessionId)
+})
+
+
+test('P0: Browser UI Take Control and Release Control buttons are actually clickable', async () => {
+  if (!fixture || !controller) {
+    throw new Error('P0 native UI fixture is not ready')
+  }
+
+  const taskId = 'p0-ui-clickability'
+  const sessionId = 'p0-ui-click-session'
+  const initial = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-ui-clickability`)
+  expect(initial.result?.title).toBe('H013 p0-ui-clickability')
+
+  // Exercise actual React controls and Electron hit testing, not simulated
+  // state or direct bridge calls.
+  await fixture.page.getByRole('button', { name: 'Browser', exact: true }).click()
+  const take = fixture.page.getByRole('button', { name: 'Take Control', exact: true })
+  await expect(take).toBeVisible()
+  await take.click()
+  const release = fixture.page.getByRole('button', { name: 'Release Control', exact: true })
+  await expect(release).toBeVisible()
+  await release.click()
+  await expect(take).toBeVisible()
+
+  const result = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-ui-clickability-resumed`)
+  expect(result.result?.title).toBe('H013 p0-ui-clickability-resumed')
+})
+
+
+// Known RED release gate: when restarting with the same sandbox userData/HERMES_HOME,
+// second electron.launch times out (180s) after backend hermes:api connection
+// timeouts. Retain exact repro, but never count this scenario as qualified.
+// Re-enable only after an independently verified backend teardown / cold-boot fix.
+test.fixme('P0: released native BrowserTask is retained and agent resumes after cold Electron restart', async () => {
+  if (!fixture || !controller) {
+    throw new Error('P0 restart fixture is not ready')
+  }
+
+  const taskId = 'p0-cold-restart-a'
+  const sessionId = 'p0-cold-session-a'
+  const before = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-cold-restart-a`)
+  expect(before.result?.title).toBe('H013 p0-cold-restart-a')
+
+  // Release a real scoped human lease before the cold restart.
+  await fixture.page.evaluate(async ({ taskId, sessionId }) => {
+    const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
+      WorkstationBridge & {
+        takeControl: (id: string, session: string) => Promise<unknown>
+        releaseControl: (id: string) => Promise<unknown>
+      }
+    await bridge.takeControl(taskId, sessionId)
+    await bridge.releaseControl(taskId)
+  }, { taskId, sessionId })
+
+  const sandbox = fixture.sandbox
+  const oldToken = controller.token
+  await fixture.app.close()
+  const env = buildAppEnv(sandbox, { HERMES_DESKTOP_E2E_HEADLESS: '1' })
+  const restarted = await launchDesktop(env)
+  try {
+    await waitForAppReady({ ...fixture, app: restarted.app, page: restarted.page }, 120_000, false)
+    const controlPath = path.join(sandbox.root, 'workstation', 'Runtime', 'browser-control.json')
+    await expect.poll(async () => {
+      const info = await readControllerFile(controlPath)
+      return info.token !== oldToken ? info.token : null
+    }, { timeout: 30_000 }).not.toBeNull()
+    controller = await readControllerFile(controlPath)
+
+    const readback = await controllerRequest('/resources')
+    const restored = (readback.resources ?? []).find(resource =>
+      resource.resource_type === 'browser_task' && resource.task_id === taskId
+    )
+    expect(restored?.session_id).toBe(sessionId)
+
+    const resumed = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-cold-restart-resumed`)
+    expect(resumed.result?.title).toBe('H013 p0-cold-restart-resumed')
+    const actual = await controllerRequest('/v1/action', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId, session_id: sessionId, arguments: {} })
+    })
+    expect(actual.result?.url).toBe(`${pageBaseUrl}/p0-cold-restart-resumed`)
+  } finally {
+    await restarted.app.close().catch(() => undefined)
+  }
+})
