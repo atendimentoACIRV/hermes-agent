@@ -5816,3 +5816,17 @@ Final H-C2 IPC and React tests: 4 Vitest files, 11 passed,
 0 failed, exit 0. Targeted ESLint exit 0, renderer TypeScript
 prior run exit 0; Electron global tsc has prior simple-git error.
 No real Electron manual edit, TaskRun binding or CI qualification.
+
+
+### 2026-10-12 — H-C2 sender-attestation + readback hardening
+
+Started with local clean worktree head 2c58391db5 (remote 4af6c1177b)
+and preserved dirty main checkout. Implemented IPC owner keyed to
+specific Electron sender and rechecked across async boundaries.
+Commit receipt revision must match independently reopened canonical
+head before UI acknowledgement; session/window navigation revokes
+acknowledgement. RED->GREEN observed. Vitest IPC/preload 11 passed,
+ESLint targeted exit 0; TypeScript global blocker in unrelated
+git-review-ops.test.ts:124. main.ts remains fail-closed null resolver;
+not an authorized live UI/TaskRun E2E. See revised plan review and
+HCW ledger. No H-079 promotion or merge.

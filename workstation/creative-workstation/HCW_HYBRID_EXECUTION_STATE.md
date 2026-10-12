@@ -567,3 +567,54 @@ simple-git type mismatch in git-review-ops.test.ts:124, exit 2.
 No trusted TaskRun owner binding, no genuine main-to-backend canonical
 RPC and no user/agent Electron E2E. The new main bridge is fail-closed.
 No full app CI or H-079 release qualification performed.
+
+
+## 2026-10-12 14:38+ continuation — Electron IPC sender attestation hardening
+
+Observed PR #81 remote HEAD 4af6c1177b0420063dbb84bc6f1ee67005369ac4
+at session start, but LOCAL clean worktree on
+2c58391db5cd085f138d0f0de4f82a49d5966c6f,
+one already-committed change ahead of remote. This local commit introduced
+creative-canonical-ipc.ts and renderer/preload readback transport. Preserve it;
+do not rewrite old head, and push normally after checks.
+
+New TDD test cases in apps/desktop/electron/creative-canonical-ipc.test.ts:
+- Main resolves TrustedCreativeOwner per IPC sender, not global last window.
+- Reattest TaskRun owner after asynchronous commit/read and refuse head if
+  sender's owner changes midflight.
+- Never confirm a canonical edit merely because a syntactically valid head
+  was readable; require typed commit receipt project_id/revision_id and
+  exact matching canonical HEAD revision, refusing stale/no-op receipts.
+- Admission of sender rechecked at every asynchronous owner resolution:
+  navigation/close during commit fails acknowledgement before readback.
+All critical defects were first observed with RED failing tests; GREEN targeted
+Vitest creative-canonical-ipc and preload: 11 passed, 0 failed, exit 0.
+Targeted ESLint exit 0 after scoped formatting.
+Electron TypeScript-wide noEmit still has unrelated pre-existing
+electron/git-review-ops.test.ts:124 simple-git callable type error;
+do not claim full TypeScript typecheck pass.
+
+CRITICAL: apps/desktop/electron/main.ts registers canonical IPC with
+resolveTrustedOwner: () => null. This remains intentionally DENY ALL:
+no backend-authenticated TaskRun owner bound to admitted individual
+Electron webContents has been identified/implemented. Thus NO real Electron
+mouse -> TaskRun -> canonical CAS end-to-end has passed. Do NOT change
+this to TaskRun/session IDs supplied by renderer, ambient profile guesses or
+an arbitrary subprocess/CLI path. This security prerequisite is explicitly
+P0A of the plan review saved in:
+workstation/creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
+P0B real UI + Hermes agent sequential writes remains immediately next.
+H-C2 is BACKEND+UI_CONTRACT_TESTED, NOT LIVE_E2E/QUALIFIED.
+No other H-C0-H-C9 promotion from this scoped IPC work.
+
+Protected main checkout C:\Github\hermes-agent remains at
+9fffa7f3ffcc2c50774654c271fe25e92ce459e8 with 34 dirty changes
+as observed at session start. No main merge authorized.
+
+Next session first executable actions: verify exact local+remote heads after
+push, preserve root dirt, locate/implement **backend-attested** TaskRun owner
+per main-owned sender+profile/connection/session, add RED tests for forged
+and stale authority, then wire bounded main IPC to existing authenticated
+canonical-open/apply-batch. Verify manual UI edit -> agent edit same HEAD and
+restart before marking H-C2 complete. No global UI state or shell path accepted.
+Recursive self-contained copy-paste continuation prompt required if incomplete.

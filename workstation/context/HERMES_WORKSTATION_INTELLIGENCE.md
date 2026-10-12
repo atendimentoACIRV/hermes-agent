@@ -4456,3 +4456,17 @@ trusting taskId/sessionKey/actorId supplied in renderer JS. Current
 main resolver returns null and all live edits are refused.
 Add authenticated backend owner association and negative IPC/E2E tests
 before promoting H-C2. No general-purpose command shell is exposed.
+
+
+### H-C2/H-C4 creative IPC trust boundary — 2026-10-12
+
+React canonical CreativeDocument projection/preload exists but is not
+authoritative on its own. Main creative IPC now binds owner to each sender
+event, reattests identity/admission across async boundaries and requires
+an acknowledged write receipt matching the separately reloaded canonical
+HEAD before changing UI. Distinguish secure IPC contract testing (11
+passed) from authenticated production TaskRun bridge (NOT implemented):
+main currently deliberately rejects all creative operations because it
+cannot attest owner from backend. Never infer authority from renderer
+task/session/profile or a client-supplied actor label. Revised plan:
+creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.

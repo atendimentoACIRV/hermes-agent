@@ -3042,3 +3042,18 @@ resolver and run real human mouse -> CAS -> agent -> refreshed UI
 E2E including restart/conflict/lease fences. Native H-C1 prior
 tests remain valid; H-C4 distributed native transaction and H-C5-H-C9,
 H-079 and full CI remain incomplete.
+
+
+### H-C2/H-C4 IPC plan re-evaluation — 2026-10-12
+
+Electron canonical IPC now reattests the exact sender's trusted owner
+across async edit/readback and requires a matching durable CAS revision
+receipt, never acknowledging an old/stale head. Unit tests + preload
+(11 passed) and targeted ESLint passed. main.ts still registers the
+bridge fail-closed with a null owner resolver: **no live manual
+TaskRun-backed Electron edit**; enabling from renderer-provided
+task/session/actor IDs is forbidden. P0 must first implement
+gateway/backend-authenticated TaskRun attestation per main-owned
+window/connection and then native UI+agent revision roundtrip.
+The revised H-C0–H-C9 dependencies and explicit promotion gates are in
+creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.

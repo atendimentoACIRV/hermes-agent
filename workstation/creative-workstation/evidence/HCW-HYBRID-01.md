@@ -206,3 +206,20 @@ Final targeted verification: 4 Electron/React Vitest files,
 11 passed, 0 failed, exit 0; ESLint changed files exit 0.
 This verifies typed transport and presentation only. Real manual
 editing remains intentionally blocked by null server-trusted owner.
+
+
+### H-C2 Electron sender and commit-receipt validation (2026-10-12)
+
+New RED/GREEN tests demonstrated two classes of IPC boundary vulnerabilities:
+a process-global owner would allow another renderer to borrow a TaskRun,
+and a renderer could be told an edit succeeded with no matching backend
+commit receipt, or after navigation ended sender admission. Bridge now
+uses exact sender-bound owner resolution and awaits reattestation, checks
+typed revision receipt against readback, and rechecks main admission after
+async boundaries. Targeted creative-canonical-ipc + preload Vitest:
+11 passed, 0 failed, exit 0. Targeted ESLint exit 0.
+Electron-wide tsc --noEmit still blocked by unrelated git-review-ops.test.ts:124
+simple-git typing. Main register intentionally continues to deny all
+with resolveTrustedOwner: () => null pending real backend-attested TaskRun
+binding. **NO Electron UI E2E or release qualification claimed.**
+Plan prioritization reviewed in ../HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.

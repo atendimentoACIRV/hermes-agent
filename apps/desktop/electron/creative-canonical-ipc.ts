@@ -31,7 +31,7 @@ export interface CreativeEditRequest {
 type CanonicalResult = { project_id: string; revision_id: string; etag: string; source: Record<string, unknown>; [key: string]: unknown }
 
 interface Dependencies {
-  resolveTrustedOwner: () => TrustedCreativeOwner | null | Promise<TrustedCreativeOwner | null>
+  resolveTrustedOwner: (senderEvent: unknown) => TrustedCreativeOwner | null | Promise<TrustedCreativeOwner | null>
   open: (owner: TrustedCreativeOwner, projectId: string) => Promise<CanonicalResult>
   apply: (owner: TrustedCreativeOwner, request: CreativeEditRequest) => Promise<unknown>
 }
@@ -130,27 +130,58 @@ function verifyHead(head: CanonicalResult, projectId: string): CanonicalResult {
 }
 
 export function createCreativeCanonicalBridge(deps: Dependencies) {
-  async function owner(): Promise<TrustedCreativeOwner> {
-    // Data returned from this closure must originate in authenticated main
-    // state, NEVER from IPC payload, renderer JS or a user-editable file.
-    return verifyOwner(await deps.resolveTrustedOwner())
+  async function owner(senderEvent: unknown): Promise<TrustedCreativeOwner> {
+    // Resolve against the EXACT IPC sender, not the last active window or a
+    // process-global session. Copy the main-owned identity before awaiting IO.
+    return { ...verifyOwner(await deps.resolveTrustedOwner(senderEvent)) }
+  }
+
+  async function assertSameOwner(senderEvent: unknown, original: TrustedCreativeOwner): Promise<void> {
+    const current = await owner(senderEvent)
+
+    if (current.taskId !== original.taskId || current.runId !== original.runId
+        || current.sessionId !== original.sessionId || current.sessionKey !== original.sessionKey
+        || current.profileHome !== original.profileHome) {
+      throw new Error('creative_owner_changed')
+    }
   }
 
   return {
-    async open(payload: unknown): Promise<CanonicalResult> {
-      const trusted = await owner()
+    async open(payload: unknown, senderEvent?: unknown): Promise<CanonicalResult> {
       const projectId = readProjectId(payload)
+      const trusted = await owner(senderEvent)
+      const result = verifyHead(await deps.open(trusted, projectId), projectId)
+      await assertSameOwner(senderEvent, trusted)
 
-      return verifyHead(await deps.open(trusted, projectId), projectId)
+      return result
     },
-    async apply(payload: unknown): Promise<CanonicalResult> {
-      const trusted = await owner()
+    async apply(payload: unknown, senderEvent?: unknown): Promise<CanonicalResult> {
       const edit = parseEdit(payload)
-      await deps.apply(trusted, edit)
+      const trusted = await owner(senderEvent)
+      const receipt = await deps.apply(trusted, edit)
+      // Revalidate sender and task before even interpreting a commit receipt.
+      await assertSameOwner(senderEvent, trusted)
 
-      // The UI only accepts a readback from the canonical server after commit.
-      // Never acknowledge an optimistic renderer projection as an authoritative edit.
-      return verifyHead(await deps.open(trusted, edit.projectId), edit.projectId)
+      // A readback alone is not proof of a commit. Require an actual backend
+      // revision receipt, with a new revision matching canonical readback.
+      if (!record(receipt) || receipt.project_id !== edit.projectId
+          || typeof receipt.revision_id !== 'string'
+          || !HEX_ID.test(receipt.revision_id)
+          || receipt.revision_id === edit.expectedRevisionId) {
+        throw new Error('creative_commit_mismatch')
+      }
+
+      // If this renderer was rebound or closed during the edit, do not return
+      // an apparently successful HEAD from another task or user.
+      await assertSameOwner(senderEvent, trusted)
+      const result = verifyHead(await deps.open(trusted, edit.projectId), edit.projectId)
+      await assertSameOwner(senderEvent, trusted)
+
+      if (result.revision_id !== receipt.revision_id) {
+        throw new Error('creative_commit_mismatch')
+      }
+
+      return result
     }
   }
 }
@@ -162,15 +193,25 @@ export function registerCreativeCanonicalHandlers(
   deps: Dependencies,
   allowSender: (event: unknown) => boolean
 ): void {
-  const bridge = createCreativeCanonicalBridge(deps)
+  const bridge = createCreativeCanonicalBridge({
+    ...deps,
+    // Sender admission must be checked on EVERY asynchronous owner resolution,
+    // not just once when the IPC call begins; a closed/navigated renderer loses it.
+    resolveTrustedOwner: sender => {
+      if (!allowSender(sender)) { throw new Error('creative_sender_denied') }
+
+      return deps.resolveTrustedOwner(sender)
+    }
+  })
+
   ipc.handle('hermes:creative:canonical:open', (event, data) => {
     if (!allowSender(event)) {return Promise.reject(new Error('creative_sender_denied'))}
 
-    return bridge.open(data)
+    return bridge.open(data, event)
   })
   ipc.handle('hermes:creative:canonical:apply', (event, data) => {
     if (!allowSender(event)) {return Promise.reject(new Error('creative_sender_denied'))}
 
-    return bridge.apply(data)
+    return bridge.apply(data, event)
   })
 }
