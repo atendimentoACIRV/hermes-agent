@@ -1,5 +1,107 @@
 # Workstation Known Issues
 
+## Pausa estratégica de 2026-10-12 — KI-028…KI-043 (registro canônico)
+
+**Status de execução:** `PAUSED_BY_STRATEGY`. Os problemas abaixo não foram encerrados; são a indexação de pendências reveladas na sessão de 11–12/10. Esta seção complementa KI-001…KI-027 sem renumerá-los; conflitos históricos já existentes de identificadores anteriores não foram apagados. Consultar [Strategic Handoff](HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md), [source manifest](HERMES_WORK_SOURCE_EVIDENCE_MANIFEST_2026-10-12.md) e [dossiê](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md). O dossiê mantém comportamentos observados, causas, testes e próximos seams; estes itens são os **estados canônicos**.
+
+### KI-028 — Session/TaskRun Browser pode herdar autoridade de outra execução [PARTIALLY_FIXED]
+- **Severidade:** P0. **Estado técnico:** PARTIALLY_FIXED. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `tools/browser_workstation.py::_dispatch; PR #83`.
+- **Pendente e critério de encerramento:** Session-bound Browser exige task/run/session explícitos, no borrowing de cartão bloqueado ou HERMES_OPERATION_ID; testar 2 sessões + packaged app.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-029 — Promoção semântica indevida e tarefas duplicadas [QUALIFICATION_PENDING]
+- **Severidade:** P0. **Estado técnico:** QUALIFICATION_PENDING. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `workstation/kanban.py, work_intent.py, task_compiler.py; #75/#79/#83`.
+- **Pendente e critério de encerramento:** Triage/claim e force-work explícito testados; falta corpus real de falsos positivos/negativos e repetição após restart.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-030 — Tools classificadas como mutação quando são leitura/interação [FIXED_UNVERIFIED]
+- **Severidade:** P0. **Estado técnico:** FIXED_UNVERIFIED. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `tools/effects.py, tools/kanban_tools.py; #71/#72`.
+- **Pendente e critério de encerramento:** Leituras PURE_READ, browser INTERACTIVE; mutações dinâmicas continuam MUTATION; replay UI/CI ainda devido.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-031 — Recusa e handoff incerto criam bloqueio/reaprovação circular [PARTIALLY_FIXED]
+- **Severidade:** P0. **Estado técnico:** PARTIALLY_FIXED. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `batch_detection.py, execution_policy.py, runtime.py; #73/#83`.
+- **Pendente e critério de encerramento:** Recusa pré-dispatch não cria uncertainty; handoff scope e consumed protegidos; fechar E2E UI.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-032 — SUPERSEDED sem run canônica/continuação acionável [QUALIFICATION_PENDING]
+- **Severidade:** P0. **Estado técnico:** QUALIFICATION_PENDING. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `authority_supersession.py, task_compiler.py; #74`.
+- **Pendente e critério de encerramento:** Erro AUTHORITY_SUPERSEDED/CANONICAL_RUN_UNCLAIMED e checkpoint pending testados; orquestração native faltante.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-033 — Conclusão Kanban com receipt insuficiente e contrato genérico [PARTIALLY_FIXED]
+- **Severidade:** P0. **Estado técnico:** PARTIALLY_FIXED. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `completion_admission.py, work_intent.py; #79/#83`.
+- **Pendente e critério de encerramento:** status verified_completed + acceptance_approved e identidade canônica exigidos; contratos por efeito + usuário final faltam.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-034 — KANBAN-04: HANDOFF real UI → verificação tipada → continuação sem replay [OPEN]
+- **Severidade:** P0. **Estado técnico:** OPEN. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `tool_batch_admission.py::workstation_tool_batch_admission, agent/turn_tool_round.py, run_agent.py; #83`.
+- **Pendente e critério de encerramento:** Implementar futuramente E2E ponta a ponta com UI real, evaluate_verification() e continuidade sem reexecução de mutação.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-035 — Mutação Browser pós-perda de ACK exige integração do ciclo completo [QUALIFICATION_PENDING]
+- **Severidade:** P0. **Estado técnico:** QUALIFICATION_PENDING. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `Electron/Chromium workstation-headless-load P0, #83`.
+- **Pendente e critério de encerramento:** POST/clique uma vez e readback GET/snapshot PASS; não houve UI approval end-to-end.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-036 — Handoff JSON perdia atualização ou duplicava entre processos [FIXED_UNVERIFIED]
+- **Severidade:** P0. **Estado técnico:** FIXED_UNVERIFIED. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `workstation/runtime.py::HumanHandoffManager; #83`.
+- **Pendente e critério de encerramento:** FileLock+reload+atomic write e processos Windows testados; CI/packaged app ainda pendentes.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-037 — 106 cartões históricos e 55 handoffs órfãos requerem decisão humana [BLOCKED]
+- **Severidade:** P1. **Estado técnico:** BLOCKED. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `workstation/kanban_reconcile_preflight.py; #80`.
+- **Pendente e critério de encerramento:** Dry-run 19 atuais/106 históricos/55 órfãos; nenhuma restauração, limpeza ou consumo autorizados.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-038 — Botões/lease humano e Browser UI podem bloquear sessão [PARTIALLY_FIXED]
+- **Severidade:** P0. **Estado técnico:** PARTIALLY_FIXED. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `Browser pane/lease 409/native restart; #83`.
+- **Pendente e critério de encerramento:** Testes de takeover/release/409/restart PASS; reproduções originais e packaged app não inteiramente cobertos.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-039 — Falta CI exact-head e qualificação Windows empacotada [QUALIFICATION_PENDING]
+- **Severidade:** P0. **Estado técnico:** QUALIFICATION_PENDING. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `H-079; PR chain #76→#79→#80→#83`.
+- **Pendente e critério de encerramento:** #83 SHA 22498a09db: statuses=[] e workflow_runs=[]; não afirmar CI verde ou release.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-040 — Startup One-Click reinstala/desconecta quando poderia recuperar [QUALIFICATION_PENDING]
+- **Severidade:** P1. **Estado técnico:** QUALIFICATION_PENDING. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `PR #70, workstation/install.ps1/start.ps1`.
+- **Pendente e critério de encerramento:** Fingerprint/lock e validações locais relatadas; packaged/offline/HyperFrames indisponível sem prova final.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-041 — Creative Workstation sem edição única humano/IA e export completo [PARTIALLY_FIXED]
+- **Severidade:** P0. **Estado técnico:** PARTIALLY_FIXED. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `D-043; PRs #77/#81`.
+- **Pendente e critério de encerramento:** Renderer local + IPC hardening, mas owner TaskRun DENY-ALL em #81, sem E2E CAS/MP4/GLB.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-042 — Ganhos de Browser em custo/latência sem benchmark empírico [OPEN]
+- **Severidade:** P1. **Estado técnico:** OPEN. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `BROW-C2C, batch/cache/snapshot-delta`.
+- **Pendente e critério de encerramento:** Meça p50/p95, chamadas, tokens e custo por resultado verificado antes de reivindicar 70–85%.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+### KI-043 — Prefabs/Experience Compiler sem qualificação live e release [QUALIFICATION_PENDING]
+- **Severidade:** P1. **Estado técnico:** QUALIFICATION_PENDING. **Execução:** PAUSED_BY_STRATEGY (não altera o status técnico).
+- **Origem / owner técnico:** `OPC-001 / PR #82`.
+- **Pendente e critério de encerramento:** Sem promoção automática de rascunhos ou executor paralelo; validar live Trello, certs, CI e escopo.
+- **Evidência detalhada e regressões:** [dossiê P0](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md); [inventário de PRs](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md). **Data de consulta:** 2026-10-12; branch draft ≠ main e testes locais ≠ release.
+
+
+
 
 ## Operational speed P0–P2 Implementation — 2026-10-10 / 2026-10-11
 Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
