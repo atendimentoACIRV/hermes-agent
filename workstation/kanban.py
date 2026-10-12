@@ -187,6 +187,13 @@ class WorkstationKanbanBridge:
         if (envelope is None or not envelope.can_create_work
                 or envelope.session_id != session_id or envelope.content != prompt):
             return None
+        # A caller may only bypass automatic intent classification if
+        # trusted ingress explicitly marked this request as delegated work.
+        # Plain CREATE_WORK authority alone does not turn a point action
+        # into a durable task through a force flag.
+        if force and (not isinstance(envelope.metadata, dict)
+                      or envelope.metadata.get("explicit_force_work") is not True):
+            return None
         cfg = load_workstation_config()
         from workstation.work_intent import work_intent
         intent = work_intent(envelope)

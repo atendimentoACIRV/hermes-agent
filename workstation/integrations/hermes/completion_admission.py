@@ -60,28 +60,48 @@ def workstation_completion_admission(
                     turn_result.pop(key, None)
 
         if isinstance(candidate, dict):
-            if candidate.get("status") == "verified_completed" or candidate.get("acceptance_approved") is True:
+            # A receipt is not completion proof unless its task, optional run
+            # identity, verified status and explicit acceptance all agree.
+            valid_identity = candidate.get("task_id") == task_id and (
+                candidate.get("run_id") is None or str(candidate["run_id"]) == str(run_id)
+            )
+            if (
+                valid_identity
+                and candidate.get("status") == "verified_completed"
+                and candidate.get("acceptance_approved") is True
+            ):
                 return CompletionAdmissionResult(admitted=True, receipt=candidate)
-            if candidate.get("status") in {"uncertain", "blocked", "failed", "queued_unstarted"}:
-                return CompletionAdmissionResult(
-                    admitted=False,
-                    reason=f"outcome_{candidate.get('status')}",
-                    receipt=candidate,
-                )
-            return CompletionAdmissionResult(admitted=True, receipt=candidate)
+            return CompletionAdmissionResult(
+                admitted=False,
+                reason=f"outcome_{candidate.get('status') or 'unverified'}",
+                receipt=candidate,
+            )
 
         if hasattr(candidate, "verified"):
-            if candidate.verified:
+            # Legacy result objects are accepted only with matching run and
+            # a positively verified outcome; no truthy flag may borrow a run.
+            verified = (
+                candidate.verified is True
+                and str(getattr(candidate, "run_id", "")) == str(run_id)
+                and getattr(candidate, "task_id", task_id) == task_id
+            )
+            if verified:
                 return CompletionAdmissionResult(
                     admitted=True,
                     receipt={"status": "verified_completed", "run_id": str(candidate.run_id)},
                 )
-            reasons = candidate.pending_items or [f"outcome_{candidate.outcome_status}"]
+            reasons = getattr(candidate, "pending_items", None) or ["unverified_or_mismatched_run"]
             return CompletionAdmissionResult(
                 admitted=False,
                 reason="; ".join(str(r) for r in reasons),
-                receipt={"pending": candidate.pending_items, "status": str(candidate.outcome_status)},
+                receipt={"pending": getattr(candidate, "pending_items", []), "status": str(getattr(candidate, "outcome_status", "unverified"))},
             )
+
+        return CompletionAdmissionResult(
+            admitted=False,
+            reason="unrecognized_completion_receipt",
+            receipt={"task_id": task_id, "status": "uncertain", "acceptance_approved": False},
+        )
     except Exception as exc:
         logger.warning("Workstation completion admission check failed: %s", exc)
         return CompletionAdmissionResult(
@@ -90,4 +110,4 @@ def workstation_completion_admission(
             receipt={"task_id": task_id, "status": "uncertain", "acceptance_approved": False},
         )
 
-    return CompletionAdmissionResult(admitted=True)
+    return CompletionAdmissionResult(admitted=False, reason="completion_unverified")
