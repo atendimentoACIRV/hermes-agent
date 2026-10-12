@@ -482,6 +482,7 @@ export class BrowserSessionStateFilePersistence {
   private cached: BrowserSessionStateSnapshot | null = null
   private preserveUnsupportedVersion = false
   private admissionPersistenceFailed = false
+  private admissionLockHeld = false
   private readonly taskAdapter: BrowserTaskPersistence
 
   constructor(
@@ -566,45 +567,99 @@ export class BrowserSessionStateFilePersistence {
   admitBrowserMutation(identity: BrowserMutationAdmission): 'admitted' | 'reconciliation_required' {
     if (!validateAdmission(identity)) throw new Error('browser_admission_invalid_identity')
     if (this.admissionPersistenceFailed) throw new Error('browser_admission_persistence_unavailable')
-    const snapshot = this.load()
-    if (!snapshot && this.io.existsSync(this.filePath)) {
-      throw new Error('browser_admission_state_unavailable')
-    }
-    if (this.preserveUnsupportedVersion) throw new Error('browser_admission_unsupported_version')
-    const current = snapshot ?? emptyBrowserSessionState(this.now)
-    const prior = current.operationAdmissions?.[identity.operationId]
-    if (prior) {
-      if (Object.keys(identity).some(key =>
-        prior[key as keyof BrowserMutationAdmission] !== identity[key as keyof BrowserMutationAdmission]
-      )) throw new Error('operation_identity_collision')
-      return 'reconciliation_required'
-    }
-    if (Object.keys(current.operationAdmissions ?? {}).length >= MAX_BROWSER_OPERATION_ADMISSIONS) {
-      throw new Error('browser_admission_capacity_reached_reconciliation_required')
-    }
-    try {
-      this.save({
-        ...current,
-        savedAt: this.now().toISOString(),
-        operationAdmissions: {
-          ...(current.operationAdmissions ?? {}),
-          [identity.operationId]: { ...identity }
-        }
-      })
-      // Flush the atomic replacement before allowing any external mutation.
-      // If the filesystem cannot acknowledge durability, do not dispatch.
-      const syncIO = this.io as typeof fs
-      if (!syncIO.openSync || !syncIO.fsyncSync || !syncIO.closeSync) {
-        throw new Error('durable_sync_unavailable')
+    // Atomic create-only marker is a mutual-exclusion lease, NOT a second
+    // authority store. On crash it deliberately remains and blocks until
+    // explicit reconciliation; never auto-steal a lock of unknown provenance.
+    return this.withExclusiveAdmissionLock(() => {
+      // An older instance must not decide from a previously cached snapshot.
+      // The lock covers reload, collision check, atomic save, and fsync.
+      this.loaded = false
+      this.cached = null
+      this.preserveUnsupportedVersion = false
+      const snapshot = this.load()
+      if (!snapshot && this.io.existsSync(this.filePath)) {
+        throw new Error('browser_admission_state_unavailable')
       }
-      // Windows FlushFileBuffers requires a writable handle; r+ does not truncate.
-      const fd = syncIO.openSync(this.filePath, 'r+')
-      try { syncIO.fsyncSync(fd) } finally { syncIO.closeSync(fd) }
-    } catch (error) {
-      this.admissionPersistenceFailed = true
-      throw new Error('browser_admission_persistence_unavailable', { cause: error })
+      if (this.preserveUnsupportedVersion) throw new Error('browser_admission_unsupported_version')
+      const current = snapshot ?? emptyBrowserSessionState(this.now)
+      const prior = current.operationAdmissions?.[identity.operationId]
+      if (prior) {
+        if (Object.keys(identity).some(key =>
+          prior[key as keyof BrowserMutationAdmission] !== identity[key as keyof BrowserMutationAdmission]
+        )) throw new Error('operation_identity_collision')
+        return 'reconciliation_required'
+      }
+      if (Object.keys(current.operationAdmissions ?? {}).length >= MAX_BROWSER_OPERATION_ADMISSIONS) {
+        throw new Error('browser_admission_capacity_reached_reconciliation_required')
+      }
+      try {
+        this.save({
+          ...current,
+          savedAt: this.now().toISOString(),
+          operationAdmissions: {
+            ...(current.operationAdmissions ?? {}),
+            [identity.operationId]: { ...identity }
+          }
+        })
+        // Flush the atomic replacement before allowing any external mutation.
+        // If the filesystem cannot acknowledge durability, do not dispatch.
+        const syncIO = this.io as typeof fs
+        if (!syncIO.openSync || !syncIO.fsyncSync || !syncIO.closeSync) {
+          throw new Error('durable_sync_unavailable')
+        }
+        // Windows FlushFileBuffers requires a writable handle; r+ does not truncate.
+        const fd = syncIO.openSync(this.filePath, 'r+')
+        try { syncIO.fsyncSync(fd) } finally { syncIO.closeSync(fd) }
+      } catch (error) {
+        this.admissionPersistenceFailed = true
+        throw new Error('browser_admission_persistence_unavailable', { cause: error })
+      }
+      return 'admitted'
+    })
+  }
+
+  private withExclusiveAdmissionLock<T>(run: () => T): T {
+    const io = this.io as typeof fs
+    if (typeof io.openSync !== 'function' || typeof io.closeSync !== 'function') {
+      throw new Error('browser_admission_lock_unavailable')
     }
-    return 'admitted'
+    // Do not remove or steal an existing lock: after an unknown process crash
+    // only an explicit owner reconciliation may establish safe reuse.
+    try {
+      io.mkdirSync(path.dirname(this.filePath), { recursive: true })
+    } catch (error) {
+      throw new Error('browser_admission_lock_unavailable', { cause: error })
+    }
+    const lockPath = `${this.filePath}.admission.lock`
+    let handle: number
+    try {
+      handle = io.openSync(lockPath, 'wx', 0o600)
+    } catch (error) {
+      throw new Error('browser_admission_concurrent_reconciliation_required', { cause: error })
+    }
+    this.admissionLockHeld = true
+    try {
+      return run()
+    } finally {
+      this.admissionLockHeld = false
+      let releaseError: unknown = null
+      try {
+        io.closeSync(handle)
+      } catch (error) {
+        releaseError = error
+      }
+      try {
+        // The file was created exclusively by THIS call; never delete an
+        // already existing lock at acquisition or a lock from another owner.
+        io.rmSync(lockPath)
+      } catch (error) {
+        releaseError ??= error
+      }
+      if (releaseError) {
+        this.admissionPersistenceFailed = true
+        throw new Error('browser_admission_lock_release_failed', { cause: releaseError })
+      }
+    }
   }
 
   browserTaskPersistence(): BrowserTaskPersistence {
@@ -621,7 +676,34 @@ export class BrowserSessionStateFilePersistence {
   }
 
   private save(snapshot: BrowserSessionStateSnapshot): BrowserSessionStateSnapshot {
-    const normalized = normalizeBrowserSessionState(snapshot)
+    // All writes must share the same exclusive section as admission, not just
+    // the admission call itself: an older session writer must not erase a new
+    // operation record (which would permit replay after crash).
+    if (!this.admissionLockHeld && !this.preserveUnsupportedVersion) {
+      return this.withExclusiveAdmissionLock(() => this.save(snapshot))
+    }
+    let persistedAdmissions: Record<string, BrowserMutationAdmission> = {}
+    if (!this.preserveUnsupportedVersion && this.io.existsSync(this.filePath)) {
+      let onDisk: BrowserSessionStateSnapshot | null = null
+      try {
+        onDisk = normalizeBrowserSessionState(JSON.parse(this.io.readFileSync(this.filePath, 'utf-8')))
+      } catch {
+        // Corrupt session state is an authority barrier, not an empty journal.
+      }
+      if (!onDisk) throw new Error('browser_session_state_unavailable_for_write')
+      persistedAdmissions = onDisk.operationAdmissions ?? {}
+    }
+    const mergedAdmissions = { ...persistedAdmissions }
+    for (const [id, identity] of Object.entries(snapshot.operationAdmissions ?? {})) {
+      if (mergedAdmissions[id] && JSON.stringify(mergedAdmissions[id]) !== JSON.stringify(identity)) {
+        throw new Error('operation_identity_collision')
+      }
+      mergedAdmissions[id] = identity
+    }
+    const normalized = normalizeBrowserSessionState({
+      ...snapshot,
+      operationAdmissions: Object.keys(mergedAdmissions).length ? mergedAdmissions : undefined
+    })
 
     if (!normalized) {
       throw new Error('Refusing to persist invalid BrowserSessionState')

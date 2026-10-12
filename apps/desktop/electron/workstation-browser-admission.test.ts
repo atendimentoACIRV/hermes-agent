@@ -55,3 +55,34 @@ test('CRASH-08: corrupted persisted state cannot be treated as fresh empty admis
     /browser_admission_state_unavailable/
   )
 })
+
+test('CRASH-03: a lock from an unknown writer is never stolen or removed', () => {
+  const { file, owner, identity } = fixture()
+  const lock = file + '.admission.lock'
+  fs.writeFileSync(lock, 'unowned-lock-marker')
+  assert.throws(() => owner.admitBrowserMutation(identity), /browser_admission_concurrent_reconciliation_required/)
+  assert.equal(fs.readFileSync(lock, 'utf8'), 'unowned-lock-marker', 'foreign lock remains untouched')
+  assert.equal(fs.existsSync(file), false, 'no admission dispatched without lock')
+})
+
+test('CRASH-03: an owner with a stale cached snapshot rereads history under exclusive lock', () => {
+  const { file, owner, identity } = fixture()
+  const stale = new BrowserSessionStateFilePersistence(file)
+  stale.load()
+  assert.equal(owner.admitBrowserMutation(identity), 'admitted')
+  assert.equal(stale.admitBrowserMutation(identity), 'reconciliation_required')
+  assert.throws(() => stale.admitBrowserMutation({ ...identity, argumentsDigest: 'b'.repeat(64) }), /operation_identity_collision/)
+})
+
+test('CRASH-03: a stale session projection must not erase a different process admission', () => {
+  const { file, owner, identity } = fixture()
+  const staleOwner = new BrowserSessionStateFilePersistence(file)
+  staleOwner.load()
+  assert.equal(owner.admitBrowserMutation(identity), 'admitted')
+  staleOwner.saveSession([], null)
+  assert.equal(
+    new BrowserSessionStateFilePersistence(file).admitBrowserMutation(identity),
+    'reconciliation_required',
+    'a stale session save cannot permit a prior operation to be admitted again'
+  )
+})

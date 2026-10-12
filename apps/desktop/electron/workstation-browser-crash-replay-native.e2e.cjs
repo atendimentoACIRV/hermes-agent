@@ -57,6 +57,10 @@ async function execute() {
   assert.equal(result.status, 'uncertain')
   assert.equal(result.reason, 'prior_operation_requires_reconciliation')
   assert.equal(result.idempotent_replay, true)
+  assert.equal(runtime.entries.size, 0, 'replay must be fenced before lazy BrowserTask view materialization')
+  // Restored-tab navigation is asynchronous; observe after it has had time to
+  // dispatch rather than only sampling immediately after the replay fence.
+  await new Promise(resolve => setTimeout(resolve, 750))
   const check = await (await fetch(base + '/count')).json()
   assert.equal(check.effects, 1, 'do not redispatch HTTP navigation after uncertain effect')
   process.stdout.write('CRASH_REPLAY_CHILD_B_PASS effects=' + check.effects + '\n')

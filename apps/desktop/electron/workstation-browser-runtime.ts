@@ -2268,6 +2268,35 @@ export class WorkstationBrowserRuntime {
     }
 
     if (operationId && mutating.has(action)) {
+      // Replay must be reconciled BEFORE materializing a lazy BrowserTask view.
+      // Recreating the tab may automatically load its last safe URL, producing
+      // an external effect even when the controller later refuses dispatch.
+      const admissionStore = this.sessionStatePersistence()
+      const admittedState = admissionStore.load()
+      if (!admittedState && fs.existsSync(admissionStore.filePath)) {
+        throw new Error('browser_admission_state_unavailable')
+      }
+      const previousAdmission = admittedState?.operationAdmissions?.[operationId]
+      if (previousAdmission) {
+        admissionStore.admitBrowserMutation({
+          operationId, action, taskId,
+          sessionId: sessionHost ?? 'unbound',
+          runId: runId ?? 'unbound',
+          tabId: previousAdmission.tabId,
+          argumentsDigest: crypto.createHash('sha256').update(JSON.stringify(args)).digest('hex')
+        })
+        const receipt = this.lastReceipts.get(taskId) ?? this.taskLifecycle().task(taskId)?.lastReceipt
+        const isBatch = action === 'browser_batch_actions'
+        return {
+          status: 'uncertain',
+          reason: isBatch ? 'prior_batch_effect_requires_reconciliation' : 'prior_operation_requires_reconciliation',
+          operation_id: operationId,
+          idempotent_replay: true,
+          ...(callKey ? { call_key: callKey } : {}),
+          ...(receipt?.operationId === operationId ? { receipt } : {}),
+          ...(isBatch ? { completed_steps: 0, verified_steps: 0, stopped_at: 0, receipts: [] } : {})
+        }
+      }
       const lastReceipt = this.lastReceipts.get(taskId) ?? this.taskLifecycle().task(taskId)?.lastReceipt
       if (lastReceipt && lastReceipt.operationId === operationId) {
         const boundEntry = this.entryForTask(taskId, false, sessionHost, kanbanCardId, runId)
