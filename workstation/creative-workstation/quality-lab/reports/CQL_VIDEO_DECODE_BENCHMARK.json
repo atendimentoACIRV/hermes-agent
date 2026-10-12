@@ -1,0 +1,30 @@
+{
+  "status": "PASS_NATIVE",
+  "scope": "FFprobe + full FFmpeg decoded-frame verification latency only",
+  "samples": 5,
+  "measured_ms": [
+    937.25,
+    467.38,
+    470.12,
+    488.64,
+    443.44
+  ],
+  "p50_ms": 470.12,
+  "p95_ms_nearest_rank": 937.25,
+  "mean_ms": 561.37,
+  "environment": {
+    "os": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.3"
+  },
+  "source_sha256": "9d9a264b256fba16a93faa9152c69a50470a18fe74eed7e299ebf3d0b4634c82",
+  "frames_each": 60,
+  "missing_metrics": [
+    "product edit latency",
+    "CPU",
+    "RAM",
+    "GPU",
+    "cost",
+    "model tokens"
+  ],
+  "baseline_comparable_only_same_machine_same_fixture": true
+}

@@ -32,6 +32,16 @@ node workstation/creative-workstation/quality-lab/scripts/prove_threejs_glb.cjs 
 
 This is a bounded **3D-engine proof**, not a claim that the production Hermes compositor already supports 3D or preserves a full animated 3D timeline.
 
+## Native hybrid 2-layer EffectCraft composition + text and blur
+
+Run from repository root, using a **new empty** output directory, real prebuilt CLI and the 60 official HF native frames:
+
+```powershell
+& 'C:\Github\hermes-agent-p0-kanban-effects\.venv\Scripts\python.exe' workstation/creative-workstation/quality-lab/scripts/prove_effectcraft_hybrid.py --cli 'C:\Temp\hcw-hybrid01-effectcraft-target\debug\effectcraft-cli.exe' --hyperframes 'C:\Temp\hcw-hybrid01-native-smoke\hf-official-motion' --threejs workstation/creative-workstation/quality-lab/evidence/threejs-native --out 'C:\Temp\cql-001-reproduction-NEW'
+```
+
+Real EffectCraft `file.import` preserves editable project files; `info` reopens them, seek and extra layer change pixels, and `layer.newText` + `effect.apply` Gaussian Blur 20 produce three distinct RGB hashes. See `evidence/effectcraft-hybrid-native/`. Not an authenticated Electron TaskRun UI test and no claim of arbitrary-device project portability.
+
 ## Evidence contract
 
 - `PASS_NATIVE` requires execution of native renderer/decoder and independently inspected artifacts.

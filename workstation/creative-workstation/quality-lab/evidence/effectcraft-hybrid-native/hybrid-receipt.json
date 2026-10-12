@@ -1,0 +1,27 @@
+{
+  "status": "PASS_NATIVE",
+  "scope": "isolated real EffectCraft CLI, editable project reopen, two-layer pixel output; NOT Hermes TaskRun/Electron",
+  "cli_sha256": "25d2d8d52a8ec5e228d1191d9f543c5f664ccc26871270b2a16aaef8cb9401c4",
+  "ecproj": "C:\\Temp\\cql-001-hybrid-enriched2-20261012\\02-hf-three.ecproj",
+  "ecproj_sha256": "ddb7988a4c0d3e8639e20811d3e7bd35efdca8f5a0eb996fe5db372fd28db9e7",
+  "native_layers": 2,
+  "hf_input_frames": 60,
+  "three_input_frames": 3,
+  "render_hashes": {
+    "hf-only": "89df0a74a1695890eb2429a37fc387ffbbb2e7855f10c62f51e76946fdd9604b",
+    "both-at-zero": "f258be0c38a67516141d6238c6b970b989f6392e9cab471ce0fca2ef57ac83f2",
+    "both-at-next": "cfe3c970f177d82899a6cf73ed43d6ad663eeb1dfc9a506b086fb6a08c509364"
+  },
+  "native_reopened": true,
+  "second_layer_changed_pixels": true,
+  "seek_changed_pixels": true,
+  "native_blur20_ecproj": "C:\\Temp\\cql-001-hybrid-enriched2-20261012\\05-hybrid-blur20.ecproj",
+  "native_blur20_sha256": "89e6dabb11daa20d1537e54d52ff2b901283653ed6667bdb76fcfbf46af7f76e",
+  "native_text_added": true,
+  "gaussian_blur20_verified": true,
+  "decorated_rgb_sha256": [
+    "29b1a00044655155b3750e2685e8af7003947e3cd9e816b7f0cb730de13167b6",
+    "1be2d5187ce4c8033ccc6b98294211021d8c712e082474c2940e11702fdda186",
+    "08105782e3f5fc8e816de208e057eefbc4c20ea763897b01e8a9eaa62d68044c"
+  ]
+}
