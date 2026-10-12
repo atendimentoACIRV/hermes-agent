@@ -1,5 +1,9 @@
 # Workstation roadmap
 
+## 2026-10-12 — BROW-NATIVE-NEXT: correções de verdade de efeitos e isolamento (branch-only)
+
+**STATUS: IMPLEMENTADO LOCALMENTE / NOT_RELEASE_QUALIFIED.** Branch `audit/browser-native-evidence-20261012`, baseada em `main@a2b56db1`. P0 Browser batch agora só marca VERIFIED com readback independente e receipt; interrupção no primeiro efeito incerto, takeover ou mudança de documento, e fencing conservador contra reentrada de `operation_id` com receipt de subação. AXTree experimental valida identidade de documento antes/depois do mapeamento; cache de extração distingue schemas e redige segredos em objetos aninhados. Testes Browser/Electron focalizados: **17 arquivos, 155/155 PASS**. Commits locais `44de4faa37`, `2673fedc6d`, `7767410643`. **Não houve native E2E, CI exact-head, benchmark p50/p95/CPU/RAM/tokens/custo ou merge main.** Typecheck completo do Electron permanece bloqueado por dependências ausentes. UX/right rail do checkout principal permanece intocado por alterações não commitadas concorrentes. Seguimento: durable exactly-once, fingerprint DOM dinâmico, Electron Windows E2E, benchmarks de desempenho, reconciliação UX e gates de release. Evidências e limites: [BROW-NATIVE-NEXT](research/browser-native-next-2026-10-12.md).
+
 ## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser (PR #67)
 **STATUS: IMPLEMENTAÇÃO COMPLETA / QUALIFICADA LOCALMENTE.**
 Branch de trabalho: `feat/workstation-browser-optimization-c2c`.

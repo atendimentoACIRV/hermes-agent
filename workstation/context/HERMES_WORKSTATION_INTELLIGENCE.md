@@ -1,5 +1,9 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-12 — BROW-NATIVE-NEXT: efeitos verificáveis e snapshots com identidade
+
+**Status: correções locais comprovadas por testes; release ainda HOLD.** O receipt de `BrowserOwnerReceipt` registra uma ação, mas não prova efeito externo. A rota `browser_batch_actions` passou a observar pós-condições locais do DOM, respeitar autoridade por subação, parar em UNCERTAIN e exigir reconciliação no replay de um `operation_id` já registrado; sem inventar VERIFIED para cliques genéricos. Em paralelo, a AXTree (flag OFF por padrão) rejeita resultado se o documento mudou durante a leitura e o cache de `browser_extract_items` diferencia schema na chave e remove segredos de arrays aninhados. **17 arquivos / 155 testes Browser/Electron locais PASS**. DOM readback não equivale à persistência externa; deduplicação não é exactly-once durable; fingerprint atual pode não perceber mutações SPA sem alteração da contagem de filhos. Não foi medido benefício de velocidade/custo nem executado native E2E/CI exact-head. Detalhamento e commits: [BROW-NATIVE-NEXT](../research/browser-native-next-2026-10-12.md).
+
 ## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser no Runtime e UX
 **Síntese de Implementação:** O ecossistema de navegação foi aprimorado sem introduzir novos engines concorrentes ao `TaskCompiler`, sem quebrar o lease `BrowserHumanControlLease`, sem reexecuções cegas de mutações incertas e sem violar o isolamento de perfis (§2 do `SECURITY.md`).
 - **Batch Actions (`browser_batch_actions`):** Execução sequencial estrita com assert de lease a cada passo, receipts rastreáveis (`BrowserOwnerReceipt`) e interrupção no primeiro efeito incerto.
