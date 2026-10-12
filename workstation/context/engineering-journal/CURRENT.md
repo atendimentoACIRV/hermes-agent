@@ -5830,3 +5830,7 @@ ESLint targeted exit 0; TypeScript global blocker in unrelated
 git-review-ops.test.ts:124. main.ts remains fail-closed null resolver;
 not an authorized live UI/TaskRun E2E. See revised plan review and
 HCW ledger. No H-079 promotion or merge.
+
+### 2026-10-12 — HCW P0A attestation groundwork
+
+PR #81 starting a3527baa7a, clean isolated worktree. TDD RED/GREEN delivered main-side creative-taskrun-attestation.ts verifier, 14 new negative/positive cases; 25 focused tests passed. Backend attestor, trusted main sender-scope registry and actual live Electron UI/CAS remain missing. main.ts null owner remains deny-all; do not promote H-C2. Preserve D-043, H-079 and protected checkout; see HCW ledger.

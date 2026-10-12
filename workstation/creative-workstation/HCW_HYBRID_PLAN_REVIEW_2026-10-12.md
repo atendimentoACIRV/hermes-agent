@@ -124,3 +124,7 @@ and exact-HEAD CI. No merge into main without explicit authorization.
 5. If incomplete, end every work session with a full, self-contained copyable
    continuation prompt, updating exact local and remote HEADs and the first
    executable action.
+
+## P0A checkpoint — 2026-10-12
+
+Verified first contract-only increment: main-side attestation verifier 14 new tests / 25 creative Electron tests GREEN; no authenticated backend attestor or trustworthy main per-window lifecycle registry wired. Production IPC remains deny-all. This does not satisfy P0A or enable P0B. First remaining action: implement genuinely authenticated backend TaskRun+principal+lease attestation, bind it to main-owned window connection/profile/session and reverify on navigation/rehome/cancellation; only then wire canonical-open/apply-batch to the existing main bridge.

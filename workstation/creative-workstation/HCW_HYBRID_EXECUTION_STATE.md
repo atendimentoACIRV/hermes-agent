@@ -618,3 +618,7 @@ and stale authority, then wire bounded main IPC to existing authenticated
 canonical-open/apply-batch. Verify manual UI edit -> agent edit same HEAD and
 restart before marking H-C2 complete. No global UI state or shell path accepted.
 Recursive self-contained copy-paste continuation prompt required if incomplete.
+
+## 2026-10-12 P0A continuation — attestation verifier, NOT live authority
+
+Starting local/remote HEAD a3527baa7a960db7ac712c9c726fb8ef176e3678; isolated worktree clean, draft PR #81 open, main untouched. Added apps/desktop/electron/creative-taskrun-attestation.ts and corresponding .test.ts. TDD RED missing module (Vitest exit 1); GREEN 14 new tests and 11 creative IPC/preload regression tests: 25 passed, exit 0. Validates per-window main-owned webContentsId, navigation epoch, connection, profile and session against an authenticated-backend attestation; rejects ended/revoked run, human control lease, missing actor principal, bad expiry and async scope drift. This verifier does NOT mint authority. Production main.ts resolveTrustedOwner: () => null remains DENY-ALL. Real backend attestor + main scope registry + Electron UI/CAS E2E remain missing. No H-C0–H-C9 promotion. Next: implement authenticated gateway TaskRun/actor/lease attestation; bind main per-window sender; use verifier without renderer-derived identities. H-079/CI pending.

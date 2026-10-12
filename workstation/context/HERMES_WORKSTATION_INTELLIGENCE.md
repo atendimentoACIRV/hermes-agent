@@ -4470,3 +4470,7 @@ main currently deliberately rejects all creative operations because it
 cannot attest owner from backend. Never infer authority from renderer
 task/session/profile or a client-supplied actor label. Revised plan:
 creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
+
+### 2026-10-12 HCW P0A owner verifier
+
+Added tested creative-taskrun-attestation.ts: verifies backend proof against Electron main window/session/connection/profile/navigation and enforces lease, principal and live TaskRun flags; 14 new TDD cases and 25 focused tests GREEN. No authenticated backend source yet: main canonical IPC continues deny-all; no human/agent E2E. Cannot elevate contract test to P0A completion. Backend must derive principal/TaskRun/lease from trusted authenticated transport, never renderer identity.

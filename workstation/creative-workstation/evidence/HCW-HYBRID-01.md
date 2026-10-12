@@ -223,3 +223,7 @@ simple-git typing. Main register intentionally continues to deny all
 with resolveTrustedOwner: () => null pending real backend-attested TaskRun
 binding. **NO Electron UI E2E or release qualification claimed.**
 Plan prioritization reviewed in ../HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
+
+### P0A security verifier — partial TDD 2026-10-12
+
+New Electron-main-only creative-taskrun-attestation.ts tests backend proof vs exact main-owned window/connection/profile/session; 14 tests exercise valid proof, wrong sender, connection/profile/session mismatch, run inactive, human control active, missing actor, expired/overlong proof, bad run, navigation/rehome midflight and revocation. RED missing module exit 1; focused GREEN 25/25 across 3 files. Unit contract only: no actual authenticated backend proof, main registration, live Electron mouse->TaskRun->CAS or agent E2E. H-C2 remains unqualified.

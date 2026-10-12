@@ -3057,3 +3057,7 @@ gateway/backend-authenticated TaskRun attestation per main-owned
 window/connection and then native UI+agent revision roundtrip.
 The revised H-C0–H-C9 dependencies and explicit promotion gates are in
 creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
+
+### HCW-HYBRID P0A — 2026-10-12 partial attestation contract
+
+Electron main-side verifier validates fresh backend proof against main-owned webContents/navigation/connection/profile/session, TaskRun live flags, actor principal and lease expiry. 14 TDD tests new; 25 focused GREEN. Production owner resolver remains null/deny-all until authenticated backend attestation and main sender registry exist. NOT H-C2 integrated or usable editor. Next P0A endpoint + main binding; then P0B human/agent CAS E2E. H-079 and release gates unchanged.
