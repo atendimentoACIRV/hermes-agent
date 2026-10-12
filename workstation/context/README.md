@@ -1,5 +1,11 @@
 # Hermes Workstation — Coding-Agent Context
 
+## 2026-10-12 — Inteligência preservada / frente P0 em pausa
+
+**Entrada recuperável antes de qualquer retomada:** [Strategic Handoff](HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md) → [Known Issues canônicos KI-028–KI-043](KNOWN_ISSUES.md) → [Dossiê de evidências](HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md) → [PRs e dependências](HERMES_WORK_PR_RECONCILIATION_2026-10-12.md) → [Manifesto de fontes](HERMES_WORK_SOURCE_EVIDENCE_MANIFEST_2026-10-12.md) → [Fundamentos/ADRs](HERMES_WORK_DECISION_RATIONALE_2026-10-12.md) → [Prompt arquivado](HERMES_WORK_RESUME_PROMPT_2026-10-12.md). **PAUSED_BY_STRATEGY ≠ RESOLVED.** Não executar o prompt nem voltar ao PR #83 sem nova decisão do maintainer. Documentos de P0 detalhados continuam no branch do PR #83, não na main deste snapshot.
+
+
+
 <!-- creative-D043-overlay -->
 ### D-043 Creative Workstation — entrada atual (2026-10-10)
 Após as regras upstream/segurança obrigatórias desta página, qualquer agente CW deve seguir [arquitetura engine-neutral](../creative-workstation/ENGINE_NEUTRAL_ARCHITECTURE_2026-10-10.md) e [implementer handoff CWN-00→09](../creative-workstation/ENGINE_NEUTRAL_IMPLEMENTER_HANDOFF_2026-10-10.md). O draft D-041 HyperFrames-first (PR #62) está supersedido como regra de motor; D-042 dogfood/PR #63 e H-079/D-038/D-039 continuam. Ordem CW-01..CW-07 antiga é histórico para recuperação e não deve conduzir novas mudanças.
