@@ -5689,3 +5689,12 @@ unclassified / 0 budget regressions. Exact-head CI remains not GREEN (Actions
 HTTP 422 history + Desktop failures open); this authorization does not relabel
 those gates VERIFIED and does not authorize main merge. Target runtime work
 continues on this branch with RED->GREEN per phase and separate upstream sync.
+
+
+### HCW-HYBRID-01 — 2026-10-11 — isolated implementation evidence
+
+- Worktree `C:\Github\hermes-agent\.worktrees\hcw-hybrid-01`; branch `feat/hcw-hybrid-01-20261011`; baseline `origin/main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. Main checkout dirty (34 entries) left untouched.
+- H-079 upstream pinned ancestor `66605471...`; fresh fetch upstream/main `835c3dd038d903182a66ecc45e34bf5e0de65f00`, baseline divergence 963 downstream / 245 upstream. No Stage A merge or exact-head baseline qualification. **DEVELOPMENT_ONLY**, not ready to merge.
+- EffectCraft CLI `cargo build --offline --locked -p effectcraft-cli` exit 1, missing pinned FilmCraft Git dependency. No real HyperFrames+EffectCraft media render evidence; H-C1 BLOCKED.
+- Test-first functionality: `save_hybrid_project_revision` and canonical `save_creative_document(..., native_files=...)` preserve hashed EffectCraft/HyperFrames source bytes under a single revision, with negative source/path/ETag tests; `HybridTimeMapping` uses exact rational clocks; `creative_export` fails closed on no source and undecodable frame (previous pseudo-hash and black fallback).
+- Regression and exact verification results: see `../creative-workstation/evidence/HCW-HYBRID-01.md` and PR test report. No Electron E2E or release claim.

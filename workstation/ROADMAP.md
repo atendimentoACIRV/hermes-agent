@@ -2926,3 +2926,19 @@ Real Trello/HyperFrames/repetition baseline BLOCKED: installed native controller
 A new real local adoption regression exposed a remaining lifetime gap: revoking the qualification after the first reused item did not stop the three later items in the same checkpoint. Valid RED: four items executed instead of one (29.1s runner; initial fixture-error attempt is not counted as security evidence). Runtime now re-queries qualified offers at every item boundary, records denial and halts the checkpoint. The independently verified first item remains completed; no blind rollback/retry.
 GREEN: complete online safety file, 38 passed, zero failed, 149.0s. Config/expiry/scope changes apply at item boundaries; this is not an atomic distributed revocation guarantee for an effect already in progress. No Trello write or production trust provisioning.
 Native regression at bb1888976e: existing headless-load contract passed with four real Electron/Chromium BrowserTasks (8.5s test; 1.6m including bootstrap under concurrent tests). Inference and pages are fixtures: native lifecycle/IPC evidence only, not E1 completion or measured product latency/cost. Broader Workstation regression still running; CI remains skipped by maintainer.
+
+## HCW-HYBRID-01 — EffectCraft + HyperFrames native composition (2026-10-11)
+
+This lane extends D-043, preserving Hermes as the project/TaskRun owner. **DEVELOPMENT_ONLY / BLOCKED_FOR_PROMOTION.** Evidence: `creative-workstation/evidence/HCW-HYBRID-01.md`.
+
+| Milestone | Observed status | Required next proof |
+|---|---|---|
+| H-C0 | PARTIAL / isolated worktree | H-079 upstream Stage A qualification; valid pinned installed engines |
+| H-C1 | BLOCKED | actual HyperFrames RGBA sequence → EffectCraft `file.import` → effect+title → decoded PNG+MP4 |
+| H-C2 | UNIT_TESTED | real `.ecproj` source validity, durable TaskRun publication, ETag/atomic head reconciliation |
+| H-C3 | UNIT_TESTED PARTIAL | rational frame mapping is tested; cross-engine parameter updates not implemented |
+| H-C4 | NOT_IMPLEMENTED | staged two-engine edit plan with real preview, CAS and owner receipts |
+| H-C5/H-C6/H-C7 | NOT_IMPLEMENTED | contextual editor, procedural mattes, measured cache invalidation |
+| H-C8/H-C9 | NOT_IMPLEMENTED | on-demand frame bridge and nested compositions after H-C1 proof |
+
+P0 export verification defects were addressed in development-only source: failed decode no synthetic hash; missing source no silent black fallback. Existing first-clip export is **not** a qualified multilayer compositor.
