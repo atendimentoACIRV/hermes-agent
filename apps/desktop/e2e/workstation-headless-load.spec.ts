@@ -44,6 +44,7 @@ interface ControllerResponse {
 
 interface BrowserTaskRecord {
   taskId: string
+  sessionHost?: string | null
   status?: string
   parked?: boolean
 }
@@ -974,21 +975,22 @@ test('P0: Browser UI Take Control and Release Control buttons are actually click
 })
 
 
-// Known RED release gate: when restarting with the same sandbox userData/HERMES_HOME,
-// second electron.launch times out (180s) after backend hermes:api connection
-// timeouts. Retain exact repro, but never count this scenario as qualified.
-// Re-enable only after an independently verified backend teardown / cold-boot fix.
-test.fixme('P0: released native BrowserTask is retained and agent resumes after cold Electron restart', async () => {
+// A cold restart is only a BrowserTask persistence test when the BrowserTask
+// belongs to an actual persisted Hermes chat. Synthetic controller-only
+// session IDs are not discoverable by the renderer's lazy restore path.
+test('P0: released native BrowserTask is retained and agent resumes after cold Electron restart', async () => {
+  test.setTimeout(210_000)
   if (!fixture || !controller) {
     throw new Error('P0 restart fixture is not ready')
   }
 
+  const session = await createRealChat(fixture, 'P0 cold restart real session')
   const taskId = 'p0-cold-restart-a'
-  const sessionId = 'p0-cold-session-a'
-  const before = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-cold-restart-a`)
+  const url = `${pageBaseUrl}/p0-cold-restart-a`
+  await openStoredSessionByTitle(fixture.page, session.label, 'P0 cold restart real session')
+  const before = await browserAction(taskId, session.id, url)
   expect(before.result?.title).toBe('H013 p0-cold-restart-a')
 
-  // Release a real scoped human lease before the cold restart.
   await fixture.page.evaluate(async ({ taskId, sessionId }) => {
     const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
       WorkstationBridge & {
@@ -997,37 +999,45 @@ test.fixme('P0: released native BrowserTask is retained and agent resumes after 
       }
     await bridge.takeControl(taskId, sessionId)
     await bridge.releaseControl(taskId)
-  }, { taskId, sessionId })
+  }, { taskId, sessionId: session.id })
 
-  const sandbox = fixture.sandbox
+  const env = buildAppEnv(fixture.sandbox, { HERMES_DESKTOP_E2E_HEADLESS: '1' })
   const oldToken = controller.token
+  const controlPath = path.join(fixture.sandbox.root, 'workstation', 'Runtime', 'browser-control.json')
   await fixture.app.close()
-  const env = buildAppEnv(sandbox, { HERMES_DESKTOP_E2E_HEADLESS: '1' })
   const restarted = await launchDesktop(env)
+  // Unlike the previous fixture, the test must hand the *new* app/page to
+  // readiness, session restore and later assertions.
+  fixture.app = restarted.app
+  fixture.page = restarted.page
   try {
-    await waitForAppReady({ ...fixture, app: restarted.app, page: restarted.page }, 120_000, false)
-    const controlPath = path.join(sandbox.root, 'workstation', 'Runtime', 'browser-control.json')
-    await expect.poll(async () => {
-      const info = await readControllerFile(controlPath)
-      return info.token !== oldToken ? info.token : null
-    }, { timeout: 30_000 }).not.toBeNull()
+    await waitForAppReady(fixture, 120_000, false)
+    await expect.poll(
+      async () => (await readControllerFile(controlPath)).token,
+      { timeout: 30_000 }
+    ).not.toBe(oldToken)
     controller = await readControllerFile(controlPath)
+    await openStoredSessionByTitle(fixture.page, session.label, 'P0 cold restart real session')
 
-    const readback = await controllerRequest('/resources')
-    const restored = (readback.resources ?? []).find(resource =>
-      resource.resource_type === 'browser_task' && resource.task_id === taskId
-    )
-    expect(restored?.session_id).toBe(sessionId)
+    const restored = await fixture.page.evaluate(async taskId => {
+      const tasks = await (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser.listTasks()
+      return tasks.find(task => task.taskId === taskId) || null
+    }, taskId)
+    expect(restored?.sessionHost).toBe(session.id)
 
-    const resumed = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-cold-restart-resumed`)
+    const resumed = await browserAction(taskId, session.id, `${pageBaseUrl}/p0-cold-restart-resumed`)
     expect(resumed.result?.title).toBe('H013 p0-cold-restart-resumed')
-    const actual = await controllerRequest('/v1/action', {
+    const readback = await controllerRequest('/v1/action', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId, session_id: sessionId, arguments: {} })
+      body: JSON.stringify({
+        action: 'browser_snapshot', task_id: taskId, session_id: session.id, arguments: {}
+      })
     })
-    expect(actual.result?.url).toBe(`${pageBaseUrl}/p0-cold-restart-resumed`)
+    expect(readback.result?.url).toBe(`${pageBaseUrl}/p0-cold-restart-resumed`)
   } finally {
+    // Fixture cleanup owns the first Electron instance captured at setup.
+    // Explicitly stop the replacement so no E2E orphan contaminates later tests.
     await restarted.app.close().catch(() => undefined)
   }
 })
