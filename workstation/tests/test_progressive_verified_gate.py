@@ -248,3 +248,33 @@ def test_prestate_proof_wrong_run_wrong_value_or_missing_before_read_is_denied(t
             ),
         ) is None
     assert ExperienceCorpus(store, discover=True).query(outcome="verified_success") == []
+
+
+def test_progressive_rejects_prestate_and_post_readback_for_different_resources(tmp_path):
+    store = ArtifactStore(tmp_path / "artifacts")
+    before_ref = store.store("task-verified", "resource_a_before.json", {
+        "task_id": "task-verified", "run_id": "run-1", "operation_id": "op-1",
+        "observer": "workstation.operational_prestate", "read_before_write": True,
+        "resource": str(tmp_path / "A.txt"), "state": {"exists": False},
+    }, schema="workstation.operational_prestate_readback.v1").ref
+    post_ref = store.store("task-verified", "resource_b_after.json", {
+        "task_id": "task-verified", "run_id": "run-1", "operation_id": "op-1",
+        "observer": "fs_hash", "read_after_write": True,
+        "resource": str(tmp_path / "B.txt"), "value": "dummy-hash",
+    }, schema="workstation.operational_filesystem_readback.v1").ref
+    canonical_ref = store.store("task-verified", "canonical_cross_resource.json", {
+        "task_id": "task-verified", "run_id": "run-1", "operation_id": "op-1",
+        "result": {"status": "VERIFIED", "accepted": True, "evidence_refs": [post_ref]},
+    }, schema="hermes.canonical_verification.v1").ref
+    assert capture_progressive(
+        store, task_id="task-verified", run_id="run-1", operation_id="op-1",
+        primitive="write_file", route="filesystem", outcome="verified_success",
+        state={"exists": True}, state_before={"exists": False}, state_before_ref=before_ref,
+        verification=Verification(
+            status="VERIFIED", evidence_refs=[canonical_ref],
+            evidence_strength=EvidenceStrength.SEMANTIC_PERSISTED_READBACK,
+            trust_class="trusted_runtime", observer="fs_hash",
+            verifier_fingerprint="canonical-verifier",
+        ),
+    ) is None
+    assert ExperienceCorpus(store, discover=True).query(outcome="verified_success") == []

@@ -16,6 +16,7 @@ def capture_progressive(artifacts, *, task_id, run_id, operation_id, primitive, 
                         state_before=None, state_before_ref=None):
     if not task_id or not run_id or not operation_id:
         return None
+    verified_post_resources = set()
     if outcome == TransitionOutcome.VERIFIED_SUCCESS.value:
         # An observation with a caller-supplied "VERIFIED" flag is not enough.
         # Only a persisted, operation-bound owner readback may enter the corpus
@@ -76,6 +77,13 @@ def capture_progressive(artifacts, *, task_id, run_id, operation_id, primitive, 
                         if (underlying.get("schema") == "workstation.run_local_readback.v1"
                                 and payload.get("matched") is not True):
                             return None
+                        if underlying.get("schema") == "workstation.operational_filesystem_readback.v1":
+                            if (payload.get("read_after_write") is not True
+                                    or payload.get("observer") not in {"fs_hash", "hash_file", "fs_stat", "stat"}
+                                    or not payload.get("resource")
+                                    or "value" not in payload):
+                                return None
+                            verified_post_resources.add(str(payload["resource"]))
             else:
                 return None
     # Families and effect class come from the runtime-owned capability contract.
@@ -102,6 +110,8 @@ def capture_progressive(artifacts, *, task_id, run_id, operation_id, primitive, 
                 or not isinstance(pre.get("state"), dict)):
             return None
         before = abstract_state(route, pre["state"], state_before_ref)
+        if verified_post_resources and str(pre.get("resource") or "") not in verified_post_resources:
+            return None
         if before.semantic_predicates != abstract_state(route, state_before).semantic_predicates:
             return None
     after = abstract_state(route, state or {})
