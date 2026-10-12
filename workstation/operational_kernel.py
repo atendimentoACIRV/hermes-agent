@@ -6,8 +6,7 @@ and drift quarantine with handoff to reasoning when unexpected variance occurs.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import hashlib
 import json
 import os
@@ -15,15 +14,13 @@ from pathlib import Path
 import re
 import shutil
 import time
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 from uuid import uuid4
 
 from workstation.artifacts import ArtifactStore
 from workstation.operational_capabilities import (
-    CapabilityDependency,
     CapabilityDriftError,
-    CapabilityLifecycle,
-    CapabilityNotFoundError,
     CapabilityResolver,
     CapabilityValidationError,
     OperationalCapability,
@@ -31,7 +28,7 @@ from workstation.operational_capabilities import (
 )
 from workstation.recipes import sanitize, digest
 from workstation.control_plane.verification import (
-    VerificationContract, VerificationEvidence, VerificationStatus, evaluate_verification,
+    VerificationContract, VerificationEvidence, evaluate_verification,
 )
 from workstation.execution_policy import EvidenceStrength
 
@@ -812,7 +809,7 @@ class OperationalKernel:
                         trust_class='trusted_runtime', observer_failure_domain='browser_session_persistence',
                         resource_id=f"browser_task:{task_id}:tab:{readback['tab_id']}",
                         resource_version=str(readback.get('revision', readback['saved_at'])),
-                        observed_at=readback.get('saved_at') or datetime.now(timezone.utc).isoformat(), read_after_write=True,
+                        observed_at=readback.get('saved_at') or datetime.now(UTC).isoformat(), read_after_write=True,
                         covered_predicates=observed_coverage,
                         artifact_ref=ref.ref, task_id=task_id, run_id=run_id, operation_id=operation_id,
                     )]
@@ -864,7 +861,7 @@ class OperationalKernel:
                             observer_failure_domain="filesystem" if builtin_fs else ("browser_renderer" if cap.route in {"browser", "native_browser"} else "runtime"),
                             resource_id=str(exec_context.get("resource_id", "")),
                             resource_version=str(exec_context.get("resource_version", "")),
-                            observed_at=datetime.now(timezone.utc).isoformat(),
+                            observed_at=datetime.now(UTC).isoformat(),
                             read_after_write=bool(builtin_fs), operation_id=operation_id,
                             task_id=task_id, run_id=run_id,
                             covered_predicates=tuple(exec_context.get("observed_predicates", ())),
@@ -899,11 +896,6 @@ class OperationalKernel:
                                 "predicate_coverage_count": len(verification_result.covered_predicates)})
 
             # 5. Record validation evidence & savings
-            evidence = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "status": "success",
-                "inputs_sample": sanitize(inputs),
-            }
             if verification_result.verified:
                 cap.success_count += 1
             if learned and verification_result.verified:
@@ -927,7 +919,10 @@ class OperationalKernel:
             from workstation.experience_compiler.models import Verification
             capture("verified_success" if verification_result.verified else "uncertain", Verification(
                 status=verification_result.status.value, verifier_fingerprint=verification_result.verifier_fingerprint,
-                evidence_refs=list(verification_result.evidence_refs), observer=verifier_contract.observer,
+                # The canonical receipt binds the verifier result and its
+                # underlying evidence to this task/run/operation before online
+                # learning may classify this as VERIFIED_SUCCESS.
+                evidence_refs=[proof_ref], observer=verifier_contract.observer,
                 source_kind=verifier_contract.source_kind, trust_class="trusted_runtime",
                 evidence_strength=verifier_contract.minimum_evidence))
             auth_scope = exec_context.get("authority_scope") or getattr(self, "authority_scope", None)
@@ -955,7 +950,7 @@ class OperationalKernel:
                 freshness_satisfied=verification_result.freshness_satisfied,
                 verification_reason=verification_result.reason,
                 authority_scope=auth_scope,
-                timestamp=datetime.now(timezone.utc).timestamp(),
+                timestamp=datetime.now(UTC).timestamp(),
             )
             self.invocations.append(invocation)
 
