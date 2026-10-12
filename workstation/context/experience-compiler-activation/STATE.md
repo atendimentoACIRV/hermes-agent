@@ -30,3 +30,15 @@ Before ending update these files, git status, exact commit SHA, test outputs and
 
 ## Post-hook corrective update
 - The original 32-error lefthook failure was addressed with scoped Ruff safe modernizations to lifecycle.py. A fresh F,UP lint PASS and narrow 9-test PASS were observed. Final broad regression: 60 passed, 1 skipped in 109.59s, exit 0. Second native lefthook attempt still pending at this ledger update. Release gates remain HOLD regardless.
+
+## UPDATE — EC-01 new-task routing fixed in feature branch (2026-10-12)
+- The older EC-01 failed-status narrative above is SUPERSEDED for the isolated H-080B targeted E2E: both scenarios NOW PASS after editing workstation/work_intent.py (not router/effect policy) to project allowlisted native site commands to host/page_family/recovery_state exact goal and effect footprint, without unsolicited url capability input.
+- Tests: TDD RED 1 on old URL vs learned host representation, then route reached execution but RED `unexpected learned capability parameter`, then TDD RED for unsolicited url, then GREEN: 6/6 command-intent tests and H-080B both [False,True] PASS (2 passed, 24 deselected in 24.88s).
+- H-080B [True] failure mechanism confirmed by temporary CapabilityRouter forensic instrumentation (subsequently removed): incoming operation originally goal EQ(url,https://trello.com/) and effect SET(url,..); learned promoted capability required host=trello.com, page_family=/, recovery_state=live. Original goal_coverage=False, effect_containment=False, authority=True, verifier VALIDATED. With schema-aligned goal route certifies; dropping undeclared url makes compiled zero-input capability execute.
+- New tests: workstation/tests/test_current_command_native_intent_contract.py; updated existing test_current_command_resolution.py fixture to reflect real native/browser state contract and preserve strict authority gate.
+- **Not production-qualified**: EC-01 adjacent full regression running (see EVIDENCE); CI exact-head, Laya DIRECT and native Electron UI dogfood still unqualified. EC-02 candidate-specific canary remains partial, future negative tests needed.
+- Next: finish EC-01 regression, commit + push, then EC-03 production owner verification, EC-04 real mid-run samples, EC-05 Laya DIRECT, and EC-07 EvidenceRef telemetry.
+
+## Continuation result — EC-01 regression confirmed
+- EC-01 intent IR adaptation in work_intent.py with target/contract-matched allowlist is ready for draft review. Full four-file regression 42 passed in 175.32s, lint F,UP passed. Exact-head CI/H-079/H-082 remains unqualified, no production certification.
+- Next engineering target EC-03 and EC-07: exercise production factory readback/lease and fix EvidenceRef JSON serialization at telemetry sink with RED->GREEN tests. EC-02 committed under e81d23a812, with safety gaps preserved as future negative-test work.

@@ -29,18 +29,38 @@ def current_command_objective(envelope: MessageEnvelope, task_id: str, run_id: s
     if not envelope.can_create_work or command is None:
         return None
     from workstation.control_plane.intent import OperationIntent
-    from workstation.control_plane.ir import EQ, SET
+    from workstation.control_plane.ir import AND, EQ, SET
+    from urllib.parse import urlsplit
     family, target = command
     native = family == "browser.open_site"
-    path = "url" if native else "creative.studio.ready"
-    value = target if native else True
+    if native:
+        parsed = urlsplit(target)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+            return None
+        # The native Browser owner verifies host/page_family/recovery_state.
+        # An intent against an opaque "url" field cannot be certified against
+        # that learned contract. Describe the exact native effects without
+        # broadening the requested destination or bypassing its owner.
+        host = parsed.hostname
+        page_family = parsed.path or "/"
+        goal = AND(EQ("host", host), EQ("page_family", page_family), EQ("recovery_state", "live"))
+        effect_budget = [
+            SET("host", host),
+            SET("page_family", page_family),
+            SET("recovery_state", "live"),
+        ]
+    else:
+        goal = EQ("creative.studio.ready", True)
+        effect_budget = [SET("creative.studio.ready", True)]
     operation_id = "op_current_" + hashlib.sha256(
-        f"{task_id}:{run_id}:{envelope.content}".encode("utf-8")).hexdigest()[:24]
+        f"{task_id}:{run_id}:{envelope.content}".encode()).hexdigest()[:24]
     intent = OperationIntent(id=operation_id, target="native_browser" if native else "creative_studio",
-        goal=EQ(path, value), effect_budget=[SET(path, value)],
+        goal=goal, effect_budget=effect_budget,
         metadata={"operation_family": family, "recognition": "deterministic_alias"})
     return {"operation_id": operation_id, "operation_intent": intent.to_dict(),
-            "inputs": {"url": target} if native else {"engine": target}}
+            # Fixed named-site commands are fully bound by the typed goal/effect.
+            # Do not inject an undeclared url input into a promoted capability.
+            "inputs": {} if native else {"engine": target}}
 
 
 @dataclass(slots=True)
