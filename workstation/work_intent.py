@@ -29,7 +29,7 @@ def current_command_objective(envelope: MessageEnvelope, task_id: str, run_id: s
     if not envelope.can_create_work or command is None:
         return None
     from workstation.control_plane.intent import OperationIntent
-    from workstation.control_plane.ir import AND, EQ, SET
+    from workstation.control_plane.ir import AND, CALL, EQ, SET
     from urllib.parse import urlsplit
     family, target = command
     native = family == "browser.open_site"
@@ -48,6 +48,9 @@ def current_command_objective(envelope: MessageEnvelope, task_id: str, run_id: s
             SET("host", host),
             SET("page_family", page_family),
             SET("recovery_state", "live"),
+            # The user's allowlisted open-site request explicitly budgets
+            # navigation on this exact host, never arbitrary Browser calls.
+            CALL("browser.navigate", host),
         ]
     else:
         goal = EQ("creative.studio.ready", True)

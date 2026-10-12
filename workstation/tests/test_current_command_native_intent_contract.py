@@ -2,7 +2,7 @@
 
 from workstation.contracts import IntentAuthority, MessageEnvelope, MessageOrigin
 from workstation.control_plane.intent import OperationIntent
-from workstation.control_plane.ir import AND, EQ, SET, entails, effect_contained
+from workstation.control_plane.ir import AND, CALL, EQ, SET, entails, effect_contained
 from workstation.work_intent import current_command_objective
 
 
@@ -31,3 +31,26 @@ def test_unrecognized_or_untrusted_command_cannot_produce_native_intent():
         assert current_command_objective(envelope, "task", "run") is None
     envelope = MessageEnvelope(MessageOrigin.RUNTIME, IntentAuthority.OBSERVATION_ONLY, "session-a", "Abre o Trello.")
     assert current_command_objective(envelope, "task", "run") is None
+
+def test_named_site_command_explicitly_budgets_only_its_external_navigation_effect():
+    from workstation.control_plane.lattice import (
+        AuthorityLevel, AuthorityScope, can_execute_effect,
+    )
+
+    envelope = MessageEnvelope(MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK,
+                               "session-a", "Abra o Trello")
+    objective = current_command_objective(envelope, "task", "run")
+    intent = OperationIntent.from_dict(objective["operation_intent"])
+    permitted = CALL("browser.navigate", "trello.com")
+    other = CALL("browser.navigate", "wrong.test")
+    assert effect_contained(permitted, intent.effect_budget)
+    assert not effect_contained(other, intent.effect_budget)
+    read_only = AuthorityScope(level=AuthorityLevel.READ)
+    scoped = AuthorityScope(
+        level=AuthorityLevel.EXTERNAL_REVERSIBLE,
+        allowed_actions={"browser.navigate"},
+        allowed_resources={"trello.com"},
+    )
+    assert not can_execute_effect(permitted, intent, read_only)
+    assert can_execute_effect(permitted, intent, scoped)
+    assert not can_execute_effect(other, intent, scoped)
