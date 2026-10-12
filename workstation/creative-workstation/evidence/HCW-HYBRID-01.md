@@ -89,3 +89,21 @@ STATIC. No claim of 2s moving HyperFrames animation, EffectCraft composite,
 or H-C1 graduation. Full scoped regression newly run: 125 PASSED,
 1 Windows symlink SKIPPED, exit 0 in 107.51s over 27 files;
 historical YAML-dependent creative_runtime tests remain excluded.
+
+
+### 2026-10-12 — H-C1 actual pinned producer → native EffectCraft, 60-frame motion, H.264
+
+- Pin: HyperFrames 6ae1af7470133db72de6d9bbceeaf80e85695c68; official unmodified producer/tests/distributed/png-sequence/src/index.html. HyperFrames CLI --strict --no-best-effort: exit 0, 60 PNG RGBA, 640x360, min/max alpha 0..255, seven distinct frame SHA256s, at 30 fps. Validated with workstation.creative_hybrid_footage.validate_rgba_footage.
+- Real EffectCraft 0.7.0 CLI: import from those HF frames via typed CreativeInvocation and file.import; saved/reopened .ecproj; decoded seeks show actual different pixels. Additional native edits created "HERMES WORK" text and Gaussian Blur, changed blur scalar 0 to 20; original/text/effect outputs have distinct decoded SHA. Empty blur default was explicitly NOT accepted as proof of a rendered effect.
+- Real Hermes CreativeExecutionScope + start_creative_process + ProcessRegistry owner/task/session accepted the import, without monkeypatching approval in this opt-in test; live TaskRun admission outside test is still unproved.
+- Actual CreativeDocument native revisions contain real .ecproj + HyperFrames HTML + JSON, ETag-stale edit returns 409; this is not a complete atomic two-engine mutable transaction or Electron shared-editor test.
+- Native EffectCraft CLI export produced 640x360 H.264 MP4 at 30 fps / 2.0 s / 60 decoded frames; FFprobe exit 0, FFmpeg extracted both first and later frame exit 0, decoded pixels differ. Native output MP4 SHA256 9d9a264b256fba16a93faa9152c69a50470a18fe74eed7e299ebf3d0b4634c82.
+- Tests added: workstation/tests/test_hcw_hybrid_native_cross_engine.py, including real opt-in pinned CLI producer->consumer and independent MP4 validation.
+- Scoped 28-file regression 128 PASSED / 1 symlink SKIPPED in 104.86s, exit 0; pinned producer 1 PASSED separately in 49.03s. See HCW_HYBRID_EXECUTION_STATE.md for exact paths and remaining gates.
+- **DEVELOPMENT_ONLY**: independent HF native source edit in same project, final TaskRun/Edit UI E2E, 1920x1080 10s demo, full H-079 and CI gates NOT MET. Blocked HTML edit denial was respected; no bypass.
+
+
+**Final scoped qualification update** (same date): all 28 selected Creative
+test files re-executed on final source, with pinned native producer and
+FFmpeg verification enabled: **130 passed / 1 skipped / exit 0, 128.07s**.
+Not equivalent to full Workstation CI or a complete H-C0 through H-C9 gate.

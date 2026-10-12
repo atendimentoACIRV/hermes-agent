@@ -5715,3 +5715,28 @@ Pinned HF source `6ae1af7470133db72de6d9bbceeaf80e85695c68` cloned to isolated t
 - Added strict effectcraft_import_invocation returning pinned CreativeInvocation for existing start_creative_process; confirmed RED missing function then native GREEN, pathname/output/binary fingerprint negatives.
 - HyperFrames SHA 6ae1af7470133db72de6d9bbceeaf80e85695c68: core/parsers/lint/studio-server/producer built from source with exit 0; CLI --version 0.8.143 exit 0. Full CLI build-copy needed studio dist; studio build in progress. Strict render of first 2s fixture refused missing_gsap_script; no HF output qualified. Remote HTML edit was denied by security settings and not bypassed.
 - Persistent checkpoint: creative-workstation/HCW_HYBRID_EXECUTION_STATE.md. H-079 NO PROMOTION. CI/native HF->EC E2E still pending.
+
+
+### 2026-10-12 — HCW-HYBRID-FINAL continuation, real dual-engine moving native proof
+
+Confirmed clean worktree feat/hcw-hybrid-01-20261011 at starting fe8d5a7c5f, root
+checkout preserved with 34 uncommitted changes. Pinned HyperFrames official
+animated transparent fixture rendered 60 frames 640x360 30fps, 7 distinct hashes,
+CLI exit 0; EffectCraft imported true frames with typed native invocation,
+reopened .ecproj, generated title layer and a Gaussian Blur effect set to 20.
+Rendering produced changes independently proven by decoded pixel comparisons.
+Actual scoped ProcessRegistry launch with real approvals passed, and actual
+canonical CreativeDocument revisions preserved both real source engines with
+stale ETag rejected. Export of hybrid native source produced 60-frame
+640x360 H264 MP4; FFprobe/FFmpeg independently verified 2.0s, 30fps,
+codec, frame count, and different decoded frames. No fake fallback.
+28-file scoped regression 128 PASSED / 1 SKIPPED; separate pinned source
+producer->EffectCraft opt-in test PASSED in 49.03s. Full CI, H-079, independent
+native HF authored edit, Electron human/AI shared editing and 1920x1080 10s
+demo remain blocked. Draft PR #81, no main merge. Details/evidence in
+creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.
+
+
+Final validation receipt: 28-file Creative scope, pinned native engines fully
+opted in, 130 passed / 1 skipped / 0 failures in 128.07s,
+FINAL_SCOPED_EXIT=0. Not full CI, no merge/main modification.

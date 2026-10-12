@@ -130,3 +130,110 @@ to generate an updated continuation prompt if H-C0–H-C9 remain incomplete.
 - Next H-C1 blocker: obtain a valid authorized 2s 30fps actual-moving
   transparent HyperFrames project (do not circumvent the HTML editing denial),
   then pass it through validate_rgba_footage and native EffectCraft importer.
+
+
+## 2026-10-12 continuation — actual native HyperFrames -> EffectCraft tracer
+
+Status remains DEVELOPMENT_ONLY; do not promote H-C0 through H-C9 as a whole.
+Starting local/remote HEAD was fe8d5a7c5f02529e7ca2055c7abb05497c1b7dea.
+Starting worktree was clean; main checkout had 34 local dirty changes and was NOT modified.
+
+New reproducible test file:
+workstation/tests/test_hcw_hybrid_native_cross_engine.py
+
+An **unchanged**, already-authorized official fixture at
+C:\Temp\hcw-hybrid01-hyperframes-src\packages\producer\tests\distributed\png-sequence\src\index.html
+was rendered by the pinned HyperFrames 0.8.143 CLI (SHA 6ae1af7470133db72de6d9bbceeaf80e85695c68)
+with --format png-sequence --fps 30 --workers 1 --strict --no-best-effort.
+Exit 0, 60 PNG RGBA frames at 640x360, alpha 0..255, 7 distinct frame SHA256 hashes;
+validate_rgba_footage confirmed real alpha, visible content and frame motion.
+Native output under C:\Temp\hcw-hybrid01-native-smoke\hf-official-motion.
+Frame samples (source PNG bytes):
+frame 0: 7c0beac5c1c48a2e56...;
+frame 29: 9076ddeb6edd96fcfe...;
+frame 30: 25da3f1f6b1ceabb00...;
+frame 45: a9d24afea6070801e6...
+Full hashes can be recalculated from surviving files; these prefixes are not substitutes.
+
+The verified native EffectCraft .exe imported the 60 real HyperFrames PNGs using
+effectcraft_import_invocation, saved/reopened a real .ecproj, and rendered different
+pixels when seeking frames 0, 30 and 45; explicit opt-in pytest passed.
+A standalone pinned producer->consumer test recreated the actual render from the
+official untouched HTML and immediately imported into EffectCraft: 1 passed in 49.03s,
+zero failure. No synthetic/mocked renderer.
+
+EffectCraft source edits using engine commands created an actual Text layer with
+"HERMES WORK", applied "Gaussian Blur" to the imported footage, then changed
+effects/#1/blurriness from 0 (same pixels) to 20 (distinct pixels). All .ecproj
+variants saved and reopened. Actual RGBA pixels differed between original, text,
+and blurred compositions. Scripts/results under
+C:\Temp\hcw-hybrid01-native-smoke\effectcraft-enrichment,
+not the Hermes repo. source .ecproj SHA256 for final blurred project:
+98e9664f8c84c2f31ee0ead8175c343c58fdfe8b3916a206d13a491c51bede48.
+
+Real supervisor test exercised start_creative_process with matching
+CreativeExecutionScope, ScopedPolicyEngine, command guards and ProcessRegistry,
+without mocking approval, verifying owner_task_id/session_key and native import.
+Two supervised+cross-engine tests: 2 passed in 27.86s.
+This is proof of the task-scoped PROCESS seam, not full live TaskRun admission.
+Canonical CreativeDocument E2E with actual native .ecproj and unchanged real
+HyperFrames HTML saved/reopened immutable revisions, changed EC native via
+parent ETag and rejected stale ETag (409). Three native tests: 3 passed in 19.71s.
+
+EffectCraft's real CLI rendered the composited final .ecproj to H.264 MP4:
+C:\Temp\hcw-hybrid01-native-smoke\effectcraft-enrichment\hermes-hybrid-native.mp4
+CLI exit 0. FFprobe independent exit 0: codec h264, 640x360, yuv420p,
+30/1 FPS, 2.000000 seconds, 60 decoded frames, 49570 bytes.
+MP4 SHA256: 9d9a264b256fba16a93faa9152c69a50470a18fe74eed7e299ebf3d0b4634c82.
+FFmpeg independently decoded first and later frames, exit 0 both times;
+pixels differ (separate decoded SHA 9f4212e8... and fe07a645...);
+verified 2s video contains actual visible motion. Repeatable opt-in
+native ffprobe/ffmpeg regression has also been added.
+
+Fresh SCOPED 28-file Creative regression (collected before the opt-in producer
+and video tests were appended): 128 passed, 1 symlink skip, 104.86s, exit 0.
+Additional pinned producer 1 passed separately.
+No complete Workstation CI run and no H-079 Stage A qualification.
+test_creative_runtime.py historically excluded due to missing YAML in this venv.
+
+**Do NOT overclaim H-C1 as fully qualified:** independent change to the
+HyperFrames source in the SAME bound composition and live Electron human/AI
+round-trip are still absent. Previous remote HTML edit_block was denied by
+platform security and must not be circumvented. Reuse authorized source, or
+qualify a supported declared-variable edit instead; mark exactly what that
+does and does not prove.
+
+Current milestone updates:
+H-C0 PARTIAL: both real engine binaries and real output verified; H-079 missing.
+H-C1 NATIVE_VERTICAL_PROVEN / BLOCKED_FOR_PROMOTION: real moving HF frames ->
+EC import/edit/frame/MP4; no HF source mutation in same project, no live TaskRun E2E.
+H-C2 PARTIAL INTEGRATION TESTED: real native sources in canonical document
+revisions, stale ETag; no full human/AI interface bridge or global atomic CAS.
+H-C3 UNIT_TESTED: rational times/typed bindings; no native two-way binding.
+H-C4 NOT_IMPLEMENTED: durable multi-engine atomic command.
+H-C5 NOT_IMPLEMENTED: EffectCraft Web in Electron.
+H-C6 PARTIAL NATIVE: text and real non-default blur; full mattes/keying unproved.
+H-C7 UNIT_TESTED fingerprints only; bounded runtime cache missing.
+H-C8 NOT_IMPLEMENTED: native on-demand composite renderer.
+H-C9 UNIT_TESTED graph planning; native nested render and 1920x1080 10s demo missing.
+
+Next: check exact latest HEAD/status, verify fresh tests on final head; update this
+ledger for every continuation. Resolve real independent HF source edit through an
+authorized mechanism, then TaskRun admission and Electron shared editing/CAS;
+do not merge main, respect H-079 and CI, and leave a recursive handoff prompt
+whenever incomplete.
+
+
+### Final exact-source local regression — 2026-10-12
+
+After appending the last opt-in native MP4/export test and native pinned
+producer->consumer test, the full scoped suite of 28 files was re-executed
+with EFFECTCRAFT_CLI, HYPERFRAMES_MOTION_FRAMES,
+HYPERFRAMES_OFFICIAL_CHECKOUT, HYPERFRAMES_NODE,
+EFFECTCRAFT_ENRICHMENT_DIR, HYPERFRAMES_SOURCE_HTML, PYTHONPATH and isolated
+HERMES_HOME configured. **130 passed / 1 skipped / 0 failed in 128.07s,
+FINAL_SCOPED_EXIT=0**, pytest process exit 0.
+The skipped test requires Windows symlink privilege. This is scoped Creative
+regression, not global Workstation CI. test_creative_runtime.py remains
+intentionally omitted due pre-existing missing YAML dependency in this venv.
+User's main checkout remained outside this worktree and was not edited.

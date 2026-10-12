@@ -4397,3 +4397,18 @@ Native regression at bb1888976e: existing headless-load contract passed with fou
 Hermes Creative Workstation preserves canonical `CreativeDocument`, `CreativeProjectStore`, TaskRun, ProcessRegistry, journal and artifact owners. EffectCraft (native `.ecproj`) and HyperFrames (HTML/JS) are candidates for linked editable native subcompositions. The first falsifiable integration is source-faithful alpha PNG footage from HyperFrames imported by EffectCraft via `file.import`, subsequently composited with an EffectCraft effect/text and independently decoded from PNG+MP4. **This experiment has not yet been executed with both real engines.**
 
 The active isolated branch `feat/hcw-hybrid-01-20261011` adds validated native composition refs to canonical project revisions, a pure rational cross-engine source frame map and a fail-closed FFmpeg frame decoder. Unit checks do not prove native project compatibility, Electron E2E, dual-engine parameter mutation, agent Tool/TaskRun qualification, or distributed atomic commit. Release/promotion H-079 remains blocked. Source of evidence: `../creative-workstation/evidence/HCW-HYBRID-01.md`.
+
+
+### HCW-HYBRID-FINAL — 2026-10-12 native vertical proof (development only)
+
+Hermes now has reproducible opt-in integration tests of real pinned HyperFrames
+transparent 2s/30fps moving RGBA output imported by real EffectCraft 0.7.0
+through its native file.import; EffectCraft edits native typography and actual
+blur 20, persists editable .ecproj, and generates verified moving H264 MP4.
+Existing CreativeExecutionScope/ProcessRegistry, owner/session and fail-closed
+approval were exercised without mocked approval; real engine files preserved
+inside canonical CreativeDocument revisions with ETag checks. Do not mistake
+these native tracer tests for full TaskRun admission, Electron human/AI edits,
+HF native source editing, distributed transaction, H-C8 or H-C9 qualification.
+Reference evidence: workstation/creative-workstation/evidence/HCW-HYBRID-01.md,
+ledger: workstation/creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.

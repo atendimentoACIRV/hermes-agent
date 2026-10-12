@@ -2954,3 +2954,26 @@ P0 export verification defects were addressed in development-only source: failed
 - H-C4/H-C5/H-C8 remain NOT_IMPLEMENTED. Do not promote as complete.
 
 Evidence: `creative-workstation/evidence/HCW-HYBRID-01.md`.
+
+
+### HCW-HYBRID-01 addendum — 2026-10-12 native vertical tracer
+
+Later than the status matrix above: H-C1 has advanced from synthetic fixture-only to
+**NATIVE_VERTICAL_PROVEN / BLOCKED_FOR_PROMOTION**. The pinned official
+HyperFrames CLI rendered moving, transparent 60x PNG RGBA 640x360/30fps; real
+EffectCraft imported and reopened the image sequence, added native text and
+non-default Gaussian Blur, and exported real 640x360/30fps 2s/60-frame H.264 MP4.
+Native PNG and MP4 decoded pixel comparisons demonstrate actual changes/motion.
+Real scoped start_creative_process/ProcessRegistry exercised without mocked
+approval. Canonical CreativeDocument stored real engine source bytes and
+rejected stale ETag. Tests at this checkpoint: 128 passed / 1 skipped scoped,
+plus separately executed pinned producer test passed. H-C1 full promotion
+remains BLOCKED on independent HyperFrames source edit in the same project and
+the UI/TaskRun authority E2E. H-C4/H-C5/H-C8 and H-079 remain incomplete.
+The original Matrix entries describe earlier historical states; use the
+checkpoint in creative-workstation/HCW_HYBRID_EXECUTION_STATE.md for current state.
+
+
+Final update to the above HCW addendum: scoped Creative test suite re-executed
+on this source with all opt-in native engines and FFprobe: 28 files, 130 passed,
+1 symlink skip, 128.07 seconds, exit 0. CI/H-079 remain blocked for promotion.
