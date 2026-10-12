@@ -107,3 +107,40 @@ historical YAML-dependent creative_runtime tests remain excluded.
 test files re-executed on final source, with pinned native producer and
 FFmpeg verification enabled: **130 passed / 1 skipped / exit 0, 128.07s**.
 Not equivalent to full Workstation CI or a complete H-C0 through H-C9 gate.
+
+
+### 2026-10-12 — canonical multi-revision and live TaskRun command admission
+
+- Two authentic HyperFrames CLI strict 1920x1080 RGBA variants were rendered
+  without touching source HTML, driven via JSON parameter files for title,
+  subtitle, bgColor. Byte SHA256 of first PNG:
+  base 11eec824ec5df58ee7ba135bcef09752a92d6e1300b23b747ac03f5ad0f782d0;
+  edited 64d000103394e95d7b477d37bb85b2c9f6714fe012824d1ca64c6b29b834783b.
+  Difference bbox (523,397,1400,660), actual visual change.
+- Real EffectCraft imported both variants, rendered different pixels,
+  then new native text independently changed output. SAME canonical
+  CreativeDocument project got three immutable revisions with native
+  .ecproj, official unchanged HTML, JSON variable overrides and
+  silence.wav (288078 bytes), reopening each, stale ETag rejected.
+- Strict declare-only variable validator covered by 9 passing tests,
+  rejects unknown/wrong typed/bad colors/non-finite or excessive data.
+- New canonical HEAD CAS (opt-in) protects parallel human/agent edits
+  under OS lock and durable etag, one winner on race, fault in 3rd command
+  of 4 leaves HEAD unchanged; stale and orphan cases fail closed.
+  Native files inherited and hash verified when a command changes only
+  document metadata/layers.
+- Real Kanban TaskRun harness proved live owner, session policy and
+  terminal run fence for canonical create/open/apply-batch, with
+  real project artifacts and operation receipt. Not a real Electron
+  UI round-trip nor verified human actor identity attribution.
+- Previous scoped 31-file tests completed 146 passed / 1 skipped.
+  A fresh 32-file scoped regression was started under Remote Desktop
+  PID 19584; inspect its final status before promoting any test claim.
+- No main merge. NOT full H-C0–H-C9 qualification; Electron H-C5,
+  distributed native H-C4, 1920x1080 10-second delivery, H-079,
+  exact-head CI and full Workstation test suite remain open.
+
+Final verification of this checkpoint: 32 selected Creative pytest files,
+151 passed / 1 skipped / 0 failures / 175.02 seconds / exit 0, native
+engines enabled. Python Ruff targeted ALL CHECKS PASSED; compileall exit 0.
+Release gates (global CI, native UI Editor, H-079) remain open.

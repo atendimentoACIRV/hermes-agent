@@ -4412,3 +4412,22 @@ these native tracer tests for full TaskRun admission, Electron human/AI edits,
 HF native source editing, distributed transaction, H-C8 or H-C9 qualification.
 Reference evidence: workstation/creative-workstation/evidence/HCW-HYBRID-01.md,
 ledger: workstation/creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.
+
+
+### HCW-HYBRID-FINAL — opt-in canonical authority advancement (2026-10-12)
+
+The native dual-engine tracer was extended from static copied fixtures
+to an official declared-parameter HyperFrames source, edited with
+strict --variables-file (not HTML source mutation). Two different
+1920x1080 RGBA renders produce different pixels, imported into actual
+EffectCraft and further changed with native EffectCraft text. Three
+CreativeDocument immutable revisions contain real editable engine
+sources and referenced silence.wav. The opt-in canonical publication
+backend now uses durable HEAD/ETag CAS, OS lock, idempotency by typed
+command digest and clone-based batch rollback on error. A real live
+Kanban TaskRun admitted canonical-create/open/apply-batch and persisted
+artifacts/journal; named actor fields in command JSON remain unauthenticated
+trace metadata (do not claim human identity attestation). This is NOT
+complete manual React/Electron synchronization, distributed dual-engine
+atomic native transaction, on-demand hybrid render or H-079.
+See ledger and evidence files for tested paths and gates.

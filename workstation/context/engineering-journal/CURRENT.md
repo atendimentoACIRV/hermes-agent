@@ -5740,3 +5740,29 @@ creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.
 Final validation receipt: 28-file Creative scope, pinned native engines fully
 opted in, 130 passed / 1 skipped / 0 failures in 128.07s,
 FINAL_SCOPED_EXIT=0. Not full CI, no merge/main modification.
+
+
+### 2026-10-12 — HCW hybrid parameter edits, CAS backend and TaskRun CLI
+
+Resumed clean baseline PR #81 SHA 5638aeee66 in linked worktree;
+root at 9fffa7f3ff with 34 unrelated dirty changes untouched.
+Official HF variables-prod source rendered two 1920x1080, strict-mode,
+declared-parameter variants; independent PNG SHA changed. Native EC
+import pixels changed and a separate EC text-layer edit changed pixels.
+Persisted all native dependencies (.ecproj, HTML, JSON, silence.wav)
+through three immutable CreativeDocument revisions, stale ETag rejected.
+New opt-in durable HEAD CAS, OS interprocess lock, command batch
+atomic clone and receipt-based idempotency; concurrent human/agent
+one-winner test, failed batch third command no head movement.
+Added admitted TaskRun backend/CLI for canonical-create/open/apply-batch
+with session, active run, policy, artifact/journal receipt, and carry-
+forward of unchanged hashed native assets. TDD RED/GREEN observed,
+existing main and legacy writers not changed. No Electron UI verified;
+no distributed engine-native transaction, identity proof, H-079 or
+global CI. Ledger and evidence in creative-workstation. Full 32-file
+regression PID 19584 pending final receipt at writing time.
+
+Final tests: 32 scoped files with native opt-in engines configured,
+151 passed / 1 skipped / 0 failed in 175.02 s, FINAL_SCOPE_EXIT=0.
+Targeted Ruff and Python compileall checks passed. H-079, full CI,
+Electron UI and verified human identity not established.

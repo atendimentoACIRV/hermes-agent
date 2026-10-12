@@ -2977,3 +2977,29 @@ checkpoint in creative-workstation/HCW_HYBRID_EXECUTION_STATE.md for current sta
 Final update to the above HCW addendum: scoped Creative test suite re-executed
 on this source with all opt-in native engines and FFprobe: 28 files, 130 passed,
 1 symlink skip, 128.07 seconds, exit 0. CI/H-079 remain blocked for promotion.
+
+
+### HCW-HYBRID-01 — continued H-C1/H-C2/H-C3/H-C4 implementation, 2026-10-12
+
+An authorized, *unchanged* official HyperFrames variables-prod template
+now yields actual different rendered pixels when strict CLI
+--variables-file changes title/subtitle/bgColor. The real EffectCraft
+imports both source variants and native text edits produce further
+pixel differences. Three immutable revisions of the SAME CreativeDocument
+store editable real .ecproj, HTML, JSON overrides and the referenced
+silence.wav. A NEW opt-in canonical HEAD CAS + typed batch publisher
+tests interprocess lock, ETag, idempotent replay, 409 stale/race,
+third-command failure atomicity, orphan rejection and native source
+retention. Real claimed Kanban TaskRun CLI create/open/apply-batch
+passes with session/authority/policy and journal. Not integrated into
+React manual UI; the new backend has not replaced the old UI state.
+H-C4 cross-engine distributed atomicity/undo, H-C5 Electron
+EffectCraft Web, nested render, 10s final video, full CI and H-079
+remain open. H-C0–H-C9 must NOT be marked QUALIFIED. For exact
+fresh tests, SHA and continuation steps use
+creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.
+
+Current scoped test result: 32 Creative test files, 151 passed,
+1 skipped, 0 failures, 175.02 s, exit 0. Next gating priority is
+Electron renderer edits through live TaskRun canonical-open/apply-batch;
+this backend receipt is not an Electron E2E qualification.

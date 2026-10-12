@@ -237,3 +237,120 @@ The skipped test requires Windows symlink privilege. This is scoped Creative
 regression, not global Workstation CI. test_creative_runtime.py remains
 intentionally omitted due pre-existing missing YAML dependency in this venv.
 User's main checkout remained outside this worktree and was not edited.
+
+
+## 2026-10-12 resumed implementation — canonical create/open/apply-batch and durable CAS
+
+Started from PR #81 HEAD 5638aeee6610cd038c80c2febbe3b56a10c7d896,
+isolated worktree feat/hcw-hybrid-01-20261011. Main checkout remained
+at 9fffa7f3ffcc2c50774654c271fe25e92ce459e8 with 34 dirty
+entries and was NOT modified. GitHub PR #81 remains OPEN/DRAFT.
+
+Previously UNCOMMITTED changes in this worktree at session resumption:
+workstation/creative.py; creative_project_runtime.py; new
+creative_hyperframes_variables.py; creative_revision_cas.py; and
+test_hcw_hybrid_native_variables_roundtrip.py,
+test_hcw_hybrid_revision_cas.py,
+test_hcw_hybrid_taskrun_command.py,
+test_hcw_hybrid_variables.py. Preserve and publish after verification.
+
+This checkpoint's completed behavior:
+- Official HyperFrames variables-prod template with title, subtitle and
+  bgColor declared parameters; strict --variables-file CLI overrides leave
+  original HTML immutable. Two actual producer captures: 6 RGBA PNG frames
+  each at 1920x1080, comparison bbox (523,397,1400,660), true byte
+  difference. First frame SHA256:
+  base 11eec824ec5df58ee7ba135bcef09752a92d6e1300b23b747ac03f5ad0f782d0
+  edited 64d000103394e95d7b477d37bb85b2c9f6714fe012824d1ca64c6b29b834783b.
+- workstation.creative_hyperframes_variables.validated_hyperframes_overrides
+  implements declared-variable allowlist, simple type checks, strict
+  canonical JSON, payload budgets; native source never rewritten.
+- Native opt-in test imports both genuine HF producer variants into real
+  EffectCraft, confirms differing render pixels, adds independent
+  EffectCraft text, saves and reopens three revisions of SAME project
+  with true native .ecproj, HTML, JSON variable override and silence.wav.
+  Real 288078-byte silence.wav native dependency was added after RED
+  FileNotFoundError and passed GREEN; no synthetic source. H-C1
+  engine+canonical multi-revision edit evidenced, but NOT Electron UI.
+- New independent workstation.creative_revision_cas supports
+  HEAD pointer under project, OS interprocess lock, expected HEAD and
+  ETag, transaction idempotent replay with payload fingerprint, refusal
+  of stale and simultaneous siblings; fail closed on orphan/legacy
+  revision lineage without a HEAD marker. This is a NEW opted-in
+  publication path, not a retrofit of all existing legacy writers.
+  Test concurrency confirmed one success and one 409; TDD RED/GREEN.
+- publish_creative_command_batch_cas applies existing CreativeTransaction
+  atomically in cloned CreativeDocument, stores digest receipt and
+  then updates HEAD. Fault in third of four commands leaves prior HEAD.
+  Human and agent actors sequentially update one revision chain. Actor
+  labels are CLIENT-SUPPLIED metadata, not yet identity-attested.
+- publish_creative_command_batch_for_run validates ACTUAL live Kanban
+  TaskRun and workspace, canonical policy and owner journal before
+  publishing. Failure after committing revision raises
+  CreativeEffectUncertain. If editing hybrid document, it carries
+  forward hashed native files from previous revision, preserving
+  EffectCraft, HF HTML/JSON, other assets, with test.
+- CLI workstation.creative now has canonical-create, canonical-open
+  and apply-batch behind --task-id and --run-id, operating on bounded
+  workspace-confined documents/command files; source and commands
+  are not independent authority. Integration test proved
+  create -> open -> command batch -> open, with negative outside
+  workspace, wrong session, terminated task and immutable history.
+- Baseline targeted followup: 4 passed in 18.62s on real TaskRun
+  command tests. Other CAS 7 green; source/native additional tests green.
+  FULL CURRENT scoped regression was STARTED in separate Remote Desktop
+  process PID 19584 across 32 Creative test files including native opt-in
+  engines; READ ITS FINAL EXIT AND COUNTS BEFORE CLAIMING FINAL STATUS.
+  Test creative_runtime.py remains excluded for the preexisting
+  missing YAML dependency in this venv.
+
+Current H-C:
+H-C0 PARTIAL (native CLIs proven, H-079 gating missing).
+H-C1 NATIVE_ENGINE_AND_CANONICAL_REVISION_PROVEN (real HF declared
+parameters and EC native text update each change rendered pixels; no
+Electron human manual editor E2E; no overall qualification).
+H-C2 BACKEND CANONICAL CLI_INTEGRATED (one project, CAS HEAD,
+immutable revisions, TaskRun input; React still has local owner state).
+H-C3 PARAMETER_NATIVE_INTEGRATED_PARTIAL (strict declared HF override;
+no full two-way property binding/time editor).
+H-C4 BACKEND_CAS_BATCH_INTEGRATED_PARTIAL (cross-process HEAD CAS,
+idempotent commands, TaskRun admission and batch rollback; no
+distributed native dual-engine transaction/undo or editor identity).
+H-C5 NOT_IMPLEMENTED (EffectCraft Web / Electron).
+H-C6 PARTIAL NATIVE (text and blur real; mattes/keying pending).
+H-C7 UNIT_TESTED fingerprints; no runtime cache.
+H-C8 NOT_IMPLEMENTED on-demand hybrid compositor.
+H-C9 UNIT_TESTED DAG; nested runtime and 1920x1080/10s final demo pending.
+
+Critical gates: D-043 Hermes is ONLY project authority; native EC and HF
+sources editable; preserve no-placeholder verification. H-079 and
+exact-head CI required before qualification. PR stays draft, NO MERGE.
+
+Next executable priorities:
+1. Read PID 19584 final pytest output; debug any regressions.
+2. Finish cross-platform security review, check git diff --check/lints.
+3. Commit only scoped changes and this ledger in isolated worktree,
+   push branch, confirm SHA and GitHub draft PR.
+4. Start H-C2 UI convergence using React PR #77 types / provider and
+   canonical backend RPC, without creating competing authoritative state;
+   next tracer test: actual Electron UI human edit -> existing live
+   TaskRun canonical-create/open/apply-batch -> Hermes agent edit same
+   revision -> renderer refresh via canonical-open, test restart.
+5. H-C4: durable undo/redo and genuinely atomic engine native staging;
+   concurrent process CAS stress test; close actor identity attribution.
+6. H-C5 onward as in roadmap, H-079/CI before main promotion.
+7. At every incomplete session, produce another SELF-CONTAINED copyable
+   continuation prompt with verified SHA, test receipts, process state,
+   blockers and first exact executable step.
+
+### Final scoped test and code quality receipt (same source, 2026-10-12)
+
+All 32 selected Creative test modules (native HyperFrames and EffectCraft
+opt-ins enabled) completed: **151 passed, 1 Windows symlink skip, 0 failed**,
+175.02 s, FINAL_SCOPE_EXIT=0. This is scoped pytest, NOT full product CI,
+Electron E2E or H-079 approval. The prior CLI TaskRun-only suite was
+4 passed in 18.62 s. Python compileall exit 0, Ruff 0.15.10 targeted
+8 Python files ALL CHECKS PASSED, git diff --check exit 0.
+No main worktree mutation or merge. The new APIs are opt-in, NOT yet
+wired to a real Electron manual editor. No claim of verified actor ID;
+actor_type is trace metadata, subject to future trustworthy identity binding.
