@@ -47,3 +47,20 @@
 - Original native HF frames: `C:\Temp\hcw-hybrid01-native-smoke\hf-official-motion`.
 - Native video and original EC source: `C:\Temp\hcw-hybrid01-native-smoke\effectcraft-enrichment`.
 - Native layered source experiment output: `C:\Temp\cql-001-hybrid-enriched2-20261012`.
+
+
+## LATEST CHECKPOINT — CQL-03 / 2026-10-12 (supersedes older next-action lines above)
+
+Repository branch and draft PR #86 confirmed on HEAD aa8f810b1c3d579c1f0831987c9902e42b71a0fe *before this new commit*; collect the new published HEAD using git rev-parse HEAD after committing. PR #81 HEAD rechecked 85b0448fa01261bf425764f188edf443d8194b8b; PR #81 workspace clean and main untouched.
+
+CQL-03 execution: independent headless Chromium React-component probe implemented in scripts/probe_editor_components.cjs, PINNED to PR #81 SHA. It imports actual CreativeWorkspaceContext/Timeline/Inspector/Preview/GraphEditor/Toolbar source into an independent fixture that uses one React instance and a schema-valid synthetic canonical HEAD. Never opens Electron or bypasses TaskRun.
+
+Evidence: evidence/pr81-chromium-85b0448/CQL_CHROMIUM_UI_OBSERVATIONS.json + actual Chromium screenshot creative-chromium-component.png. Results 5 PASS_UNIT and 4 FAIL: Graph Editor hook-order crash, inert Preview Play, Inspector Speed not submitting mutation, and rational 30000/1001fps frame-step mismatch. Five positive: no editable project before HEAD, canonical revision acceptance, track/clip selection → Inspector, local Timeline ruler seek → Preview time. Exact reproduction and owner suggestions in reports/CQL_PR81_UI_QUALIFICATION_85b0448.md.
+
+CQL-05 bounded local UI benchmark: 12 repeated Playwright ruler click → Preview label updates, p50 17.80595ms, nearest-rank p95 38.5327ms. Not video pixels, Electron, TaskRun, editing, or performance baseline of production product; recorded in JSON evidence.
+
+Verification in this continuation: 16/16 independent Python tests passed, including 3 tests of immutable evidence and negative exact-head gate. Node --check PASS, targeted Ruff PASS, Chromium probe exit 0 (the 3 captured UX failures are not hidden as passing cases). Prior CQL-01/02 native evidence was NOT rerun.
+
+New external dependency qualification: inspected PR #81 Electron main.ts which still registers resolveTrustedOwner: () => null and throws creative_owner_unavailable for open/apply. Therefore CQL-04 authenticated human+agent native E2E remains BLOCKED_EXTERNAL_DEPENDENCY, no surrogate identities were fabricated.
+
+NEXT ACTION: after committing and pushing this checkpoint, run exact-head PR #81 negative/positive integration tests only if owner provides real sender-bound TaskRun attestation; otherwise build lightweight independent preview-vs-export and rational-FPS regression coverage under quality-lab/tests or measurement harness, without modifying PR #81. On next session recheck PR #81 SHA; if changed inspect only touched creative seams and rerun CQL-03 probe against a dedicated isolated candidate checkout. Never silently overwrite immutable old evidence.

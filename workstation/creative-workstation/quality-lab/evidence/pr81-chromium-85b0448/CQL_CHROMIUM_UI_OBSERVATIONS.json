@@ -1,0 +1,116 @@
+{
+  "mission": "CQL-001",
+  "targetPR": 81,
+  "head": "85b0448fa01261bf425764f188edf443d8194b8b",
+  "scope": "Chromium component probe; synthetic schema-valid head; no native Electron/TaskRun authority",
+  "candidateSourceSha256": {
+    "CreativeWorkspaceContext.tsx": "fdf4bb69078247913beac92a69b78a51fa8346d74bdadb86dbc80b11a227515a",
+    "CreativeTimeline.tsx": "e98b8f852acce7ba10067048ec9244946fedda0d04c97b929426510913e2370a",
+    "CreativeInspector.tsx": "1da008612f96da42634c229ef2b7a7c78406d5776c5bddaf2d7ef8c5018eafe1",
+    "CreativePreview.tsx": "44aa345e52cedba2ecdc11c6f710c62ec996fb2c6ac12541729ffb6183aee0f3",
+    "CreativeGraphEditor.tsx": "cf388e5f722364455c3bebdde3800f0325ad7d66465906e2f3c409aa1ac4ee86",
+    "CreativeToolbar.tsx": "309c7f49ab71e19640b5569592ad29df62a8ba9022c99cae9c449944c42c35f5"
+  },
+  "pass": 5,
+  "fail": 4,
+  "seekBenchmark": {
+    "scope": "Chromium React local ruler click -> visible Preview text only (NOT pixel render or Electron product latency)",
+    "count": 12,
+    "ms": [
+      16.54,
+      23.19,
+      38.53,
+      17.69,
+      15.58,
+      17.39,
+      18.74,
+      17.92,
+      19.32,
+      19.25,
+      16.54,
+      17.26
+    ],
+    "p50_ms": 17.805950000000003,
+    "p95_nearest_rank_ms": 38.5327
+  },
+  "errors": [],
+  "graphErrors": [
+    "React has detected a change in the order of Hooks called by %s. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://react.dev/link/rules-of-hooks\n\n   Previous render            Next render\n   ------------------------------------------------------\n%s   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n CreativeGraphEditor 1. useContext                 useContext\n2. useMemo                    useMemo\n3. useState                   useState\n4. undefined                  useMemo\n",
+    "Rendered more hooks than during the previous render."
+  ],
+  "observations": [
+    {
+      "id": "UX-EMPTY",
+      "expect": "No timeline before source HEAD",
+      "observed": 0,
+      "status": "PASS_UNIT",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    },
+    {
+      "id": "UX-HEAD",
+      "expect": "Only accepted revision enters view",
+      "observed": "dddddddddddddddddddddddddddddddd",
+      "status": "PASS_UNIT",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    },
+    {
+      "id": "UX-TRACK",
+      "expect": "Inspector displays selected track",
+      "observed": true,
+      "status": "PASS_UNIT",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    },
+    {
+      "id": "UX-CLIP",
+      "expect": "Inspector displays selected clip",
+      "observed": true,
+      "status": "PASS_UNIT",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    },
+    {
+      "id": "UX-SEEK",
+      "expect": "Ruler click updates preview and leaves source revision intact",
+      "observed": {
+        "seek": 1.53,
+        "preview": "1.530s",
+        "rev": "dddddddddddddddddddddddddddddddd"
+      },
+      "status": "PASS_UNIT",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    },
+    {
+      "id": "UX-RATIONAL-FPS",
+      "expect": "One frame step at canonical 30000/1001fps equals 1001/30000s",
+      "observed": 0.03333333333333344,
+      "status": "FAIL",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    },
+    {
+      "id": "UX-PREVIEW-PLAY",
+      "expect": "Preview Play updates playback state",
+      "observed": false,
+      "status": "FAIL",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    },
+    {
+      "id": "UX-INSPECTOR-SPEED",
+      "expect": "Inspector property edit produces acknowledged canonical revision",
+      "observed": "dddddddddddddddddddddddddddddddd",
+      "status": "FAIL",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    },
+    {
+      "id": "UX-GRAPH-HOOKS",
+      "expect": "Selected keyed layer renders graph without React hook-order error",
+      "observed": {
+        "show": 0,
+        "errors": [
+          "React has detected a change in the order of Hooks called by %s. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://react.dev/link/rules-of-hooks\n\n   Previous render            Next render\n   ------------------------------------------------------\n%s   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n CreativeGraphEditor 1. useContext                 useContext\n2. useMemo                    useMemo\n3. useState                   useState\n4. undefined                  useMemo\n",
+          "Rendered more hooks than during the previous render."
+        ]
+      },
+      "status": "FAIL",
+      "scope": "Chromium React component, synthetic canonical projection (not Electron E2E)"
+    }
+  ]
+}

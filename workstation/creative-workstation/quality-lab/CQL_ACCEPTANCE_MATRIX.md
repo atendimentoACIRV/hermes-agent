@@ -16,3 +16,21 @@
 | CQL-05-B | Independent decode verifier latency | H.264 60 frames, five repeats | wall-clock p50/p95; source SHA stable | p50 470.12ms, p95 937.25ms (nearest rank), 5 measured samples; `reports/CQL_VIDEO_DECODE_BENCHMARK.json` | PASS_NATIVE |
 
 Status names: `PASS_NATIVE`, `PASS_UNIT`, `PASS_INTEGRATION`, `FAIL`, `BLOCKED_EXTERNAL_DEPENDENCY`, `NOT_RUN`, `NOT_APPLICABLE`. Scope of each proof is binding.
+
+## 2026-10-12 scoped CQL-03 results — not native Electron qualification
+
+| ID | Target | Evidence & observed result | Classification |
+|---|---|---|---|
+| CQL-03-EMPTY | Project hidden before HEAD | Real Chromium React empty view | PASS_UNIT |
+| CQL-03-HEAD | Only accepted canonical revision | React projected supplied schema-valid fixture HEAD | PASS_UNIT |
+| CQL-03-TRACK | Track click selects Inspector | Inspector rendered Video A | PASS_UNIT |
+| CQL-03-CLIP | Clip click selects Inspector | Inspector rendered Visual Clip | PASS_UNIT |
+| CQL-03-SEEK | Timeline ruler click syncs Preview local time | 1.530s display and unchanged acknowledged revision | PASS_UNIT |
+| CQL-03-PREVIEW-PLAY | Preview button should start playback | isPlaying remained false after actual click | FAIL |
+| CQL-03-INSPECTOR-SPEED | Speed edit should submit authorized mutation | field handler logs; no new canonical projection | FAIL (component wiring only) |
+| CQL-03-GRAPH | Select keyed layer after graph empty | React crashed with Rendered more hooks than during previous render | FAIL |
+| CQL-03-RATIONAL-FPS | Click one Step Forward with canonical fps 30000/1001 | Actual delta 0.03333333333333344s vs required 1001/30000s | FAIL |
+| CQL-03-ELECTRON | Native app human+agent CAS and readback | main.ts DENY-ALL without owner | BLOCKED_EXTERNAL_DEPENDENCY |
+| CQL-05-LOCAL-UX | Local ruler-click to Preview text only, 12 tries | p50 17.80595ms, p95 38.5327ms in browser receipt, not decoded video or Electron | PASS_UNIT (scoped benchmark) |
+
+Source SHA and precise results in evidence/pr81-chromium-85b0448/CQL_CHROMIUM_UI_OBSERVATIONS.json. Reports are intentionally immutable per target SHA. Overall UX experience and native application gates remain UNQUALIFIED.

@@ -35,3 +35,10 @@ These are **reproducible product scenarios**, not claims that UI works. Test on 
 Record startup, preview seek, inspector edit→pixel, playhead drift, source reopen, undo/redo correctness, keystroke counts and p50/p95 across comparable runs. Do not assert percentages without a baseline. Evaluate human perceptual quality explicitly as `PENDING_HUMAN_VALIDATION`.
 
 **No production UI code changes are authorized in CQL-001; send validated defect reports to the PR #81 owner.**
+
+
+## CQL-03 execution receipt / exact-head component probe
+
+Independent tested SHA: 85b0448fa01261bf425764f188edf443d8194b8b. The Chromium harness exercised real unmodified React components with a schema-valid synthetic HEAD. Five isolated PASS_UNIT (mount empty, canonical acceptance, track and clip selection, ruler seek→Preview text) and four FAIL (Preview Play inert, Inspector Speed no mutation, Graph Editor hook-order crash, and rational-FPS step size). These results do NOT qualify Electron TaskRun authorization, native media preview, render pixels or persistence. See reports/CQL_PR81_UI_QUALIFICATION_85b0448.md.
+
+Reviewers should rerun all 8 against a new SHA after owner fixes, and only then promote a result beyond component scope. H-C2 native human+agent scenario still BLOCKED_EXTERNAL_DEPENDENCY.

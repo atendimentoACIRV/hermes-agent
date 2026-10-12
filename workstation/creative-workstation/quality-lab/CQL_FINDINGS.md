@@ -41,3 +41,29 @@
 - PR #81 HEAD last verified `acb518e5ba227ae1fbabff7f88f0842533851ca6` on 2026-10-12.
 - H-C2 sender/TaskRun attestation is owned by agent A. No reproduction by bypassing denied authority.
 - Status `BLOCKED_EXTERNAL_DEPENDENCY` until production-Electron direct proof eligible.
+
+
+## LATEST UX findings — PR #81 exact SHA 85b0448 (2026-10-12)
+
+### F-008 — Graph Editor hook-order crash (confirmed P0)
+True React Chromium component execution: selecting layer with keyframes after initial empty render raises Rendered more hooks than during previous render. Root cause: CreativeGraphEditor.tsx early return before later hooks. Fix proposal (to other owner only): reorder all hooks above conditional return, and cover empty → keyed layer → empty state. Repro/JSON/screenshot in reports/CQL_PR81_UI_QUALIFICATION_85b0448.md and evidence/pr81-chromium-85b0448/.
+
+### F-009 — Preview Play inert (confirmed P1)
+Clicked Preview Play with schema-valid canonical fixture; isPlaying remains false. Source handler only console.logs. Add real shared playback state path; qualification of media-engine playback remains separate.
+
+### F-010 — Inspector speed no canonical mutation (confirmed P1 component gap)
+User filled actual Inspector speed number input to 1.5. Handler console.logs, no backend command. Do not interpret as backend failure, because authentic H-C2 unavailable. Fix proposal only after authorized command path exists.
+
+### F-011 — Toolbar Undo/Redo/Save/Export inert handlers (SOURCE-OBSERVED / NOT_RUN)
+Current PR #81 CreativeToolbar.tsx buttons lack onClick handlers. Functional native workflow NOT_RUN; owner should cover them after TaskRun authority integration. Not counted among the three Chromium FAIL cases.
+
+### F-012 — Rational FPS timeline stepping mismatch (CONFIRMED / FAIL)
+CreativeTimeline.tsx and CreativeToolbar.tsx use fixed 30 in formatTime and frame step, while canonical document may use 30000/1001. Real Chromium toolbar Step Forward was clicked with canonical fps 30000/1001: local playhead delta was 0.03333333333333344s (1/30) rather than 1001/30000s. This confirms a React time-stepping mismatch, not yet a rendered export drift measurement. Owner should use canonical RationalFps for frame-step operations and display; CQL does not edit the production component.
+
+### F-013 — H-C2 still DENY-ALL (confirmed external dependency)
+Electron main.ts in PR #81 registers resolveTrustedOwner: () => null and open/apply that reject creative_owner_unavailable. Native human/agent E2E cannot be graded, even with unit-tested resolver code. BLOCKED_EXTERNAL_DEPENDENCY.
+
+### Scoped component benchmark (measured, non-product)
+12 real local Chromium clicks on ruler → updated Preview text. p50 17.80595ms, p95 nearest-rank 38.5327ms. The fixture contained no decoded video, and this is not editor/IPC/render latency.
+
+Target SHA must be reverified before each subsequent qualification. No PR #81 files modified.
