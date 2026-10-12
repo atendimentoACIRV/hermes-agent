@@ -313,6 +313,9 @@ class TaskRunObservationWindow:
     shadow_decisions: List[Dict[str, Any]] = field(default_factory=list)
     adoption_records: List[Dict[str, Any]] = field(default_factory=list)
     system2_samples: List[int] = field(default_factory=list)
+    # Cumulative per-run counters (not inferred from the bounded event ring).
+    funnel_counts: Dict[str, int] = field(default_factory=dict)
+    funnel_denials: Dict[str, int] = field(default_factory=dict)
     owner: Optional[RunAdoptionOwner] = None
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -323,6 +326,7 @@ class TaskRunObservationWindow:
             if event.outcome in _VERIFIED_OUTCOMES:
                 if event.sample_ref and event.sample_ref not in self.verified_success_refs:
                     self.verified_success_refs.append(event.sample_ref)
+                    self.funnel_counts["verified_evidence"] = self.funnel_counts.get("verified_evidence", 0) + 1
                     self.segment_evidence_revisions[seg_key] = self.segment_evidence_revisions.get(seg_key, 0) + 1
                 if event.system2_calls is not None and len(self.system2_samples) < 256:
                     self.system2_samples.append(int(event.system2_calls))
@@ -427,6 +431,62 @@ class OnlineCompilabilityMonitor:
         with self._metrics_lock:
             self.metrics[key] += by
 
+    def task_run_funnel(self, task_id: str, run_id: str) -> Dict[str, Any]:
+        """Read-only operational overview, including restored checkpoint counters.
+
+        This projection never claims a missing stage is a success and never returns
+        raw evidence, site content, or user parameters to dashboard clients.
+        """
+        task_id, run_id = str(task_id), str(run_id)
+        with self._windows_lock:
+            window = self._windows.get((task_id, run_id))
+        if window is not None:
+            with window.lock:
+                counters = dict(window.funnel_counts)
+                reasons = dict(window.funnel_denials)
+                candidates = len(window.mined_candidate_ids)
+                offers = len(window.offers)
+            source = "live"
+        else:
+            # ArtifactStore._task_dir() creates directories, so a read-only
+            # dashboard must NOT call it. Mirror its filename sanitizer.
+            safe_task = "".join(c if c.isalnum() or c in "-_" else "_" for c in task_id)
+            filename = "learning_checkpoint_" + task_id + "_" + run_id + ".json"
+            safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in filename)
+            path = self.artifacts.root / safe_task / safe_name
+            try:
+                checkpoint = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+                if checkpoint.get("task_id") != task_id or str(checkpoint.get("run_id")) != run_id:
+                    checkpoint = {}
+            except (OSError, ValueError, TypeError, AttributeError):
+                checkpoint = {}
+            counters = dict(checkpoint.get("funnel_counts") or {})
+            reasons = dict(checkpoint.get("funnel_denials") or {})
+            candidates = len(checkpoint.get("mined_candidate_ids") or ())
+            offers = None  # offers exist only inside the real runtime process
+            source = "persisted_checkpoint" if checkpoint else "unknown"
+        defaults = (
+            "processed_events", "verified_evidence", "filtered_duplicate",
+            "prefilter_insufficient", "mining_attempted", "mined_candidates",
+            "validation_attempted", "validation_denied", "offers_created",
+            "adoption_denied", "verified_reuse", "adoption_attempted",
+        )
+        return {
+            "task_id": str(task_id), "run_id": str(run_id),
+            "mode": self.mode, "enabled": self.enabled,
+            "downgrade_reason": self.mode_downgrade_reason,
+            "status": "observed" if counters else "not_observed",
+            "data_source": source,
+            "mode_source": "live_runtime" if window is not None else "reader_process_only",
+            **{key: counters.get(key, 0) for key in defaults},
+            "decision_stages": {k[len("decision_"):]: v for k, v in counters.items()
+                                if k.startswith("decision_")},
+            "denial_reasons": reasons,
+            "known_candidate_ids": candidates,
+            "run_local_offers_in_memory": offers,
+            "system2_calls_avoided": None,
+        }
+
     def _ensure_worker(self) -> None:
         with self._worker_lock:
             if self._worker_thread is None and not self._stop_event.is_set():
@@ -454,6 +514,8 @@ class OnlineCompilabilityMonitor:
                     },
                     "system2_samples": list(window.system2_samples),
                     "decision_receipt_refs": list(window.decision_receipt_refs),
+                    "funnel_counts": dict(window.funnel_counts),
+                    "funnel_denials": dict(window.funnel_denials),
                     "last_touch": window.last_touch,
                 }
             self.artifacts.store(
@@ -488,6 +550,8 @@ class OnlineCompilabilityMonitor:
                 }
                 window.system2_samples = [int(s) for s in data.get("system2_samples", [])]
                 window.decision_receipt_refs = list(data.get("decision_receipt_refs", []))
+                window.funnel_counts = {str(k): int(v) for k, v in (data.get("funnel_counts") or {}).items()}
+                window.funnel_denials = {str(k): int(v) for k, v in (data.get("funnel_denials") or {}).items()}
             return True
         except Exception:
             return False
@@ -587,15 +651,24 @@ class OnlineCompilabilityMonitor:
             window.owner = owner
         if not window.add_event(event):
             self._bump("events_filtered")
+            with window.lock:
+                window.funnel_counts["filtered_duplicate"] = window.funnel_counts.get("filtered_duplicate", 0) + 1
             return {"status": "filtered_duplicate"}
+        with window.lock:
+            window.funnel_counts["processed_events"] = window.funnel_counts.get("processed_events", 0) + 1
         if event.outcome in _VERIFIED_OUTCOMES or event.outcome in _FAILURE_OUTCOMES or bool(event.sample_ref):
             self._persist_window_checkpoint(window)
         if not self._deterministic_prefilter(window, event):
             self._bump("events_filtered")
+            with window.lock:
+                window.funnel_counts["prefilter_insufficient"] = window.funnel_counts.get("prefilter_insufficient", 0) + 1
             return {"status": "prefilter_insufficient"}
 
         decision = self._query_system1_compilability(window, event)
         stage = decision.get("stage", CompilabilityStage.KEEP_COLLECTING.value)
+        with window.lock:
+            stage_key = "decision_" + str(stage).lower()
+            window.funnel_counts[stage_key] = window.funnel_counts.get(stage_key, 0) + 1
         summary: Dict[str, Any] = {"status": "evaluated", "stage": stage, "decision": decision,
                                    "task_id": event.task_id, "run_id": event.run_id}
 
@@ -615,6 +688,9 @@ class OnlineCompilabilityMonitor:
             if window.can_attempt_compilation(seg_key):
                 window.record_compilation_attempt(seg_key)
                 candidates = self.mine_candidate_in_run(event.task_id, event.run_id)
+                with window.lock:
+                    window.funnel_counts["mining_attempted"] = window.funnel_counts.get("mining_attempted", 0) + 1
+                    window.funnel_counts["mined_candidates"] = window.funnel_counts.get("mined_candidates", 0) + len(candidates)
                 summary["mined_candidates"] = [c.id for c in candidates]
             else:
                 summary["mining_skipped"] = "budget_exceeded"
@@ -629,6 +705,14 @@ class OnlineCompilabilityMonitor:
                 window.validation_attempts[cand_id] = window.validation_attempts.get(cand_id, 0) + 1
                 valid, proof, reasons = self.validate_candidate_run_local(
                     cand, task_id=event.task_id, run_id=event.run_id)
+                with window.lock:
+                    window.funnel_counts["validation_attempted"] = window.funnel_counts.get("validation_attempted", 0) + 1
+                    if valid and proof is not None:
+                        window.funnel_counts["offers_created"] = window.funnel_counts.get("offers_created", 0) + 1
+                    else:
+                        window.funnel_counts["validation_denied"] = window.funnel_counts.get("validation_denied", 0) + 1
+                        for reason in reasons:
+                            window.funnel_denials[str(reason)] = window.funnel_denials.get(str(reason), 0) + 1
                 if valid and proof is not None:
                     summary["validated_candidate"] = cand_id
                     summary["offer"] = window.offers[cand_id].offer_id
@@ -807,12 +891,25 @@ class OnlineCompilabilityMonitor:
         window.adoption_records.append(record)
         del window.adoption_records[:-64]
         if record.get("kind") == "denied":
+            with window.lock:
+                window.funnel_counts["adoption_denied"] = window.funnel_counts.get("adoption_denied", 0) + 1
+                for reason in record.get("reasons", []):
+                    key = str(reason)
+                    if len(key) > 80 or not all(c.isalnum() or c in "._:-" for c in key):
+                        key = "redacted"
+                    window.funnel_denials[key] = window.funnel_denials.get(key, 0) + 1
+            self._persist_window_checkpoint(window)
             self._bump("adoption_denials")
             with self._metrics_lock:
                 for reason in record.get("reasons", []):
                     bucket = self.metrics["adoption_denial_reasons"]
                     bucket[reason] = bucket.get(reason, 0) + 1
             return
+        with window.lock:
+            window.funnel_counts["adoption_attempted"] = window.funnel_counts.get("adoption_attempted", 0) + 1
+            if record.get("verified"):
+                window.funnel_counts["verified_reuse"] = window.funnel_counts.get("verified_reuse", 0) + 1
+        self._persist_window_checkpoint(window)
         self._bump("items_attempted")
         if record.get("completed"):
             self._bump("items_completed")

@@ -68,6 +68,8 @@ class HierarchicalExperienceCompiler:
         self,
         sequence: list[str | OperationalCapability],
         input_mappings: dict[str, dict[str, str]] | None = None,
+        *,
+        if_absent: bool = False,
     ) -> OperationalCapability:
         """Compose a sequence of capabilities into a composite OperationalCapability.
         
@@ -250,7 +252,8 @@ class HierarchicalExperienceCompiler:
                 "semantic_closure": True,
             },
         )
-        return self.registry.register(composite_cap)
+        return (self.registry.register(composite_cap, if_absent=True)
+                if if_absent else self.registry.register(composite_cap))
 
     def promote_composite(self, capability: OperationalCapability) -> OperationalCapability:
         """Promote a discovered composite capability via causal replay / ExperiencePromotionPolicy."""

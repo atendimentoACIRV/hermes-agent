@@ -22,10 +22,10 @@ from workstation.run_adoption import AdoptionReport, DurableRunAdoptionOwner, Ru
 
 logger = logging.getLogger(__name__)
 
-# Primitives the Hermes durable dispatcher can run and read back independently today.
-# Extended for browser and Trello API primitives per OPC-005.
+# Primitives supported by the owner. Readback admission is narrower: a raw tool
+# response is not an independent verifier for browser_snapshot / trello_api_get.
 _SUPPORTED = ("write_file", "read_file", "browser_navigate", "browser_snapshot", "trello_api_get")
-_READBACK = ("write_file", "browser_navigate", "browser_snapshot", "trello_api_get")
+_READBACK = ("write_file", "browser_navigate")
 _GUTTER = re.compile(r"^\s*\d+\|", re.M)
 
 
@@ -143,7 +143,8 @@ def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> Optional[Du
     if not task_id or run_id is None:
         return None
     cached = getattr(agent, "_run_adoption_owner", None)
-    if cached is not None:
+    bound = (str(task_id), str(run_id))
+    if cached is not None and getattr(cached, "_bound_task_run", bound) == bound:
         return cached
 
     from workstation.integrations.hermes.scoped_execution import (
@@ -161,15 +162,22 @@ def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> Optional[Du
 
     readback_fns = _build_readback_fns(dispatch, artifacts, str(task_id))
 
+    def verified_readback(primitive: str, args: dict, raw: Any) -> Optional[dict]:
+        # Do not let merely having an entry in the dispatcher prove independent
+        # verification. Only explicitly admitted primitives may use it.
+        handler = readback_fns.get(primitive) if primitive in _READBACK else None
+        return handler(primitive, args, raw) if handler is not None else None
+
     owner = DurableRunAdoptionOwner(
         DurableTaskStore, artifacts,
         authority_for_task=lambda task: trusted_effect_authority_from_agent(agent, session_id, task),
         dispatch_fn=dispatch,
-        readback_fn=None,  # Use per-primitive readback_fns via owner.readback_primitives
+        readback_fn=verified_readback,
         readback_primitives=_READBACK, supported_primitives=_SUPPORTED, system2_counter=system2_counter,
     )
-    # Attach readback functions to owner for RunLocalAdopter to use
-    owner._readback_fns = readback_fns
+    # The dispatcher closure is bound to one canonical task. Never reuse the
+    # owner across a later TaskRun on the same agent instance.
+    owner._bound_task_run = bound
     from workstation.experience_compiler.lifecycle import (
         get_validation_environment_provider,
         register_validation_environment_provider,

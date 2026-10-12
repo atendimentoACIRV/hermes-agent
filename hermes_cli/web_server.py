@@ -1026,6 +1026,7 @@ from hermes_cli.web_routers import (
     chat_workspaces as _chat_workspaces_routes,
     dashboard_ui as _dashboard_ui_routes,
     shared_metrics as _shared_metrics_routes,
+    experience_compiler as _experience_compiler_routes,
 )
 
 app.include_router(_files_routes.router)
@@ -1059,6 +1060,7 @@ app.include_router(_chat_ws_routes.router)
 app.include_router(_chat_workspaces_routes.router)
 app.include_router(_dashboard_ui_routes.router)
 app.include_router(_shared_metrics_routes.router)
+app.include_router(_experience_compiler_routes.router)
 
 @app.get("/api/workstation/resources")
 async def get_workstation_resources():
