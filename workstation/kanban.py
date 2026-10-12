@@ -136,13 +136,18 @@ def is_multistep_request(prompt: str) -> bool:
     if not isinstance(prompt, str):
         return False
     text = " ".join(prompt.casefold().strip().split())
+    if re.match(r"^(multistep workflow to|workflow para|pipeline para)\b", text):
+        return True
     if re.search(r"\b(execute (this |the )?multistep workflow|execute este workflow)\b", text):
         return True
-    if not text or "?" in text or re.match(
-        r"^(como|qual|quais|porque|por que|o que|what|how|why|can you explain)\b", text
+    if not text or re.match(
+        r"^(como|qual|quais|porque|por que|o que|what|how|why|can you explain|explique|mostre|descreva|resuma|defina|me explique|me mostre|me ajude a entender|me diga|me conte)\b", text
     ):
         return False
-    if re.search(r"\b(multistep|workflow|pipeline|passo a passo|lote de tarefas)\b", text):
+    if re.search(
+        r"\b(execute|implemente|crie|configure|automatize|rode|run|implement|create)\b"
+        r".+\b(multistep|workflow|pipeline|passo a passo|lote de tarefas)\b", text
+    ):
         return True
     if re.search(r"\b(first|primeiro)\b.+\b(then|depois|finally|por fim)\b", text):
         return True
@@ -150,14 +155,14 @@ def is_multistep_request(prompt: str) -> bool:
         verbs = re.findall(
             r"\b(extract|verify|create|generate|build|test|fix|implement|"
             r"extraia|verifique|crie|gere|implemente|corrija|teste|documente|"
-            r"investigue|configure|salve|publique)\b", text
+            r"investigue|configure|salve|publique|escreva)\b", text
         )
         if len(verbs) >= 2:
             return True
     # Explicit multi-action assignments, not noun/topic mentions.
     actions = re.findall(
         r"\b(investigue|corrija|implemente|teste|documente|crie|gere|"
-        r"atualize|construa|configure|desenvolva|revise|integre|"
+        r"atualize|construa|configure|desenvolva|revise|integre|escreva|"
         r"fix|implement|build|generate|create|test|verify|deploy)\b", text
     )
     return len(set(actions)) >= 2 and bool(re.search(r"[,;]|\b(e|and|depois)\b", text))

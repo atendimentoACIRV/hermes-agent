@@ -1,0 +1,29 @@
+# P0 Kanban + Native Browser Authority — evidence and continuation (2026-10-12)
+
+**Scope: Kanban, session/run/browser authority and UI only.** Worktree: `C:\Github\hermes-agent-kanban-browser-authority-20261012`. Branch: `fix/p0-kanban-browser-authority-20261012`, forked from `fix/p0-proof-bound-completion-20261011` (PR #80, stacked on #79 and #76). Root checkout `C:\Github\hermes-agent` has user-owned uncommitted UI/browser changes and was not altered. H-079 permits development, not release.
+
+## Reproduced and corrected (RED → GREEN)
+- `tools/browser_workstation.py::_dispatch`: **session-only Browser requests borrowed authority** by looking up the single Kanban task in a session, including blocked tasks, or reading stale `HERMES_KANBAN_TASK/HERMES_KANBAN_RUN_ID` from the process. Two regression tests RED; now a session call uses only explicitly supplied card/run IDs and its own session BrowserTask key. Sessionless legacy environment use remains.
+- Explicit `kanban_card_id/run_id` must match the canonical running TaskRun and session when a matching canonical card exists. Two more tests RED on blocked run and foreign session, now fail closed with existing `STALE_RUN` before controller dispatch. No implicit revival or replay.
+- Stale global `HERMES_OPERATION_ID` could leak into a different session and cause false idempotent replay. RED test → session calls now accept only explicit operation IDs or a new generated ID.
+- `workstation/kanban.py::is_multistep_request` previously promoted explanatory workflow/pipeline topics to cards while rejecting explicit multi-action requests containing a question mark or `escreva`. RED six cases; fixed conservative admission with explicit commands and cognitive prefix detection; preserved existing `Multistep workflow to ...` fixture.
+- `workstation/task_compiler.py::batch_intent` previously classified `Me mostre 3 workflows` as batch work because first token `me` matched grammatical imperative suffix; RED → cognitive prefix exclusion. Existing explicit batch intents preserved.
+- Added mandatory **copy/paste resume prompt** rule in `workstation/AGENTS.md`: each unfinished engineering session must hand back exact refs, status, tests, next reproducible gate, precautions and instructions for another resume prompt.
+
+## Tests (actual Windows runs)
+- `scripts/run_tests.sh` 8 named P0/browser/kanban Python suites: **68 PASS, 0 failed**. Includes new Browser authority (6), admission semantics (9), existing Browser route (16), smart admission (15), Kanban journal (5), supersession (10), denied handoff (4) and force-authority (3).
+- Separate six Python suites canonical work loop/continuity/TaskCompiler/execution policy/proof-bound completion/authority fencing: **99 PASS, 0 failed**.
+- UI tests run against existing **uncommitted root UI** (`native-view-occlusion.test.ts`, `workstation-browser-pane.test.tsx`): **17 PASS**, with React `act()` warnings. Electron unit tests `workstation-browser-runtime-task`, `runtime-admission`, `browser-session-state`: **43 PASS**. Neither is a packaged Electron human-click dogfood test.
+- Ruff targeted files and whitespace check run separately. Need re-run exact-head suite/CI after final commit. H080B `no_certifiable_capability_found` was previously RED on baseline, not fixed here. Do not claim full 14-priority qualification.
+- NO real Kanban tasks, handoffs, sessions, credentials or historical deleted cards were mutated.
+
+## Required next gates, in order
+1. Re-check branch/PR and run packaged Windows Electron with **isolated HERMES_HOME** against local test site: visible UI buttons/clicks, switch two chats, one shot navigation without Kanban card, explicit durable BrowserTask with current run, human control take/release/restart/agent resume. Capture reproducible logs and state transition. If RED, trace `workstation-browser-runtime.ts::assertAgentControl`, `resolveControlTaskId`, `BrowserTaskLifecycle`, `workstation/browser_session.py` and IPC bridge. Never suppress `409 USER_CONTROL_ACTIVE`.
+2. Build repeatable corpus of deidentified actual prompts from local dogfood and test false task promotion/omissions. Improve heuristics only from failing cases; don't add automatic LLM admission tax.
+3. Cross-process concurrent identical task admission and claim: reproduce race; fix transactionally at **canonical Kanban SQLite owner**, preserving intentional repeat after completion, no new registry or unapproved writes.
+4. Native handoff E2E: human takeover→release→independent readback→continue after uncertain effect, no duplicate popup or mutation. Verify sessions are isolated, no borrowed lease, persistence through restart.
+5. Verify P0.3 typed acceptance contract by operation/effect (generic contract still partially incomplete). Review P0.5 dry run without restoring user-deleted Kanban: 106 historical backup-only tasks retained deleted, 55 orphan handoffs marked for review; real restoration needs scoped approval.
+6. Exact-head local regression + GitHub CI, native packaged E2E and baseline H080B investigation; only then propose merge via approved upstream gates.
+
+## Mandatory stop protocol
+Always return a **single ready-to-copy RESUME PROMPT** for the next AI invocation when any gate remains. Include exact worktree, branch, HEAD, PR URL, uncommitted state, latest pass/fail commands/counts, and precise next tests/source symbols. Instruct the next AI to work immediately, retain user changes, not weaken permissions, not retry uncertain writes, not restore deleted cards, and itself issue an updated continuation prompt if it must stop. Do not claim completion or promise background work.

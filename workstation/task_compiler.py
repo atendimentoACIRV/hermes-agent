@@ -54,7 +54,14 @@ def batch_intent(prompt: Any) -> bool:
     first = re.findall(r"\w+", lower)
     directive = bool(first and (re.search(r"(?:ar|er|ir|e|a)$", first[0]) or
                                first[0] in {"create", "generate", "process", "update", "execute", "apply", "send"}))
-    cognitive = bool(first and first[0] in {"compare", "explique", "analise", "discuta", "explore", "explain", "discuss"})
+    cognitive = bool(
+        first and (
+            first[0] in {"compare", "explique", "analise", "discuta", "explore", "explain", "discuss",
+                         "descreva", "resuma", "mostre", "defina"}
+            or (first[0] == "me" and len(first) > 1
+                and first[1] in {"mostre", "explique", "diga", "conte", "ajude"})
+        )
+    )
     count = re.search(r"\b(?:[2-9]|[1-9][0-9]+)\s+[\w-]+s\b", lower)
     fan_out = re.search(r"\b(?:cada\s+(?:registro|item|arquivo|usuário|usuario)|todos?\s+(?:esses?|estes?|os)|mesma\s+.+\s+ness(?:es|as)|each\s+|all\s+these)", lower)
     structured = False

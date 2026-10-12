@@ -34,3 +34,28 @@ must be verified.
 Before editing anything under `workstation/` or any Workstation-owned integration point elsewhere in the repository, read [`context/README.md`](context/README.md) and follow its required reading order. Then inspect the current `main` code and tests for the subsystem being changed.
 
 Do not create parallel SessionDB, Kanban, Memory, approval, or Browser state systems. Keep the upstream delta explicit and preserve the Browser/session/security invariants recorded in the Workstation context.
+
+## Mandatory stop-and-resume handoff for unfinished Workstation missions
+
+Whenever a Workstation implementation mission ends without **all** acceptance gates verified,
+the implementing agent MUST return a single user-copyable **RESUME PROMPT** in its final
+response, even if it also publishes a PR. The prompt must make the next session executable,
+not instruct it to audit the repository from scratch.
+
+The resume prompt MUST state:
+- Exact repository, isolated worktree, branch, base/head commit, staged/uncommitted changes,
+  and the latest remote PR URL; verify these rather than guessing them.
+- Implemented behavior with source paths/symbols, and what is **not** implemented.
+- RED reproduction and latest GREEN/regression/native/CI evidence, with commands,
+  output counts, and any failing test by exact name (including baseline failures).
+- Original invariant and the single next highest-priority reproducible failure.
+- Ordered next actions, tests, source owners, security gates, dependencies, and expected
+  proof. Explicitly forbid reverting user edits, inventing evidence, weakening leases,
+  retrying unknown mutations, or restoring historical Kanban without scoped approval.
+- Instructions to continue until qualification, and, if stopping again, to generate
+  another independently usable, updated resume prompt with exact current identifiers.
+
+Persist a factual engineering journal entry where applicable. Never claim background
+continuation, a future delivery, an approved merge, or complete qualification while
+CI/native evidence is missing. Prefer one precise next gate over repeating an open-ended
+research plan.

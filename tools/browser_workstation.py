@@ -62,7 +62,7 @@ class WorkstationBrowserError(RuntimeError):
         state_changed: bool = False,
         recommended_action: str = "ESCALATE",
         resource_ref: str | None = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
         http_status: int | None = None,
     ) -> None:
         super().__init__(message)
@@ -76,7 +76,7 @@ class WorkstationBrowserError(RuntimeError):
         self.http_status = http_status
 
     @classmethod
-    def from_payload(cls, payload: Dict[str, Any], *, http_status: int | None = None) -> "WorkstationBrowserError":
+    def from_payload(cls, payload: dict[str, Any], *, http_status: int | None = None) -> WorkstationBrowserError:
         message = str(payload.get("message") or payload.get("error") or "Hermes Browser action failed")
         error_code = str(payload.get("error_code") or "CAPABILITY_MISSING")
         target_cls = WorkstationBrowserUnavailable if error_code == "CONTROLLER_DOWN" else cls
@@ -92,7 +92,7 @@ class WorkstationBrowserError(RuntimeError):
             http_status=http_status,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": False,
             "error_code": self.error_code,
@@ -123,7 +123,7 @@ def _bool_env(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _browser_config() -> Dict[str, Any]:
+def _browser_config() -> dict[str, Any]:
     try:
         from hermes_cli.config import cfg_get, read_raw_config
 
@@ -299,8 +299,8 @@ def read_native_browser_session_state(
             raise ValueError(f"BrowserTask receipt safeUrl does not match target URL: receipt={last_receipt.get('safeUrl')}, expected={expected_url}")
         if last_receipt.get("executedAt") and state.get("savedAt"):
             try:
-                exec_at = datetime.fromisoformat(str(last_receipt["executedAt"]).replace("Z", "+00:00"))
-                saved_at = datetime.fromisoformat(str(state["savedAt"]).replace("Z", "+00:00"))
+                exec_at = datetime.fromisoformat(str(last_receipt["executedAt"]))
+                saved_at = datetime.fromisoformat(str(state["savedAt"]))
                 if (exec_at - saved_at).total_seconds() > 2.0:
                     raise ValueError("BrowserTask receipt executedAt is temporally after savedAt")
             except (ValueError, TypeError) as err:
@@ -352,7 +352,7 @@ def workstation_control_path() -> Path:
     return _workstation_home() / "Runtime" / "browser-control.json"
 
 
-def _read_control() -> Dict[str, Any]:
+def _read_control() -> dict[str, Any]:
     path = workstation_control_path()
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -374,11 +374,11 @@ def _read_control() -> Dict[str, Any]:
 def _request_json(
     method: str,
     suffix: str,
-    payload: Optional[Dict[str, Any]] = None,
+    payload: Optional[dict[str, Any]] = None,
     *,
     timeout: float,
     action: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     control = _read_control()
     base = str(control["url"]).rstrip("/")
     data = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -392,7 +392,7 @@ def _request_json(
     )
     act = action or (payload.get("action") if isinstance(payload, dict) else None)
     try:
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310
+        with urlopen(request, timeout=timeout) as response:
             raw_body = response.read().decode("utf-8")
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
@@ -415,7 +415,7 @@ def _request_json(
             recommended_action="ESCALATE", http_status=exc.code,
             details={"http_status": exc.code},
         ) from exc
-    except (TimeoutError, socket.timeout) as exc:
+    except TimeoutError as exc:
         is_mutation = False
         if act:
             from tools.effects import tool_effect, ToolEffect
@@ -502,7 +502,7 @@ def workstation_controller_available(*, force: bool = False) -> bool:
     return value
 
 
-def workstation_controller_resources(*, timeout: float = _DEFAULT_TIMEOUT_SECONDS) -> Dict[str, Any]:
+def workstation_controller_resources(*, timeout: float = _DEFAULT_TIMEOUT_SECONDS) -> dict[str, Any]:
     """Read the UI-neutral resource projection from the Electron controller.
 
     The controller is the owner of BrowserTask/page identity. This small
@@ -517,7 +517,7 @@ def workstation_controller_events(
     task_id: Optional[str] = None,
     limit: int = 200,
     timeout: float = _DEFAULT_TIMEOUT_SECONDS,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Read bounded canonical journal events from the Electron controller."""
 
     bounded_limit = min(200, max(1, int(limit)))
@@ -575,7 +575,7 @@ def _contains_secret_prefix(value: str) -> bool:
     return bool(_PREFIX_RE.search(value) or _PREFIX_RE.search(decoded))
 
 
-def _validate_navigation(args: Dict[str, Any]) -> None:
+def _validate_navigation(args: dict[str, Any]) -> None:
     raw = str(args.get("url") or "").strip()
     if not raw:
         raise WorkstationBrowserError("browser_navigate requires a URL or search target")
@@ -618,7 +618,7 @@ def _force_redact(value: Any) -> Any:
 
 
 def resolve_browser_type_text(
-    args: Dict[str, Any],
+    args: dict[str, Any],
     *,
     task_id: Optional[str] = None,
     session_id: Optional[str] = None,
@@ -716,7 +716,7 @@ def resolve_browser_type_text(
 
 def _dispatch(
     action: str,
-    args: Dict[str, Any],
+    args: dict[str, Any],
     *,
     task_id: Optional[str] = None,
     session_id: Optional[str] = None,
@@ -738,48 +738,18 @@ def _dispatch(
         timeout = float(os.getenv("HERMES_WORKSTATION_BROWSER_TIMEOUT", str(_DEFAULT_TIMEOUT_SECONDS)))
     except ValueError:
         timeout = _DEFAULT_TIMEOUT_SECONDS
-    session_card_id = ""
-    try:
-        from gateway.session_context import get_session_env
-        session_card_id = get_session_env("HERMES_KANBAN_TASK", "")
-    except Exception:
-        pass
-    card_id = (kanban_card_id or session_card_id or os.environ.get("HERMES_KANBAN_TASK") or "").strip() or None
-    rid = (run_id or os.environ.get("HERMES_KANBAN_RUN_ID") or "").strip() or None
-
-    if not card_id and task_id:
-        card_id = str(task_id).strip() or None
-
-    if not card_id and session_id:
-        try:
-            from hermes_cli import kanban_db
-            from hermes_cli.kanban_db_connect import connect
-            conn = connect()
-            try:
-                tasks = kanban_db.list_tasks(conn, status=None)
-                active = [t for t in tasks if t.session_id == session_id and t.status not in {'done', 'cancelled'}]
-                if len(active) == 1:
-                    card_id = active[0].id
-                    if not rid and active[0].current_run_id:
-                        rid = str(active[0].current_run_id)
-            finally:
-                conn.close()
-        except Exception:
-            pass
-
-    if card_id and not rid:
-        try:
-            from hermes_cli import kanban_db
-            from hermes_cli.kanban_db_connect import connect
-            conn = connect()
-            try:
-                ktask = kanban_db.get_task(conn, card_id)
-                if ktask and ktask.current_run_id:
-                    rid = str(ktask.current_run_id)
-            finally:
-                conn.close()
-        except Exception:
-            pass
+    # A Browser session is not a Kanban TaskRun. Do not infer authority from
+    # the only task matching a session, from the task's latest run, or from
+    # process-wide env vars that can survive a chat switch. Session-bound
+    # callers must supply the exact card/run identifiers at the call site.
+    if session_id:
+        card_id = str(kanban_card_id or "").strip() or None
+        rid = str(run_id or "").strip() or None
+    else:
+        # Legacy headless callers without a chat identity may still use the
+        # existing process context. This is never applied to session calls.
+        card_id = str(kanban_card_id or os.environ.get("HERMES_KANBAN_TASK") or "").strip() or None
+        rid = str(run_id or os.environ.get("HERMES_KANBAN_RUN_ID") or "").strip() or None
 
     if card_id and not task_id:
         key = card_id
@@ -791,7 +761,9 @@ def _dispatch(
 
         try:
             task = kanban_db.get_task(conn, card_id)
-            if task and (str(task.current_run_id) != str(rid) or task.status in {'done', 'cancelled'}):
+            if task and (str(task.current_run_id) != str(rid)
+                         or task.status != 'running'
+                         or (session_id is not None and task.session_id != session_id)):
                 raise WorkstationBrowserError('Stale TaskRun cannot control BrowserTask',
                     error_code='STALE_RUN', retryable=False, state_changed=False,
                     recommended_action='RECONCILE_BINDING')
@@ -799,10 +771,14 @@ def _dispatch(
             conn.close()
 
     clean_args = dict(args)
-    op_id = operation_id or clean_args.pop("operation_id", None) or os.environ.get("HERMES_OPERATION_ID") or f"op_{action}_{uuid.uuid4().hex[:12]}"
+    # Process-wide operation IDs must not leak across chat sessions: Electron
+    # may otherwise incorrectly treat a different mutation as an idempotent replay.
+    op_id = (operation_id or clean_args.pop("operation_id", None)
+             or (os.environ.get("HERMES_OPERATION_ID") if not session_id else None)
+             or f"op_{action}_{uuid.uuid4().hex[:12]}")
     args.pop("operation_id", None)
     from workstation.batch_detection import call_key
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "action": action,
         "arguments": clean_args,
         "task_id": key,
@@ -931,7 +907,7 @@ call_workstation_browser = _dispatch
 
 def workstation_routed_browser_handler(
     action: str,
-    args: Dict[str, Any],
+    args: dict[str, Any],
     *,
     fallback: Callable[[], Any],
     task_id: Optional[str] = None,
