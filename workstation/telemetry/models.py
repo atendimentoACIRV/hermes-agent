@@ -12,6 +12,7 @@ class TelemetryEventType(str, Enum):
     PROVIDER_CALLED = "PROVIDER_CALLED"
     PROVIDER_USAGE_RECORDED = "PROVIDER_USAGE_RECORDED"
     TOOL_COMPLETED = "TOOL_COMPLETED"
+    BROWSER_OPERATION_OBSERVED = "BROWSER_OPERATION_OBSERVED"
     SYSTEM1_COMPLETED = "SYSTEM1_COMPLETED"
     AUTHORITY_SUPERSEDED = "AUTHORITY_SUPERSEDED"
     ROUTING_DECIDED = "ROUTING_DECIDED"
@@ -78,7 +79,7 @@ class TelemetryEventV1:
         return value
 
     @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> "TelemetryEventV1":
+    def from_dict(cls, value: dict[str, Any]) -> TelemetryEventV1:
         data = dict(value)
         data["event_type"] = TelemetryEventType(data["event_type"])
         data["evidence_refs"] = tuple(data.get("evidence_refs") or ())

@@ -1,5 +1,22 @@
 # Source reuse matrix
 
+## 2026-10-12 — Browser C2C follow-up reuse
+Commits `1c46a508d3`, `3793c46a15`, `b9addc487a`: KEEP/EXTEND native BrowserSessionState, TaskRun/BrowserTask authority, existing ExecutionJournal and CertifiedDispatcher verification contracts. Adapt Playwright-style ambiguous input handling without shipping Playwright or creating another browser owner. Local ACK never promotes to external VERIFIED. [Checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
+
+## 2026-10-12 — P0 replay/crash patch lineage
+
+`20acf1d2e9` and `da3ca49569`: **KEEP/EXTEND Hermes** BrowserSessionState/BrowserTask authority ownership and native Electron harness, **INSPIRE** Playwright Electron test patterns, **no Playwright runtime source copied**. Concurrency lock is a synchronization marker in the same durable projection, not second journal. Test evidence and release gaps in [continuity checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md); Stage A exception local, NOT_RELEASE_QUALIFIED.
+
+## 2026-10-12 — Playwright C2C implementation reuse decision
+
+The new admission fence (`81a16ed00b`) is **KEEP/EXTEND Hermes** existing BrowserSessionState, not a copied Playwright mutation retry. Playwright's Electron native WebContentsView testing pattern was previously **ADAPT** for existing fixture; no Playwright runtime shipped or source code transplanted in this increment. Evidence: [P0 local GREEN checkpoint](research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md). Stage A upstream-first exception pending; NOT_RELEASE_QUALIFIED.
+
+## 2026-10-12 — Playwright Browser Nativo: auditoria C2C com hash e licença
+
+| Projeto local | Evidência analisada | Classificação | Produto / ressalva |
+|---|---|---|---|
+| Playwright `1.65.0-next`, Apache-2.0 sem `.git` local | `packages/playwright-core/src/{client/locator.ts,server/dom.ts,server/frames.ts,server/progress.ts,server/chromium/crPage.ts}`, `packages/injected/src/injectedScript.ts`, `server/trace/recorder/snapshotterInjected.ts`, `tests/electron/*` | **ADAPT** actionability/iframe/SPA; **COPY** somente pequenos test fixtures sob NOTICE; **REJECT** runtime browser paralelo | [C2C com hashes, 16 oportunidades e gates](research/playwright-code-to-code-2026-10-12/00-RESUMO-EXECUTIVO.md). AUDIT_ONLY, NOT_RELEASE_QUALIFIED; owner TaskRun/BrowserTask inalterado |
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — D-043 Creative source status / no preselected engine
 | Referência | Código/contrato a investigar | Uso no CW | Evidência |

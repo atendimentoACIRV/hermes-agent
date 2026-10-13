@@ -6,6 +6,8 @@
  * Preserves @eN refs in window.__hermesWorkstationRefs for action continuity.
  */
 
+import crypto from 'node:crypto'
+
 import type { WebContents } from 'electron'
 
 export interface AXNode {
@@ -65,29 +67,26 @@ const INTERACTIVE_AX_ROLES = new Set([
 
 export function isAccessibilitySnapshotEnabled(): boolean {
   const env = process.env.HERMES_BROWSER_AXTREE_ENABLED
+
   return env === '1' || env === 'true'
 }
 
 export function isInteractiveAXNode(node: AXNode): boolean {
-  if (node.ignored) return false
+  if (node.ignored) {return false}
   const role = String(node.role?.value || '').toLowerCase()
-  if (INTERACTIVE_AX_ROLES.has(role)) return true
 
-  const isEditable = Boolean(
-    node.properties?.some(p => p.name === 'editable' && Boolean(p.value?.value))
-  )
-  const isFocusable = Boolean(
-    node.properties?.some(p => p.name === 'focusable' && p.value?.value === true)
-  )
+  if (INTERACTIVE_AX_ROLES.has(role)) {return true}
+
+  const isEditable = Boolean(node.properties?.some(p => p.name === 'editable' && Boolean(p.value?.value)))
+  const isFocusable = Boolean(node.properties?.some(p => p.name === 'focusable' && p.value?.value === true))
 
   return isEditable || isFocusable
 }
 
 export function hasUsableAXTree(nodes: AXNode[]): boolean {
-  if (!Array.isArray(nodes) || nodes.length === 0) return false
-  return nodes.some(
-    n => isInteractiveAXNode(n) && typeof n.backendDOMNodeId === 'number' && n.backendDOMNodeId > 0
-  )
+  if (!Array.isArray(nodes) || nodes.length === 0) {return false}
+
+  return nodes.some(n => isInteractiveAXNode(n) && typeof n.backendDOMNodeId === 'number' && n.backendDOMNodeId > 0)
 }
 
 /**
@@ -101,9 +100,18 @@ export async function tryAccessibilitySnapshot(
   maxTextChars = 8_000,
   maxElements = 120
 ): Promise<PageInventoryResult | null> {
-  if (wc.isDestroyed()) return null
+  if (wc.isDestroyed()) {return null}
 
   try {
+    // Capture document identity before the AX command. SPA/full reloads can
+    // change the document while CDP backend nodes are being resolved.
+    const documentBefore = (await wc.executeJavaScript(
+      `(function () { /* __HERMES_AX_DOCUMENT_IDENTITY__ */
+        return { url: location.href, documentToken: String(performance.timeOrigin) };
+      })()`, true
+    )) as { url?: string; documentToken?: string }
+
+    if (!documentBefore?.url || !documentBefore?.documentToken) {return null}
     await cdp('Accessibility.enable')
     const tree = (await cdp('Accessibility.getFullAXTree', { depth: -1 })) as { nodes?: AXNode[] }
     const nodes = tree?.nodes
@@ -121,21 +129,26 @@ export async function tryAccessibilitySnapshot(
     }
 
     const elements: AXInventoryElement[] = []
-    let counter = 1
+    // Collect CDP remote handles in a snapshot-scoped group, then release once.
+    const objectGroup = `hermes-ax-snapshot-${crypto.randomUUID()}`
 
-    for (const node of interactiveNodes) {
-      if (elements.length >= maxElements) break
-      try {
-        const resolved = (await cdp('DOM.resolveNode', {
-          backendNodeId: node.backendDOMNodeId
-        })) as { object?: { objectId?: string } }
+    try {
+      for (const node of interactiveNodes) {
+        if (elements.length >= maxElements) {break}
 
-        const objectId = resolved?.object?.objectId
-        if (!objectId) continue
+        try {
+          const resolved = (await cdp('DOM.resolveNode', {
+            backendNodeId: node.backendDOMNodeId,
+            objectGroup
+          })) as { object?: { objectId?: string } }
 
-        const callRes = (await cdp('Runtime.callFunctionOn', {
-          objectId,
-          functionDeclaration: `function (refStr) {
+          const objectId = resolved?.object?.objectId
+
+          if (!objectId) {continue}
+
+          const callRes = (await cdp('Runtime.callFunctionOn', {
+            objectId,
+            functionDeclaration: `function () {
             var el = this;
             var w = window;
             var state = w.__hermesWorkstationRefs;
@@ -144,7 +157,7 @@ export async function tryAccessibilitySnapshot(
               w.__hermesWorkstationRefs = state;
             }
             var existingRef = state.byElement.get(el);
-            var ref = existingRef || refStr;
+            var ref = existingRef || '@e' + (state.counter + 1);
             if (!existingRef) {
               state.byElement.set(el, ref);
               state.byRef.set(ref, el);
@@ -172,20 +185,26 @@ export async function tryAccessibilitySnapshot(
               name: (el.getAttribute && el.getAttribute('name')) || undefined
             };
           }`,
-          arguments: [{ value: `@e${counter}` }],
-          returnByValue: true
-        })) as { result?: { value?: AXInventoryElement } }
+            returnByValue: true
+          })) as { result?: { value?: AXInventoryElement } }
 
-        const val = callRes?.result?.value
-        if (val) {
-          elements.push({
-            ...val,
-            disabled: Boolean(val.disabled)
-          })
-          counter++
+          const val = callRes?.result?.value
+
+          if (val) {
+            elements.push({
+              ...val,
+              disabled: Boolean(val.disabled)
+            })
+          }
+        } catch {
+          // Individual node resolution error: continue to next node
         }
+      }
+    } finally {
+      try {
+        await cdp('Runtime.releaseObjectGroup', { objectGroup })
       } catch {
-        // Individual node resolution error: continue to next node
+        // Debugger can detach mid-snapshot; never block DOM fallback on cleanup.
       }
     }
 
@@ -197,10 +216,16 @@ export async function tryAccessibilitySnapshot(
       `({
         url: location.href,
         title: document.title || '',
+        documentToken: String(performance.timeOrigin),
         bodyText: String(document.body && document.body.innerText || '').replace(/\\u0000/g, ''),
       })`,
       true
-    )) as { url: string; title: string; bodyText: string; totalTextChars?: number }
+    )) as { url: string; title: string; bodyText: string; documentToken?: string; totalTextChars?: number }
+
+    if (docMeta.url !== documentBefore.url ||
+        !docMeta.documentToken || docMeta.documentToken !== documentBefore.documentToken) {
+      return null
+    }
 
     const rawText = docMeta.bodyText || ''
     const text = rawText.slice(0, maxTextChars)

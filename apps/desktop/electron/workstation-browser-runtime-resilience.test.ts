@@ -665,6 +665,7 @@ test('browser_extract_items extracts structured cards via controller request', a
   })
 
   assert.equal(extracted.success, true)
+  assert.equal(extracted.cached, false)
   assert.equal(extracted.count, 1)
   assert.equal(extracted.selector_used, 'article')
   assert.equal((extracted.items as Array<Record<string, unknown>>)[0].title, 'Item 1')
@@ -749,7 +750,9 @@ test('idempotent duplicate mutation replay with same operation_id returns previo
     arguments: { ref: '@e1', text: 'first run', clear: true }
   })
 
-  assert.equal(replayType.success, true)
+  assert.equal(replayType.success, undefined, 'a receipt does not certify the external effect')
+  assert.equal(replayType.status, 'uncertain')
+  assert.equal(replayType.reason, 'prior_operation_requires_reconciliation')
   assert.equal(replayType.idempotent_replay, true)
   assert.equal(replayType.operation_id, operationId)
   assert.deepEqual(replayType.receipt, firstType.receipt)

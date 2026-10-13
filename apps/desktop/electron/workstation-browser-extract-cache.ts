@@ -41,6 +41,7 @@ export class BoundedExtractCache<T> {
     ) {
       throw new Error('extract_fingerprint_required')
     }
+
     return JSON.stringify([
       s.profileId,
       s.taskId,
@@ -56,11 +57,15 @@ export class BoundedExtractCache<T> {
   get(scope: ExtractScope): T | null {
     const key = this.key(scope)
     const record = this.data.get(key)
-    if (!record) return null
+
+    if (!record) {return null}
+
     if (record.until < Date.now()) {
       this.data.delete(key)
+
       return null
     }
+
     return record.value
   }
 
@@ -69,19 +74,23 @@ export class BoundedExtractCache<T> {
     // Cache must only receive previously filtered, non-sensitive read results.
     this.data.delete(key)
     this.data.set(key, { value, until: Date.now() + this.ttlMs })
+
     while (this.data.size > this.maxEntries) {
       const first = this.data.keys().next().value
-      if (!first) break
+
+      if (!first) {break}
       this.data.delete(first)
     }
   }
 
   /** Invalidate entries belonging to a specific tab */
   invalidateTab(tabId: string): void {
-    if (!tabId) return
+    if (!tabId) {return}
+
     for (const [key] of this.data.entries()) {
       try {
         const parsed = JSON.parse(key)
+
         if (Array.isArray(parsed) && parsed[2] === tabId) {
           this.data.delete(key)
         }
@@ -98,10 +107,12 @@ export class BoundedExtractCache<T> {
 
   /** Invalidate all cached entries for a given task */
   invalidateTask(taskId: string): void {
-    if (!taskId) return
+    if (!taskId) {return}
+
     for (const key of Array.from(this.data.keys())) {
       try {
         const parsed = JSON.parse(key)
+
         if (Array.isArray(parsed) && parsed[1] === taskId) {
           this.data.delete(key)
         }
@@ -122,8 +133,11 @@ export function computeQueryDigest(args: Record<string, unknown>): string {
     selector: args.selector ?? null,
     limit: args.limit ?? 20,
     mode: args.mode ?? 'default',
-    attributes: args.attributes ?? []
+    attributes: args.attributes ?? [],
+    // Different schema projections must never share a cached answer.
+    schema: args.schema ?? null
   })
+
   return crypto.createHash('sha256').update(normalized).digest('hex').slice(0, 16)
 }
 
@@ -132,11 +146,12 @@ export const queryDigest = computeQueryDigest
 const SENSITIVE_PATTERN = /(?:password|secret|token|bearer|api[_-]?key|auth[_-]?token|credit[_-]?card)/i
 
 /** Normalize and sanitize a single extracted item, optionally filtering by schema properties */
-export function normalizeExtractedItem(
-  item: unknown,
-  schema?: Record<string, unknown> | null
-): unknown {
-  if (!item || typeof item !== 'object' || Array.isArray(item)) return item
+export function normalizeExtractedItem(item: unknown, schema?: Record<string, unknown> | null, depth = 0): unknown {
+  if (depth > 8) {return '[TRUNCATED_DEPTH]'}
+
+  if (Array.isArray(item)) {return item.slice(0, 100).map(value => normalizeExtractedItem(value, null, depth + 1))}
+
+  if (!item || typeof item !== 'object') {return item}
   const record = item as Record<string, unknown>
   const cleaned: Record<string, unknown> = {}
 
@@ -149,24 +164,24 @@ export function normalizeExtractedItem(
     if (schemaProperties && !schemaProperties.includes(k)) {
       continue
     }
+
     if (SENSITIVE_PATTERN.test(k)) {
       cleaned[k] = '[REDACTED]'
     } else if (typeof v === 'string') {
       cleaned[k] = v.slice(0, 20_000)
-    } else if (v && typeof v === 'object' && !Array.isArray(v)) {
-      cleaned[k] = normalizeExtractedItem(v)
+    } else if (v && typeof v === 'object') {
+      cleaned[k] = normalizeExtractedItem(v, null, depth + 1)
     } else {
       cleaned[k] = v
     }
   }
+
   return cleaned
 }
 
 /** Sanitize an array of extracted items */
-export function sanitizeExtractedItems(
-  items: unknown[],
-  schema?: Record<string, unknown> | null
-): unknown[] {
-  if (!Array.isArray(items)) return []
+export function sanitizeExtractedItems(items: unknown[], schema?: Record<string, unknown> | null): unknown[] {
+  if (!Array.isArray(items)) {return []}
+
   return items.slice(0, 100).map(item => normalizeExtractedItem(item, schema))
 }

@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
-import { afterEach, beforeEach, describe, test, vi } from 'vitest'
+
+import { afterEach, beforeEach, describe, test } from 'vitest'
+
 import {
+  type AXNode,
   hasUsableAXTree,
   isAccessibilitySnapshotEnabled,
   isInteractiveAXNode,
-  tryAccessibilitySnapshot,
-  type AXNode
+  tryAccessibilitySnapshot
 } from './workstation-browser-snapshot'
 
 describe('OPT-02 Accessibility Tree Snapshot Provider', () => {
@@ -43,17 +45,20 @@ describe('OPT-02 Accessibility Tree Snapshot Provider', () => {
       name: { value: 'Submit' },
       backendDOMNodeId: 10
     }
+
     const ignoredButton: AXNode = {
       nodeId: '2',
       role: { value: 'button' },
       ignored: true,
       backendDOMNodeId: 11
     }
+
     const genericDiv: AXNode = {
       nodeId: '3',
       role: { value: 'generic' },
       backendDOMNodeId: 12
     }
+
     const textbox: AXNode = {
       nodeId: '4',
       role: { value: 'textbox' },
@@ -138,21 +143,27 @@ describe('OPT-02 Accessibility Tree Snapshot Provider', () => {
             url: 'https://example.com/app',
             title: 'Test App',
             text: 'Hello shadow world',
-            totalTextChars: 18
+            totalTextChars: 18,
+            documentToken: 'stable-doc'
           }
         }
-        return true
+
+        return { url: 'https://example.com/app', documentToken: 'stable-doc' }
       }
     } as any
 
     const cdp = async (method: string, params?: any): Promise<any> => {
-      if (method === 'Accessibility.enable') return {}
-      if (method === 'Accessibility.getFullAXTree') return { nodes }
+      if (method === 'Accessibility.enable') {return {}}
+
+      if (method === 'Accessibility.getFullAXTree') {return { nodes }}
+
       if (method === 'DOM.resolveNode') {
         return { object: { objectId: `obj-${params.backendNodeId}` } }
       }
+
       if (method === 'Runtime.callFunctionOn') {
         const id = params.objectId
+
         if (id === 'obj-101') {
           return {
             result: {
@@ -166,6 +177,7 @@ describe('OPT-02 Accessibility Tree Snapshot Provider', () => {
             }
           }
         }
+
         if (id === 'obj-102') {
           return {
             result: {
@@ -181,6 +193,7 @@ describe('OPT-02 Accessibility Tree Snapshot Provider', () => {
           }
         }
       }
+
       return {}
     }
 
@@ -212,8 +225,10 @@ describe('OPT-02 Accessibility Tree Snapshot Provider', () => {
     } as any
 
     const cdp = async (method: string) => {
-      if (method === 'Accessibility.enable') return {}
-      if (method === 'Accessibility.getFullAXTree') return { nodes: canvasNodes }
+      if (method === 'Accessibility.enable') {return {}}
+
+      if (method === 'Accessibility.getFullAXTree') {return { nodes: canvasNodes }}
+
       return {}
     }
 

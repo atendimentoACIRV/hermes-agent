@@ -108,6 +108,7 @@ const electron = vi.hoisted(() => {
             }
           }
         }
+
         return {
           url: this.url,
           title: this.title,
@@ -239,9 +240,11 @@ const tempRoots: string[] = []
 test('structured inspection reads DOM without invoking mutation or injected code', () => {
   const mutations: string[] = []
   let queried = ''
+
   const document = {
     querySelectorAll: (selector: string) => {
       queried = selector
+
       return [
         {
           tagName: 'TEXTAREA',
@@ -253,6 +256,7 @@ test('structured inspection reads DOM without invoking mutation or injected code
       ]
     }
   }
+
   const selector = 'textarea.description; globalThis.injected = true; //'
   const context = vm.createContext({ document, fetch: () => mutations.push('fetch') })
   const result = vm.runInContext(inspectItemsScript(selector, 1, ['data-card-id']), context)
@@ -791,6 +795,7 @@ test('bulk clear destroys only explicitly eligible idle parked tasks and refuses
   runtime.createTask({ taskId: 'human', sessionHost: 'human-session' })
   runtime.createTask({ taskId: 'waiting', sessionHost: 'waiting-session', leaseState: 'waiting' })
   runtime.takeControl('human', 'human-session')
+
   for (const taskId of ['working', 'idle', 'human', 'waiting']) {
     runtime.parkTask(taskId)
   }
@@ -1144,6 +1149,7 @@ test('concurrent multi-task isolation: background actions do not steal active ta
 test('browser_click and browser_type return structured elements, target metadata, and semantic_effect', async () => {
   runtimeHome()
   const runtime = new WorkstationBrowserRuntime()
+
   const executeControlRequest = (
     runtime as unknown as {
       executeControlRequest(request: Record<string, unknown>): Promise<Record<string, unknown>>
@@ -1301,5 +1307,149 @@ test('cross-session isolation: chat attaching without preferred task does not le
     'Chat A reattaching with task-a restores Tab A'
   )
 
+  await runtime.destroy()
+})
+
+test('BROW-TEL: native snapshot exposes structural diagnostics without page text in telemetry', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+
+  const executeControlRequest = (runtime as any).executeControlRequest.bind(runtime) as (
+    request: Record<string, unknown>
+  ) => Promise<Record<string, any>>
+
+  await executeControlRequest({
+    action: 'browser_navigate',
+    task_id: 'telemetry-task',
+    arguments: { url: 'https://example.com' }
+  })
+  const result = await executeControlRequest({ action: 'browser_snapshot', task_id: 'telemetry-task', arguments: {} })
+  const diagnostics = result.__telemetry
+  assert.equal(diagnostics.snapshot_source, 'dom')
+  assert.equal(diagnostics.cdp_calls, 0)
+  assert.ok(diagnostics.snapshot_chars > 0)
+  assert.ok(diagnostics.duration_ms >= 0)
+  assert.equal(typeof diagnostics.main_cpu_us, 'number')
+  assert.equal(typeof diagnostics.main_rss_bytes, 'number')
+  assert.equal(JSON.stringify(diagnostics).includes('Hello world'), false)
+  await runtime.destroy()
+})
+
+test('CRASH-02 runtime: an older navigation ID cannot replay after an interleaved receipt', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+
+  const request = (operation_id: string, url: string) => ({
+    action: 'browser_navigate', task_id: 'durable-task', session_id: 'session-durable',
+    run_id: 'run-durable', operation_id, arguments: { url }
+  })
+
+  const controller = (runtime as unknown as {
+    executeControlRequest(request: Record<string, unknown>): Promise<Record<string, unknown>>
+  }).executeControlRequest.bind(runtime)
+
+  await controller(request('op-a', 'https://example.test/a'))
+  await controller(request('op-b', 'https://example.test/b'))
+  const tab = runtime.state().tabs.find(item => item.ownerTaskId === 'durable-task')
+  assert.ok(tab)
+  const contents = runtime.getWebContents(tab.id)
+  assert.ok(contents)
+  assert.equal(contents.getURL(), 'https://example.test/b')
+  const blocked = await controller(request('op-a', 'https://example.test/a'))
+  assert.equal(blocked.status, 'uncertain')
+  assert.equal(blocked.reason, 'prior_operation_requires_reconciliation')
+  assert.equal(contents.getURL(), 'https://example.test/b', 'must not redispatch stale effect')
+  await assert.rejects(controller(request('op-a', 'https://example.test/different')), /operation_identity_collision/)
+  await runtime.destroy()
+})
+
+test('CRASH-ID: generated navigation admission and receipt use the same stable operation ID', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+
+  const execute = (runtime as any).executeControlRequest.bind(runtime) as (
+    request: Record<string, unknown>
+  ) => Promise<Record<string, any>>
+
+  const result = await execute({
+    action: 'browser_navigate',
+    task_id: 'generated-operation-id',
+    session_id: 'generated-session',
+    arguments: { url: 'https://example.test/generated-operation-id' }
+  })
+
+  const receipt = result.receipt as { operationId: string; tabId: string }
+  assert.ok(receipt?.operationId)
+  const snapshot = (runtime as any).sessionStatePersistence().load()
+
+  const records = Object.values(snapshot.operationAdmissions ?? {}) as Array<{
+    operationId: string; tabId: string; action: string
+  }>
+
+  const admission = records.find(item => item.tabId === receipt.tabId && item.action === 'browser_navigate')
+  assert.equal(admission?.operationId, receipt.operationId)
+  await runtime.destroy()
+})
+
+test('P0-03: ambiguous CDP mousePressed sends one cleanup release without blind press retry', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+
+  const events: string[] = []
+
+  ;(runtime as any).cdp = async (_wc: unknown, method: string, args: { type: string }) => {
+    assert.equal(method, 'Input.dispatchMouseEvent')
+    events.push(args.type)
+
+    if (args.type === 'mousePressed') {throw new Error('timeout_after_possible_dispatch')}
+
+    return {}
+  }
+
+  await assert.rejects((runtime as any).cdpClick({}, 14, 32), /browser_input_state_uncertain/)
+  assert.deepEqual(events, ['mouseMoved', 'mousePressed', 'mouseReleased'])
+  await runtime.destroy()
+})
+
+test('P0-03: failed mouseReleased never retries mousePressed', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+
+  const events: string[] = []
+
+  ;(runtime as any).cdp = async (_wc: unknown, _method: string, args: { type: string }) => {
+    events.push(args.type)
+
+    if (args.type === 'mouseReleased' && events.filter(event => event === 'mouseReleased').length === 1) {
+      throw new Error('release_response_lost')
+    }
+
+    return {}
+  }
+
+  await assert.rejects((runtime as any).cdpClick({}, 14, 32), /browser_input_state_uncertain/)
+  assert.deepEqual(events, ['mouseMoved', 'mousePressed', 'mouseReleased', 'mouseReleased'])
+  await runtime.destroy()
+})
+
+test('P0-03: takeover between mousePressed and mouseReleased fails closed and releases once', async () => {
+  runtimeHome()
+  const runtime = new WorkstationBrowserRuntime()
+  const events: string[] = []
+
+  let userControlActive = false
+
+  ;(runtime as any).cdp = async (_wc: unknown, _method: string, args: { type: string }) => {
+    events.push(args.type)
+
+    if (args.type === 'mousePressed') {userControlActive = true}
+
+    return {}
+  }
+
+  await assert.rejects((runtime as any).cdpClick({}, 14, 32, () => {
+    if (userControlActive) {throw new Error('USER_CONTROL_ACTIVE')}
+  }), /browser_input_state_uncertain/)
+  assert.deepEqual(events, ['mouseMoved', 'mousePressed', 'mouseReleased'])
   await runtime.destroy()
 })

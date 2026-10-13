@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
+
 import { describe, test } from 'vitest'
+
 import {
   BoundedExtractCache,
   computeQueryDigest,
+  type ExtractScope,
   normalizeExtractedItem,
-  sanitizeExtractedItems,
-  type ExtractScope
+  sanitizeExtractedItems
 } from './workstation-browser-extract-cache'
 
 const scope: ExtractScope = {
@@ -59,6 +61,19 @@ describe('OPT-03 Structured Extraction Cache & Sanitization', () => {
     assert.equal(d1, d2)
     assert.notEqual(d1, d3)
     assert.equal(d1.length, 16)
+  })
+
+  test('query digest isolates schema projections on the same document', () => {
+    const base = { selector: '.card', limit: 20 }
+    const a = computeQueryDigest({ ...base, schema: { properties: { title: { type: 'string' } } } })
+    const b = computeQueryDigest({ ...base, schema: { properties: { price: { type: 'number' } } } })
+    assert.notEqual(a, b)
+  })
+
+  test('nested arrays of extracted records never leak secret fields', () => {
+    const result = sanitizeExtractedItems([{ items: [{ name: 'safe', api_token: 'DO_NOT_LEAK' }] }]) as any[]
+    assert.equal(result[0].items[0].name, 'safe')
+    assert.equal(result[0].items[0].api_token, '[REDACTED]')
   })
 
   test('normalizeExtractedItem and sanitizeExtractedItems redact sensitive fields and truncate oversized text', () => {

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing, contextmanager
 from pathlib import Path
 
 from hermes_constants import get_hermes_home
@@ -24,12 +25,19 @@ class SQLiteTelemetrySink:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self):
+        # sqlite3.Connection.__exit__ commits but does NOT close the handle;
+        # explicitly close it so subsequent runs and Windows cleanup do not lock files.
         conn = sqlite3.connect(self.path, timeout=0.25)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("PRAGMA busy_timeout=250")
-        return conn
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA busy_timeout=250")
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _initialize(self) -> None:
         columns = """
@@ -111,7 +119,7 @@ class TelemetryQuery:
             clauses.append("occurred_at<=?")
             values.append(end)
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
-        with sqlite3.connect(self.path) as conn:
+        with closing(sqlite3.connect(self.path)) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(f"SELECT * FROM events{where} ORDER BY occurred_at, recorded_at, rowid", values).fetchall()
         result = []
