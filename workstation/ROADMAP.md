@@ -2946,6 +2946,7 @@ Real Trello/HyperFrames/repetition baseline BLOCKED: installed native controller
 A new real local adoption regression exposed a remaining lifetime gap: revoking the qualification after the first reused item did not stop the three later items in the same checkpoint. Valid RED: four items executed instead of one (29.1s runner; initial fixture-error attempt is not counted as security evidence). Runtime now re-queries qualified offers at every item boundary, records denial and halts the checkpoint. The independently verified first item remains completed; no blind rollback/retry.
 GREEN: complete online safety file, 38 passed, zero failed, 149.0s. Config/expiry/scope changes apply at item boundaries; this is not an atomic distributed revocation guarantee for an effect already in progress. No Trello write or production trust provisioning.
 Native regression at bb1888976e: existing headless-load contract passed with four real Electron/Chromium BrowserTasks (8.5s test; 1.6m including bootstrap under concurrent tests). Inference and pages are fixtures: native lifecycle/IPC evidence only, not E1 completion or measured product latency/cost. Broader Workstation regression still running; CI remains skipped by maintainer.
+
 ## 2026-10-11 — P0 authority / Browser / One-Click convergence (draft)
 An isolated integration of PRs #70–#75 is documented at `context/P0_INTEGRATION_2026-10-11.md`, including 116/116 combined Windows tests and an additional `TaskCompiler` canonical SQLite-owner fix (9 red → 10 green supersession E2E). **No main merge and no production qualification**: native Electron UI/Browser handoff/readback, offline One-Click, Studio without HyperFrames, exact-head CI and user data migration still held. Follow the ranked nine-front matrix in the integration dossier rather than relabeling earlier drafts as finished.
 
@@ -3048,3 +3049,18 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 - Existing durable owner emits independent prestate for single fs_write; second canonical admission/status check prevents cancelled plans from mutating after witness. Filesystem fs_hash/stat readbacks persisted as hash/metadata-only evidence, linked to canonical verification; mismatched pre/post resources fail closed.
 - One real two-item WorkPlan scenario demonstrates corpus VERIFIED_SUCCESS while a second item remains pending; this is NOT candidate mining, offer, VERIFIED_REUSE or Laya real qualification. Next P0: attested replay parameters and full active TaskRun mine/validate/offer/adopt readback path.
 - H-079/H-081/H-082 and exact-head CI HOLD; PR stays draft/unmerged.
+
+## 2026-10-12 — New Browser Automation V1 isolated feasibility branch
+- New isolated branch feat/hermes-browser-automation-v1-20261012 from origin/main a2b56db1bc, independent of PR #82 Experience Compiler and the separate feat/playwright-c2c-kits branch. Main checkout with user changes preserved.
+- BAV01: Playwright-core chromium.connectOverCDP attached to an existing Hermes-owned Electron WebContentsView under disposable profile/127.0.0.1, filled and clicked a synthetic local page; independent server reported 1 effect. Test-only viability, NOT a production-authorized CDP adapter.
+- BAV03: official singleton + authenticated native loopback controller executed a deterministic 2-input local form twice, 12 controller calls, 2 server-confirmed effects, 0 LLM calls inside test harness. No new browser owner.
+- BAV05: versioned WebProcedure-compatible JSON fixture with lifecycle DISCOVERED and semantic testid fallback; missing-ref RED/GREEN with both effects verified. Still no durable ProceduralMemory registration, TaskRun restart or generic user-facing procedure.
+- Next: bind existing ProceduralMemory/DeterministicRoutineRunner to BrowserTask/TaskRun owner with typed params, independent readback and persisted checkpoints. BAV04/BAV06+ future; H079 Stage A/exact-head CI HOLD. Do not promote test harness to product or merge.
+
+
+<!-- BAV05 local checkpoint 2026-10-12 -->
+- Hermes Browser Automation V1: isolated BAV-05 fixture E2E now persists a test-only procedure using canonical ProceduralMemory, reloads it in two new Python processes and replays via DeterministicRoutineRunner under the authenticated singleton controller. Three independent local-server effects; same BrowserTask, no cross-run authority qualification. H-079 Stage A, production promotion and BAV-04/06..12 remain HOLD.
+
+
+<!-- BAV04 2026-10-12 experiment, PR85 Draft -->
+- BAV-04 experimental crash-window test: using canonical ExecutionJournal + ArtifactStore + existing DeterministicRoutineRunner.resume_ref, a disposable Electron WebContentsView/authorized native controller fixture recovered after Python worker os._exit(37), independently reconciled server effect and avoided duplicate mutation (2 effects total). 11/11 Python guard tests, 2/2 paired Electron, 13/13 targeted Python + 16/16 memory/journal regression. **Test-only**, not production authority/restart/CI; H-079 baseline & exact-head release remain HOLD. Next: authentic new BrowserTask/TaskRun admission, real lease fencing and Electron main crash safety after Stage A qualified.

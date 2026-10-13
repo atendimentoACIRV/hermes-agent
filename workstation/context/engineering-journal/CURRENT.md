@@ -1,5 +1,16 @@
 # CURRENT — Workstation Engineering Journal
 
+## 2026-10-12 — Hermes Browser Automation V1, BAV04 crash-window experiment (PR #85)
+
+**Status: TEST-ONLY GREEN / PRODUCT RELEASE HOLD.** Worktree `feat/hermes-browser-automation-v1-20261012`, code checkpoint `5448f889fe94af43c0534b26a0243364be1a078e`. Production Browser runtime unchanged; existing BAV01/BAV03/BAV05 experiments preserved.
+
+- Hypothesis: an effectful Browser click followed by worker process loss before recording independent proof must not silently replay. Test RED: missing recovery contract; native Electron contract initially emitted only legacy BAV03 success marker; independent baseline-bound proof initially failed TypeError.
+- Experimental adaptation: canonical `ExecutionJournal` append/fsync pending intent *before* effect, `ArtifactStore` safe checkpoint only after independent fixture server readback, and existing `DeterministicRoutineRunner.resume_ref` to skip already verified mutation. No new engine, database or Browser owner.
+- GREEN: real disposable Electron `WebContentsView`/singleton with bearer-auth control. Alpha seed (server effects=1); Beta click (effects=2); Python worker `os._exit(37)` after external result but before persisting proof. Fresh Python process reconciles from journal + native snapshot + separate server counter, resumes without duplicate; effects remain 2. Node BAV04 E2E 1 passed; paired BAV04/BAV05 Electron 2 passed. Python recovery test suite 11 passed; Python targeted BAV04+routines 13 passed; additional memory/journal/artifacts 16 passed. Ruff F/UP, Node syntax, py_compile, git diff check and pre-commit lint passed.
+- Critical LIMITS: worker crash **not** Electron main crash; same already-admitted BrowserTask throughout; admission dict test-only synthetic and NOT authenticated lease, no real cross-TaskRun reuse; local test effect counter and zero model calls do not prove productive savings. H-079 Stage A remains blocked: live observed upstream main `9f63a6fe5cfe39adc7a8f1936fbdcffffbec1d74`; downstream origin/main `a2b56db1bc9e0b5acf48d94fa86a9844a1005842`; exact-head CI not demonstrated. No `main` merge.
+- Next RED: instantiate truly new authorized BrowserTask/TaskRun and prove fail-closed revoked lease / wrong owner / restart / uncertain click with authenticated source. First qualify H-079 Stage A in separate lane; only then consider downstream runtime changes. See `workstation/context/browser-automation-v1/NEXT_PROMPT.md` for recursive handoff.
+
+
 ## 2026-10-11 — Hermes Work: Aceleração Operacional, Redução de Redundâncias e Custo (D-043 / P0–P2)
 
 **Classificação: IMPLEMENTAÇÃO COMPLETA, TESTES E QUALIFICAÇÃO INTEGRADOS.**
@@ -5909,3 +5920,17 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 - Scope/lease negatives: missing admission, cancelled plan, foreign RunId, scope escape, restart after dispatch marker, revocation between prestate and dispatch. Scoped single fs_write only; no broad authority grant.
 - Real fs_hash verifier RED: VERIFIED result but no VERIFIED_SUCCESS experience due lack of persisted readback ref. GREEN: hash-only canonical receipt; positive unfinished TaskRun sample in corpus, second item PENDING. Cross-resource proof laundering RED→GREEN, rejected.
 - Local focused 35 PASS after proof; larger exact-HEAD regression and H080B to be confirmed; Laya direct/checkpoint and release qualification still HOLD.
+
+## 2026-10-12 — BAV-00..05 native automation V1 test-only checkpoint
+- Isolated worktree browser-automation-v1-20261012 created from origin/main; parallel main 34-file dirty state and Playwright C2C/Experience Compiler worktrees left untouched.
+- Real Electron + WebContentsView + Playwright-core CDP on disposable profile: BAV01_CDP_SPIKE_PASS, independent loopback server effects=1. Runtime debugger observed detached immediately after snapshot; no unsupported constant-attachment assumption. No production CDP bypass.
+- BAV03 RED from test harness constructing separate BrowserRuntime: type/click owner ACK but site untouched, 0 effects. GREEN by reusing getWorkstationBrowserRuntime singleton and bearer-auth controller, two parameterized native runs with independent page/server confirmation: BAV03_CONTROLLER_PROCEDURE_PASS, effects=2, controller calls=12, model calls in harness=0.
+- BAV05 RED stale @e refs without a valid semantic anchor; GREEN after testid binding, same fixture performs second run using nonexistent @e refs and exact known anchors. WebProcedure.from_dict fixture parsed lifecycle DISCOVERED; not promoted nor persisted into ProceduralMemory.
+- Python routines 2 passed. JS syntax node --check clean. Full Vitest standard config unavailable due missing @rolldown/plugin-babel in existing deps; NOT CI green. Stage A H079 not qualified for release; no modifications to production runtime.
+
+
+### 2026-10-12 — BAV05 experimental persistent replay
+- Baseline: feat/hermes-browser-automation-v1-20261012 from origin/main a2b56db1bc; isolated test-only files and documentation, production runtime untouched.
+- New RED contract initially failed on absence of canonical persistence. Native authority rejected invented new run_id with 400 CAPABILITY_MISSING. Corrected harness to respect canonical fixture task binding.
+- GREEN test (node --test workstation-browser-bav1-persistence.contract.test.cjs): 1 passed, 0 failed, two fresh Python replays of promoted fixture-scoped procedure, three independently counted local-server effects total; no LLM calls in harness.
+- Gate: H-079 Stage A/CI exact-head unresolved; test evidence is not release certification. No main merge, no second BrowserRuntime, no production Laya validation. Further work: full distinct TaskRun admission, uncertainty/restart fail-closed, Browser integrated UI + dogfood under authority after qualification.
