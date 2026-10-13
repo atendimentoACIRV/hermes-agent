@@ -1,7 +1,7 @@
 """Per-turn structural fan-out detector; scalar item values do not affect shape."""
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from tools.effects import WRITE_EFFECTS, tool_effect, unwrap_call
 from agent.tool_guardrails import classify_tool_failure
@@ -20,7 +20,7 @@ def mutation_identity(name, args, *, task_id=None, run_id=None):
             "scope": scope, "external": scope == "external" if scope != "unknown" else None,
             "provider": target.get("provider"), "field": target.get("field"), "target_kind": target.get("kind", "file" if scope == "local" else "unknown"),
             "target_identifier": identifier, "operation_semantic": target.get("operation", args.get("operation", args.get("action", name))),
-            "timestamp": datetime.now(timezone.utc).isoformat()}
+            "timestamp": datetime.now(UTC).isoformat()}
 
 
 def mutation_summary(agent):
@@ -165,25 +165,45 @@ def prepare_mutation(agent, name, args):
         raise RuntimeError(decision.value + ': final mutable operation requires compiler or human review')
     task_id, run_id = getattr(agent, '_canonical_work_task_id', None), getattr(agent, '_canonical_work_run_id', None)
     if task_id:
+        from workstation.kanban import WorkstationKanbanBridge
+        from hermes_cli import kanban_db, kanban_db_connect
+        with WorkstationKanbanBridge().get_connection() as admission_conn:
+            admission_task = kanban_db.get_task(admission_conn, task_id)
+        if admission_task and admission_task.status in {"triage", "ready"} and run_id is None:
+            envelope = getattr(agent, "_message_envelope", None)
+            if (envelope is None or not envelope.can_create_work
+                    or envelope.session_id != admission_task.session_id
+                    or envelope.content != admission_task.body):
+                raise PermissionError("triaged_task_requires_trusted_current_intent")
+            run_id = WorkstationKanbanBridge().start_triaged_task(
+                task_id, session_id=envelope.session_id, objective=envelope.content)
+            agent._canonical_work_run_id = run_id
         from hermes_cli import kanban_db, kanban_db_connect
         conn = kanban_db_connect.connect()
         try:
             task = kanban_db.get_task(conn, task_id)
             from workstation.authority_supersession import (
+                MutationAuthorityFenceError,
                 classify_run_authority,
                 checkpoint_superseded_execution,
             )
             auth_eval = classify_run_authority(task, run_id, connection=conn)
             if auth_eval is not None:
-                checkpoint_superseded_execution(
+                # No tool I/O has crossed the fence. Preserve the unconfirmed
+                # operation identity without persisting payloads or secrets.
+                checkpoint = checkpoint_superseded_execution(
                     task_id=task_id,
                     stale_run_id=run_id or "",
                     current_run_id=auth_eval.current_run_id,
                     completed_results=[],
-                    pending_items=[],
+                    pending_items=[{
+                        "operation_id": call_key(name, args),
+                        "tool": name,
+                        "status": "not_dispatched",
+                    }],
                     termination_kind=auth_eval.termination_kind,
                 )
-                raise RuntimeError('AUTHORITY_SUPERSEDED: continue pending work in canonical run' if auth_eval.continuation_allowed else auth_eval.termination_kind.value)
+                raise MutationAuthorityFenceError(checkpoint)
         finally:
             conn.close()
     from workstation.artifacts import ArtifactStore

@@ -155,9 +155,21 @@ function Assert-CheckoutUnchanged {
   $after = Get-CheckoutStatus
   if ($null -eq $after) { throw "Git checkout became unavailable during installation." }
   if ($after -ne $Before) {
-    Write-Host "Checkout changed during install:" -ForegroundColor Red
-    & git -C $Root status --short --untracked-files=all
-    throw "Hermes Workstation install must not modify repository source or create unignored checkout artifacts."
+    Write-Host "Checkout status changed during install (possibly concurrent Git activity):" -ForegroundColor Red
+    $beforeLines = @($Before -split "`n" | Where-Object { $_ -ne "" })
+    $afterLines = @($after -split "`n" | Where-Object { $_ -ne "" })
+    foreach ($line in $beforeLines) {
+      if ($afterLines -notcontains $line) {
+        Write-Host "  before only: $line" -ForegroundColor Yellow
+      }
+    }
+    foreach ($line in $afterLines) {
+      if ($beforeLines -notcontains $line) {
+        Write-Host "  after only:  $line" -ForegroundColor Yellow
+      }
+    }
+    Write-Host "Compare the before-only and after-only entries above before retrying." -ForegroundColor DarkGray
+    throw "Git checkout status changed during installation. Investigate concurrent Git activity or source modifications before retrying."
   }
 }
 

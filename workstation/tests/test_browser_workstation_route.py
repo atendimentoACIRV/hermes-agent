@@ -87,6 +87,28 @@ def controller(tmp_path, monkeypatch):
     bw.clear_workstation_task_binding("task-a")
 
 
+@pytest.fixture()
+def claimed_canonical_run(tmp_path, monkeypatch):
+    """Create real running tasks rather than bypassing the canonical run fence."""
+    from hermes_cli import kanban_db
+    from workstation.kanban import WorkstationKanbanBridge
+
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+
+    def claim(session_id="chat-route"):
+        with WorkstationKanbanBridge().get_connection() as conn:
+            card_id = kanban_db.create_task(
+                conn, title="Browser route test", body="Open site",
+                session_id=session_id, created_by="workstation", triage=True,
+            )
+            assert kanban_db.specify_triage_task(conn, card_id)
+            task = kanban_db.claim_task(conn, card_id, claimer="route-test")
+            assert task and task.current_run_id
+        return card_id, str(task.current_run_id)
+
+    return claim
+
+
 def test_controller_health_and_dispatch(controller):
     assert bw.workstation_controller_available(force=True)
     result = bw.workstation_routed_browser_handler(
@@ -198,21 +220,23 @@ def test_navigation_allows_and_normalizes_localhost():
     assert args["url"] == "http://localhost:3000/health"
 
 
-def test_dispatch_forwards_kanban_and_run_identities(controller, monkeypatch):
+def test_dispatch_forwards_kanban_and_run_identities(controller, monkeypatch, claimed_canonical_run):
+    card_id, run_id = claimed_canonical_run()
     result = bw.workstation_routed_browser_handler(
         "browser_navigate",
         {"url": "https://example.com"},
         fallback=lambda: pytest.fail("legacy fallback must not run"),
         task_id="task-kanban",
-        kanban_card_id="card-123",
-        run_id="run-456",
+        kanban_card_id=card_id,
+        run_id=run_id,
     )
     decoded = json.loads(result)
-    assert decoded["kanban_card_id"] == "card-123"
-    assert decoded["run_id"] == "run-456"
+    assert decoded["kanban_card_id"] == card_id
+    assert decoded["run_id"] == run_id
 
-    monkeypatch.setenv("HERMES_KANBAN_TASK", "card-env-789")
-    monkeypatch.setenv("HERMES_KANBAN_RUN_ID", "run-env-012")
+    env_card, env_run = claimed_canonical_run()
+    monkeypatch.setenv("HERMES_KANBAN_TASK", env_card)
+    monkeypatch.setenv("HERMES_KANBAN_RUN_ID", env_run)
     result_env = bw.workstation_routed_browser_handler(
         "browser_navigate",
         {"url": "https://example.com"},
@@ -220,8 +244,8 @@ def test_dispatch_forwards_kanban_and_run_identities(controller, monkeypatch):
         task_id="task-kanban-env",
     )
     decoded_env = json.loads(result_env)
-    assert decoded_env["kanban_card_id"] == "card-env-789"
-    assert decoded_env["run_id"] == "run-env-012"
+    assert decoded_env["kanban_card_id"] == env_card
+    assert decoded_env["run_id"] == env_run
 
 
 def test_browser_type_dispatches_with_clear_and_append(controller):
@@ -280,12 +304,13 @@ def test_browser_batch_actions_dispatches_with_steps(controller):
     assert decoded["arguments"]["steps"] == steps
 
 
-def test_adaptive_browser_loop_uses_one_task_despite_repeatability(controller):
+def test_adaptive_browser_loop_uses_one_task_despite_repeatability(controller, claimed_canonical_run):
     from types import SimpleNamespace
     from unittest.mock import patch
     from workstation.tests.test_durable_agent_integration import make_agent
     from workstation.tests.test_durable_hardening import call
     agent = make_agent()
+    card_id, run_id = claimed_canonical_run(str(agent.session_id or "chat-route"))
     sequence = [('browser_navigate', {'url': 'https://example.com'}),
                 ('browser_snapshot', {}), ('browser_type', {'ref': '@e5', 'text': 'query'}),
                 ('browser_press', {'key': 'Enter'}), ('browser_snapshot', {})]
@@ -295,7 +320,7 @@ def test_adaptive_browser_loop_uses_one_task_despite_repeatability(controller):
     messages, decoded = [], []
     def handler(name, args, task_id, **kw):
         result = bw.workstation_routed_browser_handler(name, args, task_id=task_id,
-            session_id=agent.session_id, kanban_card_id='card-test', run_id='run-test',
+            session_id=agent.session_id, kanban_card_id=card_id, run_id=run_id,
             fallback=lambda: pytest.fail('different browser'))
         decoded.append(json.loads(result))
         return result
@@ -305,7 +330,7 @@ def test_adaptive_browser_loop_uses_one_task_despite_repeatability(controller):
     assert len(messages) == 5 and all('durable_compile_required' not in m['content'] for m in messages)
     assert [r['action'] for r in decoded] == [n for n, _ in sequence]
     assert {r['task_id'] for r in decoded} == {'task-a'}
-    assert all(r['run_id'] == 'run-test' and r['kanban_card_id'] == 'card-test' for r in decoded)
+    assert all(r['run_id'] == run_id and r['kanban_card_id'] == card_id for r in decoded)
 
 
 def test_controller_health_accepts_utf8_bom_in_control_descriptor(controller):

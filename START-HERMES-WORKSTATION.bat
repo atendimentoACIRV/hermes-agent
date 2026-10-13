@@ -7,9 +7,18 @@ echo ============================================================
 echo   HERMES WORK - ONE-CLICK DOGFOOD
 echo ============================================================
 echo.
-echo [1/3] Installing and validating Hermes Work...
-call "%~dp0workstation\install.cmd"
-if errorlevel 1 goto :install_failed
+echo [1/3] Validating installation and dependency fingerprint...
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0workstation\scripts\oneclick_dependency_gate.ps1" -Action Check
+if errorlevel 1 (
+  echo [deps] Missing or changed dependencies - running installer...
+  call "%~dp0workstation\install.cmd"
+  if errorlevel 1 goto :install_failed
+  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0workstation\scripts\oneclick_dependency_gate.ps1" -Action Record
+  if errorlevel 1 goto :install_failed
+) else (
+  call "%~dp0workstation\install.cmd" -SkipDependencies
+  if errorlevel 1 goto :install_failed
+)
 
 echo.
 echo [2/3] Running Hermes Work Doctor...

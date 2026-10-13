@@ -13,7 +13,9 @@ import hashlib
 import json
 import time
 import re
-from typing import Any, Callable
+from itertools import chain
+from typing import Any
+from collections.abc import Callable
 
 from agent.tool_guardrails import classify_tool_failure
 from workstation.artifacts import ArtifactStore
@@ -52,7 +54,14 @@ def batch_intent(prompt: Any) -> bool:
     first = re.findall(r"\w+", lower)
     directive = bool(first and (re.search(r"(?:ar|er|ir|e|a)$", first[0]) or
                                first[0] in {"create", "generate", "process", "update", "execute", "apply", "send"}))
-    cognitive = bool(first and first[0] in {"compare", "explique", "analise", "discuta", "explore", "explain", "discuss"})
+    cognitive = bool(
+        first and (
+            first[0] in {"compare", "explique", "analise", "discuta", "explore", "explain", "discuss",
+                         "descreva", "resuma", "mostre", "defina"}
+            or (first[0] == "me" and len(first) > 1
+                and first[1] in {"mostre", "explique", "diga", "conte", "ajude"})
+        )
+    )
     count = re.search(r"\b(?:[2-9]|[1-9][0-9]+)\s+[\w-]+s\b", lower)
     fan_out = re.search(r"\b(?:cada\s+(?:registro|item|arquivo|usuário|usuario)|todos?\s+(?:esses?|estes?|os)|mesma\s+.+\s+ness(?:es|as)|each\s+|all\s+these)", lower)
     structured = False
@@ -270,6 +279,40 @@ class TaskCompiler:
     def execute(self, request: dict, *, task_id: str, session_id: str, dispatch: Callable,
                 progress: Callable | None = None, provider_usage: dict | None = None,
                 environment: str | None = None, event_bus=None, canonical_task_id: str | None = None) -> dict:
+        # An ingress-triaged responsibility owns no Run. Open its first Run only
+        # when a real executable plan reaches the existing TaskCompiler boundary.
+        # Discovery, status and contracts remain non-executing observations.
+        has_executable = any(request.get(key) for key in (
+            "operation_intent", "capability_id", "steps", "recipe_key", "operation_fingerprint"
+        ))
+        if canonical_task_id and has_executable and request.get("action") not in {"discover", "status", "contract"}:
+            from hermes_cli import kanban_db
+            from workstation.kanban import WorkstationKanbanBridge
+            bridge = WorkstationKanbanBridge()
+            # The canonical task owner may be an injected SQLite connection
+            # (tests, CLI or an embedded durable store), not the default board.
+            # Never consult a different Kanban database for that task identity.
+            owner_conn = getattr(self.store, "_external_conn", None)
+            if owner_conn is not None:
+                pending_task = kanban_db.get_task(owner_conn, canonical_task_id)
+            else:
+                with bridge.get_connection() as conn:
+                    pending_task = kanban_db.get_task(conn, canonical_task_id)
+            if pending_task is None or pending_task.session_id != session_id:
+                raise PermissionError("canonical_task_session_mismatch")
+            if pending_task.status in {"triage", "ready"}:
+                if owner_conn is None:
+                    self.canonical_run_id = bridge.start_triaged_task(
+                        canonical_task_id, session_id=session_id, objective=pending_task.body)
+                else:
+                    if pending_task.status == "triage":
+                        if not kanban_db.specify_triage_task(owner_conn, canonical_task_id):
+                            raise RuntimeError("triage_transition_lost")
+                    claimed = kanban_db.claim_task(
+                        owner_conn, canonical_task_id, claimer=f"workstation:{session_id}")
+                    if not claimed or not claimed.current_run_id:
+                        raise RuntimeError("canonical_run_claim_lost")
+                    self.canonical_run_id = str(claimed.current_run_id)
         if request.get("action") == "route" or request.get("operation_intent"):
             return self._execute_route(request, task_id=task_id, session_id=session_id,
                 dispatch=dispatch, progress=progress, provider_usage=provider_usage,
@@ -363,7 +406,7 @@ class TaskCompiler:
                     raise ValueError("External mutation target requires a real mutation step; preparation cannot establish persistence verification")
                 from workstation.browser_transaction import evidence_strength
                 for mutation in matching:
-                    for verifier in [v for vs in canonical_graph.values() for v in vs]:
+                    for verifier in chain.from_iterable(canonical_graph.values()):
                         if mutation in verifier.get('verifies', []) and verifier['tool'] == 'browser_snapshot':
                             if int(evidence_strength(verifier)) < 2:
                                 raise ValueError('External commit requires persisted readback; native browser snapshot is same-session semantic evidence')
@@ -419,7 +462,7 @@ class TaskCompiler:
         # Cached procedures still verify each item. Only a matching recipe plus
         # successful persisted preflight can skip the admission canary.
         canary_required = mutable_batch and not (recipe_reused and preflight)
-        all_steps = ([v for vs in graph.values() for v in vs] if graph else steps) + preflight
+        all_steps = (list(chain.from_iterable(graph.values())) if graph else steps) + preflight
         if kind == WorkClass.PROMPT_QUEUE and not any(s.get("wait") for s in steps):
             raise ValueError("Prompt queue requires a bounded completion wait before advancing")
         if not steps or len(steps) > 64 or len(request["items"]) > 10000:

@@ -650,6 +650,7 @@ def _handle_vault(args: dict[str, Any], **kwargs) -> str:
     return _fenced_page_op(tid, page_ops[action])
 
 
+from tools.effects import ToolEffect
 from tools.registry import no_cache_check_fn, registry
 
 _check_vault_available = no_cache_check_fn(_check_vault_available)

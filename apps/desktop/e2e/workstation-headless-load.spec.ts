@@ -10,11 +10,11 @@
  * window while exercising native WebContentsView instances.
  */
 
-import * as http from 'node:http'
+import { execFile } from 'node:child_process'
 import * as fs from 'node:fs'
+import * as http from 'node:http'
 import * as path from 'node:path'
-
-import { expect, test } from './test'
+import { promisify } from 'node:util'
 
 import {
   buildAppEnv,
@@ -23,6 +23,7 @@ import {
   setupMockBackend,
   waitForAppReady
 } from './fixtures'
+import { expect, test } from './test'
 
 interface ControllerFile {
   url: string
@@ -44,6 +45,7 @@ interface ControllerResponse {
 
 interface BrowserTaskRecord {
   taskId: string
+  sessionHost?: string | null
   status?: string
   parked?: boolean
 }
@@ -123,6 +125,8 @@ function readBoundedInteger(name: string, fallback: number, minimum: number, max
   return value
 }
 
+const execFileAsync = promisify(execFile)
+
 const TASK_COUNT = 4
 const SUSTAINED_TASK_COUNT = readBoundedInteger('HERMES_DESKTOP_E2E_SUSTAINED_TASKS', 8, 1, 32)
 const SUSTAINED_ROUNDS = readBoundedInteger('HERMES_DESKTOP_E2E_SUSTAINED_ROUNDS', 3, 1, 300)
@@ -134,10 +138,31 @@ let pageServer: http.Server | null = null
 let pageBaseUrl = ''
 let controller: ControllerFile | null = null
 let sustainedLoadEvidence: SustainedLoadEvidence | null = null
+// Isolated loopback side-effect counter for the uncertain native Browser proof.
+let uncertainNativeEffectCount = 0
 
 async function startDeterministicPageServer(): Promise<void> {
   pageServer = http.createServer((request, response) => {
+    if (request.url === '/p0-native-effect-state') {
+      response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+      response.end(JSON.stringify({ applied: uncertainNativeEffectCount }))
+      return
+    }
+    if (request.url === '/p0-native-effect-commit' && request.method === 'POST') {
+      uncertainNativeEffectCount += 1
+      response.writeHead(200, { 'content-type': 'text/plain' })
+      setTimeout(() => response.end('committed'), 300)
+      return
+    }
     const taskId = decodeURIComponent((request.url ?? '/').replace(/^\//, '')) || 'unknown'
+    if (taskId === 'p0-uncertain-native') {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      response.end(`<!doctype html><html><head><title>H013 ${taskId}</title></head><body>
+        <button type="button" data-testid="commit-once" onclick="fetch('/p0-native-effect-commit', {method:'POST'}).then(() => { document.getElementById('effect-state').textContent = 'COMMITTED'; })">Commit external side effect</button>
+        <output id="effect-state">PENDING external effect. This page is intentionally deterministic and local.</output>
+        </body></html>`)
+      return
+    }
 
     response.writeHead(200, {
       'content-type': 'text/html; charset=utf-8',
@@ -322,7 +347,9 @@ async function createRealChat(fixture: MockBackendFixture, prompt: string): Prom
           sessions: Array<{ id: string; preview?: string | null; title?: string | null }>
         }>({ path: '/api/sessions?limit=50&offset=0&min_messages=1&archived=exclude&order=recent' })
         const session = response.sessions.find(row => row.preview?.includes(expected))
-        if (!session) throw new Error(`H013 real chat did not persist: ${expected}`)
+        if (!session) {
+          throw new Error(`H013 real chat did not persist: ${expected}`)
+        }
         return { id: session.id, label: session.title || session.preview || expected }
       }, prompt)
     )
@@ -872,5 +899,370 @@ test('restores the selected chat BrowserTask on the first real viewport attach w
       id => (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser.destroyTask(id),
       taskId
     )
+  }
+})
+
+
+test('P0: native two-session human takeover denies writes with 409 then safely resumes', async () => {
+  if (!fixture || !controller) {
+    throw new Error('P0 native authority fixture is not ready')
+  }
+
+  // This test runs in a fresh isolated HERMES_HOME with real Electron
+  // WebContentsViews, controller HTTP, renderer IPC, and loopback pages.
+  const a = { taskId: 'p0-native-a', sessionId: 'p0-session-a' }
+  const b = { taskId: 'p0-native-b', sessionId: 'p0-session-b' }
+  const first = await browserAction(a.taskId, a.sessionId, `${pageBaseUrl}/p0-native-a`)
+  const second = await browserAction(b.taskId, b.sessionId, `${pageBaseUrl}/p0-native-b`)
+  expect(first.result?.title).toBe('H013 p0-native-a')
+  expect(second.result?.title).toBe('H013 p0-native-b')
+
+  const owner = await fixture.page.evaluate(async ({ taskId, sessionId }) => {
+    const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
+      WorkstationBridge & { takeControl: (id: string, session: string) => Promise<Record<string, unknown>> }
+    return bridge.takeControl(taskId, sessionId)
+  }, a)
+  // Global controlOwner projects the active tab (session B), not every task.
+  // Lease authority is owned per BrowserTask; verify A explicitly.
+  const ownedTasks = owner.tasks as Array<BrowserTaskRecord & { humanControlLease?: { owner?: string } }>
+  expect(ownedTasks.find(task => task.taskId === a.taskId)?.humanControlLease?.owner).toBe('human')
+
+  const denied = await fetch(`${controller.url}/v1/action`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${controller.token}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      action: 'browser_navigate',
+      arguments: { url: `${pageBaseUrl}/p0-denied-should-not-load` },
+      task_id: a.taskId,
+      session_id: a.sessionId
+    })
+  })
+  const deniedBody = (await denied.json()) as Record<string, unknown>
+  expect(denied.status).toBe(409)
+  expect(deniedBody.error_code).toBe('USER_CONTROL_ACTIVE')
+
+  // The unrelated session must remain operable while the human owns A.
+  const unaffected = await browserAction(b.taskId, b.sessionId, `${pageBaseUrl}/p0-native-b-continued`)
+  expect(unaffected.result?.title).toBe('H013 p0-native-b-continued')
+
+  const released = await fixture.page.evaluate(async taskId => {
+    const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
+      WorkstationBridge & { releaseControl: (id: string) => Promise<Record<string, unknown>> }
+    return bridge.releaseControl(taskId)
+  }, a.taskId)
+  expect(released.controlOwner).toBe('agent')
+
+  const resumed = await browserAction(a.taskId, a.sessionId, `${pageBaseUrl}/p0-native-a-resumed`)
+  expect(resumed.result?.title).toBe('H013 p0-native-a-resumed')
+  const readback = await controllerRequest('/v1/action', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'browser_snapshot',
+      task_id: a.taskId,
+      session_id: a.sessionId,
+      arguments: { full: false }
+    })
+  })
+  expect(readback.result?.url).toBe(`${pageBaseUrl}/p0-native-a-resumed`)
+  const resources = await controllerRequest('/resources')
+  const taskResources = (resources.resources ?? []).filter(resource => resource.resource_type === 'browser_task')
+  expect(taskResources.find(resource => resource.task_id === a.taskId)?.session_id).toBe(a.sessionId)
+  expect(taskResources.find(resource => resource.task_id === b.taskId)?.session_id).toBe(b.sessionId)
+})
+
+
+test('P0: five genuine AIAgent turns reach real Electron Browser and survive a lost ACK', async () => {
+  test.setTimeout(240_000)
+  if (!fixture || !controller) {
+    throw new Error('native five-turn fixture unavailable')
+  }
+
+  // The renderer creates both real chat sessions; the child process uses
+  // exactly their identities through AIAgent.run_conversation, not synthetic
+  // Kanban TaskRuns. Only model responses are scripted.
+  const a = await createRealChat(fixture, 'P0 agent native multi-turn chat A')
+  const b = await createRealChat(fixture, 'P0 agent native multi-turn chat B')
+  const controlPath = path.join(fixture.sandbox.root, 'workstation', 'Runtime', 'browser-control.json')
+  const python = process.env.HERMES_DESKTOP_PYTHON || process.env.HERMES_E2E_PYTHON
+  if (!python) {
+    throw new Error('Set HERMES_DESKTOP_PYTHON to the isolated Python test environment')
+  }
+
+  const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..')
+  const childEnv = {
+    ...buildAppEnv(fixture.sandbox),
+    PYTHONPATH: repoRoot,
+    HERMES_WORKSTATION_BROWSER: '1',
+    HERMES_WORKSTATION_BROWSER_ROUTING: '0',
+    HERMES_WORKSTATION_BROWSER_CONTROL_FILE: controlPath
+  }
+  // Async child is essential: the test's loopback HTML server must stay live
+  // while native WebContentsView navigation uses it.
+  const { stdout } = await execFileAsync(
+    python,
+    [path.join(repoRoot, 'workstation', 'tests', 'p0_native_browser_agent_driver.py'),
+      a.id, b.id, pageBaseUrl, controlPath],
+    { cwd: repoRoot, env: childEnv, timeout: 180_000, maxBuffer: 1024 * 1024 }
+  )
+  const lastLine = stdout.trim().split(/\r?\n/).at(-1)
+  const report = JSON.parse(lastLine || '{}') as {
+    accepted?: boolean; agent_turns?: number; lost_acks?: number;
+    terminal_after_lost_ack?: boolean; kanban_cards?: number
+  }
+  expect(report).toMatchObject({
+    accepted: true, agent_turns: 5, lost_acks: 1,
+    terminal_after_lost_ack: true, kanban_cards: 0
+  })
+
+  // The BrowserTask owner is the session, not a TaskRun borrowed from an old
+  // chat. Check actual controller resources and persisted native readback.
+  const resources = await controllerRequest('/resources')
+  const own = (resources.resources || []).filter(item => item.resource_type === 'browser_task')
+  const taskIdsA = own.filter(item => item.session_id === a.id).map(item => item.task_id)
+  const taskIdsB = own.filter(item => item.session_id === b.id).map(item => item.task_id)
+  expect(taskIdsA, `BrowserTasks of chat A: ${JSON.stringify(taskIdsA)}`).toHaveLength(1)
+  expect(taskIdsB, `BrowserTasks of chat B: ${JSON.stringify(taskIdsB)}`).toHaveLength(1)
+  const taskA = own.find(item => item.session_id === a.id)
+  const taskB = own.find(item => item.session_id === b.id)
+  expect(taskA?.task_id).toEqual(expect.any(String))
+  expect(taskB?.task_id).toEqual(expect.any(String))
+  expect(taskA?.task_id).not.toBe(taskB?.task_id)
+
+  const snapshot = async (taskId: unknown, sessionId: string) =>
+    controllerRequest('/v1/action', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'browser_snapshot', task_id: taskId,
+        session_id: sessionId, arguments: {}
+      })
+    })
+  expect((await snapshot(taskA!.task_id, a.id)).result?.url).toBe(`${pageBaseUrl}/p0-agent-youtube`)
+  expect((await snapshot(taskB!.task_id, b.id)).result?.url).toBe(`${pageBaseUrl}/p0-agent-other-chat`)
+
+  // The Browser button opens the Hub, not the Chat preview. The Hub owns its
+  // viewport even if the user changes chats; selection requires the existing
+  // TaskRail "Show" control (do not steal the Hub by changing chat selection).
+  const selectBrowserTask = async (session: { id: string; label: string }, targetUrl: string) => {
+    await openStoredSessionByTitle(fixture!.page, session.label)
+    await fixture!.page.getByRole('button', { name: 'Browser', exact: true }).click()
+    // TaskRail falls back to native page title if its session catalog has not
+    // yet projected the externally produced BrowserTask. Select by the
+    // deterministic page title, not by the chat list's title.
+    const browserTitle = `H013 ${new URL(targetUrl).pathname.slice(1)}`
+    const card = fixture!.page.getByRole('complementary', { name: 'Browser Task Rail' })
+      .locator('.group.rounded-md').filter({ hasText: browserTitle }).first()
+    await expect(card).toBeVisible()
+    await card.getByRole('button', { name: 'Show', exact: true }).click()
+    await expect.poll(async () => activeViewportChild(await nativeViewportSnapshot(fixture!.app)).url,
+      { timeout: 20_000 }).toBe(targetUrl)
+  }
+  await selectBrowserTask(b, `${pageBaseUrl}/p0-agent-other-chat`)
+  await selectBrowserTask(a, `${pageBaseUrl}/p0-agent-youtube`)
+})
+
+
+test('P0: Browser UI Take Control and Release Control buttons are actually clickable', async () => {
+  if (!fixture || !controller) {
+    throw new Error('P0 native UI fixture is not ready')
+  }
+
+  const taskId = 'p0-ui-clickability'
+  const sessionId = 'p0-ui-click-session'
+  const initial = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-ui-clickability`)
+  expect(initial.result?.title).toBe('H013 p0-ui-clickability')
+
+  // Exercise actual React controls and Electron hit testing, not simulated
+  // state or direct bridge calls.
+  await fixture.page.getByRole('button', { name: 'Browser', exact: true }).click()
+  const take = fixture.page.getByRole('button', { name: 'Take Control', exact: true })
+  await expect(take).toBeVisible()
+  await take.click()
+  const release = fixture.page.getByRole('button', { name: 'Release Control', exact: true })
+  await expect(release).toBeVisible()
+  await release.click()
+  await expect(take).toBeVisible()
+
+  const result = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-ui-clickability-resumed`)
+  expect(result.result?.title).toBe('H013 p0-ui-clickability-resumed')
+})
+
+
+// Native Browser mutation tests must run before the deliberate cold restart
+// test, which closes and replaces the shared Electron E2E fixture.
+test('P0: native Browser mutation remains observable after lost controller acknowledgment', async () => {
+  if (!fixture || !controller) {
+    throw new Error('P0 native uncertainty fixture unavailable')
+  }
+  uncertainNativeEffectCount = 0
+  const taskId = 'p0-native-uncertain-effect'
+  const sessionId = 'p0-native-uncertain-session'
+  const otherTask = 'p0-native-independent-read'
+  const otherSession = 'p0-native-other-session'
+  const navigation = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-uncertain-native`)
+  expect(navigation.result?.title).toBe('H013 p0-uncertain-native')
+  const initial = await controllerRequest('/v1/action', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId, session_id: sessionId, arguments: {} })
+  })
+  const elements = (initial.result?.elements ?? []) as Array<{ ref?: string; testid?: string; label?: string }>
+  const target = elements.find(el => el.testid === 'commit-once' || el.label?.includes('Commit external'))
+  expect(target?.ref).toMatch(/^@e\d+$/)
+
+  // Dispatch the real controller mutation and intentionally lose the HTTP
+  // acknowledgement AFTER the external loopback server records the effect.
+  // A client timeout must not be taken as evidence of mutation failure.
+  const abandoned = new AbortController()
+  const pending = fetch(`${controller.url}/v1/action`, {
+    method: 'POST',
+    signal: abandoned.signal,
+    headers: { authorization: `Bearer ${controller.token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'browser_click', task_id: taskId, session_id: sessionId,
+      operation_id: 'p0-native-uncertain-op-1', arguments: { ref: target!.ref } })
+  }).then(() => 'acknowledged', () => 'client_timeout')
+  await expect.poll(async () => {
+    const read = await fetch(`${pageBaseUrl}/p0-native-effect-state`)
+    const body = await read.json() as { applied: number }
+    return body.applied
+  }, { timeout: 10000 }).toBe(1)
+  abandoned.abort(new Error('client_timeout_after_external_effect'))
+  expect(await pending).toBe('client_timeout')
+
+  // Independent read: do NOT resend browser_click to discover what happened.
+  await expect.poll(async () => {
+    const snap = await controllerRequest('/v1/action', { method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId, session_id: sessionId, arguments: {} })
+    })
+    return String(snap.result?.snapshot ?? '').includes('COMMITTED')
+  }, { timeout: 10000 }).toBe(true)
+  const recorded = await fetch(`${pageBaseUrl}/p0-native-effect-state`)
+  expect((await recorded.json() as { applied: number }).applied).toBe(1)
+  const unrelated = await browserAction(otherTask, otherSession, `${pageBaseUrl}/p0-independent-read-available`)
+  expect(unrelated.result?.title).toBe('H013 p0-independent-read-available')
+  expect(uncertainNativeEffectCount).toBe(1)
+})
+
+// A cold restart is only a BrowserTask persistence test when the BrowserTask
+// belongs to an actual persisted Hermes chat. Synthetic controller-only
+// session IDs are not discoverable by the renderer's lazy restore path.
+test('P0: released and active human leases recover safely across cold Electron restarts', async () => {
+  test.setTimeout(360_000)
+  if (!fixture || !controller) {
+    throw new Error('P0 restart fixture is not ready')
+  }
+
+  const session = await createRealChat(fixture, 'P0 cold restart real session')
+  const taskId = 'p0-cold-restart-a'
+  const url = `${pageBaseUrl}/p0-cold-restart-a`
+  await openStoredSessionByTitle(fixture.page, session.label, 'P0 cold restart real session')
+  const before = await browserAction(taskId, session.id, url)
+  expect(before.result?.title).toBe('H013 p0-cold-restart-a')
+
+  await fixture.page.evaluate(async ({ taskId, sessionId }) => {
+    const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
+      WorkstationBridge & {
+        takeControl: (id: string, session: string) => Promise<unknown>
+        releaseControl: (id: string) => Promise<unknown>
+      }
+    await bridge.takeControl(taskId, sessionId)
+    await bridge.releaseControl(taskId)
+  }, { taskId, sessionId: session.id })
+
+  const env = buildAppEnv(fixture.sandbox, { HERMES_DESKTOP_E2E_HEADLESS: '1' })
+  const oldToken = controller.token
+  const controlPath = path.join(fixture.sandbox.root, 'workstation', 'Runtime', 'browser-control.json')
+  await fixture.app.close()
+  const restarted = await launchDesktop(env)
+  // Unlike the previous fixture, the test must hand the *new* app/page to
+  // readiness, session restore and later assertions.
+  fixture.app = restarted.app
+  fixture.page = restarted.page
+  try {
+    await waitForAppReady(fixture, 120_000, false)
+    await expect.poll(
+      async () => (await readControllerFile(controlPath)).token,
+      { timeout: 30_000 }
+    ).not.toBe(oldToken)
+    controller = await readControllerFile(controlPath)
+    await openStoredSessionByTitle(fixture.page, session.label, 'P0 cold restart real session')
+
+    const restored = await fixture.page.evaluate(async taskId => {
+      const tasks = await (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser.listTasks()
+      return tasks.find(task => task.taskId === taskId) || null
+    }, taskId)
+    expect(restored?.sessionHost).toBe(session.id)
+
+    const resumed = await browserAction(taskId, session.id, `${pageBaseUrl}/p0-cold-restart-resumed`)
+    expect(resumed.result?.title).toBe('H013 p0-cold-restart-resumed')
+    const readback = await controllerRequest('/v1/action', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'browser_snapshot', task_id: taskId, session_id: session.id, arguments: {}
+      })
+    })
+    expect(readback.result?.url).toBe(`${pageBaseUrl}/p0-cold-restart-resumed`)
+
+    // A second cold restart intentionally occurs with a live human lease.
+    // Human control must block the old process, then must NOT be restored as
+    // an authoritative lease of the new process (contract in browser-task.ts).
+    const lease = await fixture.page.evaluate(async ({ taskId, sessionId }) => {
+      const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
+        WorkstationBridge & { takeControl: (id: string, session: string) => Promise<unknown> }
+      await bridge.takeControl(taskId, sessionId)
+      const current = (await bridge.listTasks()).find(task => task.taskId === taskId)
+      return (current as BrowserTaskRecord & { humanControlLease?: { owner?: string } })?.humanControlLease
+    }, { taskId, sessionId: session.id })
+    expect(lease?.owner).toBe('human')
+    const denied = await fetch(`${controller.url}/v1/action`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${controller.token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'browser_navigate', task_id: taskId, session_id: session.id,
+        arguments: { url: `${pageBaseUrl}/p0-stale-human-denied` }
+      })
+    })
+    expect(denied.status).toBe(409)
+    expect((await denied.json() as { error_code?: string }).error_code).toBe('USER_CONTROL_ACTIVE')
+
+    const leaseOwnerToken = controller.token
+    await restarted.app.close()
+    const activeRestart = await launchDesktop(env)
+    fixture.app = activeRestart.app
+    fixture.page = activeRestart.page
+    try {
+      await waitForAppReady(fixture, 120_000, false)
+      await expect.poll(async () => (await readControllerFile(controlPath)).token,
+        { timeout: 30_000 }).not.toBe(leaseOwnerToken)
+      controller = await readControllerFile(controlPath)
+      await openStoredSessionByTitle(fixture.page, session.label, 'P0 cold restart real session')
+      const recovered = await fixture.page.evaluate(async taskId => {
+        const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+        return (await bridge.listTasks()).find(task => task.taskId === taskId)
+      }, taskId)
+      expect(recovered?.sessionHost).toBe(session.id)
+      expect((recovered as BrowserTaskRecord & { humanControlLease?: unknown })?.humanControlLease).toBeUndefined()
+      const safelyResumed = await browserAction(taskId, session.id, `${pageBaseUrl}/p0-active-lease-restart`)
+      expect(safelyResumed.result?.title).toBe('H013 p0-active-lease-restart')
+      const finalSnapshot = await controllerRequest('/v1/action', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId,
+          session_id: session.id, arguments: {} })
+      })
+      expect(finalSnapshot.result?.url).toBe(`${pageBaseUrl}/p0-active-lease-restart`)
+    } finally {
+      await activeRestart.app.close().catch(() => undefined)
+    }
+  } finally {
+    // Fixture cleanup owns the first Electron instance captured at setup.
+    // Explicitly stop the replacement so no E2E orphan contaminates later tests.
+    await restarted.app.close().catch(() => undefined)
   }
 })

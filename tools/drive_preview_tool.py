@@ -151,7 +151,7 @@ def drive_preview_effect(args: dict) -> ToolEffect:
     if verb == "elements":
         return ToolEffect.DISCOVERY
     if verb in ACTIONS:
-        return ToolEffect.MUTATION
+        return ToolEffect.INTERACTIVE
     return ToolEffect.MUTATION
 
 

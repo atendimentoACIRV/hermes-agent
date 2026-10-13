@@ -35,8 +35,10 @@ def local_state(tmp_path, monkeypatch):
 
 def _task():
     bridge = WorkstationKanbanBridge()
-    envelope = MessageEnvelope(MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK, SESSION, PROMPT)
-    task_id = bridge.promote_request_if_multistep(PROMPT, session_id=SESSION, envelope=envelope)
+    envelope = MessageEnvelope(MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK, SESSION, PROMPT,
+                               metadata={"explicit_force_work": True})
+    # Explicit fixture creates canonical work; simple navigation is not auto-promoted.
+    task_id = bridge.promote_request_if_multistep(PROMPT, session_id=SESSION, envelope=envelope, force=True)
     assert task_id
     from hermes_cli import kanban_db
     with bridge.get_connection() as conn:
@@ -432,7 +434,8 @@ def test_real_browser_readback_validates_and_promotes_compiled_capability(local_
     if fresh_command:
         from hermes_cli import kanban_db
         bridge = WorkstationKanbanBridge()
-        envelope = MessageEnvelope(MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK, SESSION, "Abre o Trello.")
+        envelope = MessageEnvelope(MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK, SESSION, "Abre o Trello.",
+                                   metadata={"explicit_force_work": True})
         monkeypatch.setattr("workstation.integrations.hermes.operational_resolution.maybe_resolve_navigation", lambda _ctx: None)
         future_task = bridge.promote_request_if_multistep(envelope.content, session_id=SESSION,
             envelope=envelope, force=True)

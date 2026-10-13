@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import socket
 import sys
 import threading
@@ -527,7 +528,10 @@ def workstation_controller_events(
 
 
 def _task_key(task_id: Optional[str], session_id: Optional[str]) -> str:
-    return str(task_id or session_id or "default").strip() or "default"
+    # Agent effective_task_id is a *per-turn* UUID, not a BrowserTask owner.
+    # For a chat, the authenticated session is stable across model turns.
+    # Without a session, preserve legacy explicit task-based ownership.
+    return str(session_id or task_id or "default").strip() or "default"
 
 
 def _is_bound(key: str) -> bool:
@@ -722,6 +726,7 @@ def _dispatch(
     kanban_card_id: Optional[str] = None,
     run_id: Optional[str] = None,
     operation_id: Optional[str] = None,
+    model_facing: bool = False,
 ) -> str:
     if action == "browser_navigate":
         _validate_navigation(args)
@@ -736,51 +741,32 @@ def _dispatch(
         timeout = float(os.getenv("HERMES_WORKSTATION_BROWSER_TIMEOUT", str(_DEFAULT_TIMEOUT_SECONDS)))
     except ValueError:
         timeout = _DEFAULT_TIMEOUT_SECONDS
-    session_card_id = ""
-    try:
-        from gateway.session_context import get_session_env
-        session_card_id = get_session_env("HERMES_KANBAN_TASK", "")
-    except Exception:
-        pass
-    card_id = (kanban_card_id or session_card_id or os.environ.get("HERMES_KANBAN_TASK") or "").strip() or None
-    rid = (run_id or os.environ.get("HERMES_KANBAN_RUN_ID") or "").strip() or None
+    # A Browser session is not a Kanban TaskRun. Do not infer authority from
+    # the only task matching a session, from the task's latest run, or from
+    # process-wide env vars that can survive a chat switch. Session-bound
+    # callers must supply the exact card/run identifiers at the call site.
+    if session_id:
+        card_id = str(kanban_card_id or "").strip() or None
+        rid = str(run_id or "").strip() or None
+    else:
+        # Legacy headless callers without a chat identity may still use the
+        # existing process context. This is never applied to session calls.
+        card_id = str(kanban_card_id or os.environ.get("HERMES_KANBAN_TASK") or "").strip() or None
+        rid = str(run_id or os.environ.get("HERMES_KANBAN_RUN_ID") or "").strip() or None
 
-    if not card_id and task_id:
-        card_id = str(task_id).strip() or None
+    if card_id and rid:
+        # Explicit canonical work retains the requested BrowserTask identity;
+        # only unbound per-turn agent UUIDs collapse to the stable chat.
+        key = str(task_id or card_id)
 
-    if not card_id and session_id:
-        try:
-            from hermes_cli import kanban_db
-            from hermes_cli.kanban_db_connect import connect
-            conn = connect()
-            try:
-                tasks = kanban_db.list_tasks(conn, status=None)
-                active = [t for t in tasks if t.session_id == session_id and t.status not in {'done', 'cancelled'}]
-                if len(active) == 1:
-                    card_id = active[0].id
-                    if not rid and active[0].current_run_id:
-                        rid = str(active[0].current_run_id)
-            finally:
-                conn.close()
-        except Exception:
-            pass
-
-    if card_id and not rid:
-        try:
-            from hermes_cli import kanban_db
-            from hermes_cli.kanban_db_connect import connect
-            conn = connect()
-            try:
-                ktask = kanban_db.get_task(conn, card_id)
-                if ktask and ktask.current_run_id:
-                    rid = str(ktask.current_run_id)
-            finally:
-                conn.close()
-        except Exception:
-            pass
-
-    if card_id and not task_id:
-        key = card_id
+    # A partial explicit binding has no canonical authorization. Do not
+    # downgrade it to an unbound Browser session or forward a card-only hint.
+    if bool(card_id) != bool(rid):
+        raise WorkstationBrowserError(
+            'Incomplete TaskRun binding cannot control BrowserTask',
+            error_code='STALE_RUN', retryable=False, state_changed=False,
+            recommended_action='RECONCILE_BINDING',
+        )
 
     if card_id and rid:
         from hermes_cli import kanban_db
@@ -789,7 +775,10 @@ def _dispatch(
 
         try:
             task = kanban_db.get_task(conn, card_id)
-            if task and (str(task.current_run_id) != str(rid) or task.status in {'done', 'cancelled'}):
+            if (task is None
+                    or str(task.current_run_id) != str(rid)
+                    or task.status != 'running'
+                    or (session_id is not None and task.session_id != session_id)):
                 raise WorkstationBrowserError('Stale TaskRun cannot control BrowserTask',
                     error_code='STALE_RUN', retryable=False, state_changed=False,
                     recommended_action='RECONCILE_BINDING')
@@ -797,7 +786,11 @@ def _dispatch(
             conn.close()
 
     clean_args = dict(args)
-    op_id = operation_id or clean_args.pop("operation_id", None) or os.environ.get("HERMES_OPERATION_ID") or f"op_{action}_{uuid.uuid4().hex[:12]}"
+    # Process-wide operation IDs must not leak across chat sessions: Electron
+    # may otherwise incorrectly treat a different mutation as an idempotent replay.
+    op_id = (operation_id or clean_args.pop("operation_id", None)
+             or (os.environ.get("HERMES_OPERATION_ID") if not session_id else None)
+             or f"op_{action}_{uuid.uuid4().hex[:12]}")
     args.pop("operation_id", None)
     from workstation.batch_detection import call_key
     payload: dict[str, Any] = {
@@ -833,7 +826,95 @@ def _dispatch(
             pass
     if isinstance(result, str):
         return result
-    return json.dumps(result, ensure_ascii=False)
+    return json.dumps(project_model_browser_payload(result) if model_facing else result, ensure_ascii=False)
+
+
+_INVENTORY_SECTION = "Interactive elements:\n"
+_INVENTORY_SECTION_END = "\nPage text:"
+_INVENTORY_REF = re.compile(r"^- \[(@e\d+)\]")
+# Fields ``formatInventory`` already prints as `- [@eN] role "label" value disabled`.
+_TEXT_EXPRESSED_KEYS = frozenset({"ref", "role", "label", "value", "disabled"})
+
+
+def _refs_listed_in_snapshot_text(snapshot_text: str) -> Optional[list[str]]:
+    """Refs the snapshot TEXT enumerates, or ``None`` when the grammar differs."""
+    section = snapshot_text.partition(_INVENTORY_SECTION)[2]
+    if not section:
+        return None
+    inventory = section.partition(_INVENTORY_SECTION_END)[0]
+    inventory = inventory.partition("\n[Snapshot truncated by Hermes Workstation budget]")[0]
+    lines = [line for line in inventory.splitlines() if line.strip()]
+    matches = [_INVENTORY_REF.match(line) for line in lines]
+    if not matches or any(match is None for match in matches):
+        return None
+    refs = [match.group(1) for match in matches]
+    return refs if len(refs) == len(set(refs)) else None
+
+
+def project_model_browser_payload(result: Any) -> Any:
+    """Drop the element list the snapshot text already carries, losslessly.
+
+    ``formatInventory`` prints ``- [@eN] role "label" value disabled`` for every
+    element, so the ``elements`` array repeats that same inventory in structured
+    form: the model receives one list twice per call. Only the fields the text
+    cannot express (``tag`` when it differs from ``role``, ``testid``, ``name``)
+    survive, under ``element_index``.
+
+    The model-facing contract stays ``snapshot`` + ``element_count``, matching the
+    legacy lane (``tools/browser_tool.py``: ``_snapshot_fields``).
+
+    Fails open: a missing ``elements`` list, an unrecognized inventory grammar or a
+    ref mismatch returns ``result`` untouched, so an addressable target is never
+    dropped silently.
+    """
+    if not isinstance(result, dict):
+        return result
+    elements = result.get("elements")
+    snapshot = result.get("snapshot")
+    if not isinstance(elements, list) or not elements or not isinstance(snapshot, str):
+        return result
+    if not all(isinstance(element, dict) and element.get("ref") for element in elements):
+        return result
+    listed = _refs_listed_in_snapshot_text(snapshot)
+    if not listed or len(listed) != len(elements):
+        return result
+    if listed != [str(element["ref"]) for element in elements]:
+        return result
+
+    # Ref equality alone is insufficient: stale/redacted labels, values, or roles
+    # could otherwise be represented by inaccurate snapshot text.
+    inventory = snapshot.partition(_INVENTORY_SECTION)[2].partition(_INVENTORY_SECTION_END)[0]
+    inventory = inventory.partition("\n[Snapshot truncated by Hermes Workstation budget]")[0]
+    lines = [line for line in inventory.splitlines() if line.strip()]
+    for line, element in zip(lines, elements):
+        ref, role, tag = element["ref"], element.get("role"), element.get("tag")
+        label, value, disabled = element.get("label") or "", element.get("value") or "", element.get("disabled")
+        if not (isinstance(ref, str) and isinstance(role, str) and role
+                and isinstance(tag, str) and tag and isinstance(label, str)
+                and isinstance(value, str) and isinstance(disabled, bool)):
+            return result
+        label_part = ' "' + label.replace('"', r'\"') + '"' if label else ""
+        value_part = ' value="' + value.replace('"', r'\"') + '"' if value else ""
+        expected = f'- [{ref}] {role}{label_part}{value_part}' + (" disabled" if disabled else "")
+        if line != expected:
+            return result
+
+    index: dict[str, dict[str, Any]] = {}
+    for element in elements:
+        extras = {
+            key: value
+            for key, value in element.items()
+            if key not in _TEXT_EXPRESSED_KEYS
+            and not (key == "tag" and value == element["role"])
+        }
+        if extras:
+            index[str(element["ref"])] = extras
+
+    projected = {key: value for key, value in result.items() if key != "elements"}
+    projected["elements_projected"] = True
+    if index:
+        projected["element_index"] = index
+    return projected
 
 
 call_workstation_browser = _dispatch
@@ -904,4 +985,5 @@ def workstation_routed_browser_handler(
         action, args, task_id=task_id, session_id=session_id,
         kanban_card_id=kanban_card_id, run_id=run_id,
         operation_id=operation_id,
+        model_facing=True,
     )

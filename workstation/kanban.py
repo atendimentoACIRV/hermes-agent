@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import json
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
+from collections.abc import Iterable
 import sqlite3
 from datetime import datetime, timezone
 
@@ -88,8 +90,8 @@ def _verified_native_navigation(artifacts, trace, task_id: str, session_id: str,
     if not proven_op_id or proven_op_id != expected_op_id:
         raise ValueError(f"Browser owner receipt does not match expected operation identity: expected {expected_op_id}, got {proven_op_id}")
     saved_at_str = readback['saved_at']
-    saved_at = datetime.fromisoformat(saved_at_str.replace('Z', '+00:00'))
-    captured_at = datetime.fromisoformat(action['captured_at'].replace('Z', '+00:00'))
+    saved_at = datetime.fromisoformat(saved_at_str)
+    captured_at = datetime.fromisoformat(action['captured_at'])
     if saved_at.tzinfo is None or captured_at.tzinfo is None or not -5 <= (captured_at - saved_at).total_seconds() <= 120:
         raise ValueError("BrowserSessionState readback is stale or temporally inconsistent")
     observed_at = saved_at_str
@@ -124,56 +126,52 @@ def _verified_native_navigation(artifacts, trace, task_id: str, session_id: str,
 
 
 def is_multistep_request(prompt: str) -> bool:
-    """Classify if a user request is a multistep/asynchronous workflow."""
-    keywords = [
-        "workflow",
-        "multistep",
-        "step by step",
-        "passo a passo",
-        "first",
-        "then",
-        "finally",
-        "primeiro",
-        "depois",
-        "automate",
-        "automatize",
-        "extract and",
-        "extraia e",
-        "sign in and",
-        "faça login",
-        "fill out",
-        "preencha",
-        "download and",
-        "baixe e",
-        "search and",
-        "pesquise e",
-        "pipeline",
-        "batch",
-        "follow-up",
-        "scrape and",
-        "raspe e",
-        "pesquise",
-        "pesquisa",
-        "navegue",
-        "procure",
-        "browser",
-        "navegador",
-        "online",
-        "internet",
-        "site",
-        "web",
-        "busque",
-        "investigate",
-        "research",
-    ]
-    lower = prompt.lower()
-    return any(kw in lower for kw in keywords) or ("\n" in prompt.strip() and len(prompt.strip()) > 30)
+    """Conservative durable-work signal, never a single topic word.
+
+    Browser, site, research and question words alone do not create responsibilities.
+    A trusted ingress envelope is independently required by the bridge.
+    """
+    import re
+
+    if not isinstance(prompt, str):
+        return False
+    text = " ".join(prompt.casefold().strip().split())
+    if re.match(r"^(multistep workflow to|workflow para|pipeline para)\b", text):
+        return True
+    if re.search(r"\b(execute (this |the )?multistep workflow|execute este workflow)\b", text):
+        return True
+    if not text or re.match(
+        r"^(como|qual|quais|porque|por que|o que|what|how|why|can you explain|explique|mostre|descreva|resuma|defina|me explique|me mostre|me ajude a entender|me diga|me conte)\b", text
+    ):
+        return False
+    if re.search(
+        r"\b(execute|implemente|crie|configure|automatize|rode|run|implement|create)\b"
+        r".+\b(multistep|workflow|pipeline|passo a passo|lote de tarefas)\b", text
+    ):
+        return True
+    if re.search(r"\b(first|primeiro)\b.+\b(then|depois|finally|por fim)\b", text):
+        return True
+    if re.search(r"\b(then|depois|em seguida)\b", text):
+        verbs = re.findall(
+            r"\b(extract|verify|create|generate|build|test|fix|implement|"
+            r"extraia|verifique|crie|gere|implemente|corrija|teste|documente|"
+            r"investigue|configure|salve|publique|escreva)\b", text
+        )
+        if len(verbs) >= 2:
+            return True
+    # Explicit multi-action assignments, not noun/topic mentions.
+    actions = re.findall(
+        r"\b(investigue|corrija|implemente|teste|documente|crie|gere|"
+        r"atualize|construa|configure|desenvolva|revise|integre|escreva|"
+        r"fix|implement|build|generate|create|test|verify|deploy)\b", text
+    )
+    return len(set(actions)) >= 2 and bool(re.search(r"[,;]|\b(e|and|depois)\b", text))
 
 
 class WorkstationKanbanBridge:
     """Bridge between Workstation tasks and the canonical Kanban SQLite database."""
 
-    def __init__(self, *, board: Optional[str] = None) -> None:
+    def __init__(self, *, board: str | None = None) -> None:
         self.board = board
 
     def get_connection(self) -> sqlite3.Connection:
@@ -184,14 +182,22 @@ class WorkstationKanbanBridge:
         prompt: str,
         *,
         session_id: str,
-        title: Optional[str] = None,
+        title: str | None = None,
         force: bool = False,
         envelope: MessageEnvelope | None = None,
         acceptance_contract: AcceptanceContract | None = None,
-    ) -> Optional[str]:
+        defer_execution: bool = False,
+    ) -> str | None:
         """Automatically create a parent Kanban task for a multistep request."""
         if (envelope is None or not envelope.can_create_work
                 or envelope.session_id != session_id or envelope.content != prompt):
+            return None
+        # A caller may only bypass automatic intent classification if
+        # trusted ingress explicitly marked this request as delegated work.
+        # Plain CREATE_WORK authority alone does not turn a point action
+        # into a durable task through a force flag.
+        if force and (not isinstance(envelope.metadata, dict)
+                      or envelope.metadata.get("explicit_force_work") is not True):
             return None
         cfg = load_workstation_config()
         from workstation.work_intent import work_intent
@@ -206,6 +212,21 @@ class WorkstationKanbanBridge:
         clean_title = (title or prompt.strip().split("\n")[0])[:80]
         claimed_run_id = None
         with self.get_connection() as conn:
+            if defer_execution:
+                # The caller's preflight is a separate read: two workers can
+                # observe no task and both create. Serialize the admission at
+                # the canonical SQLite owner across turns and processes.
+                conn.execute("BEGIN IMMEDIATE")
+                row = conn.execute(
+                    "SELECT id FROM tasks WHERE session_id=? AND body=? "
+                    "AND created_by='workstation' "
+                    "AND status IN ('triage','todo','ready','running','blocked','scheduled') "
+                    "ORDER BY created_at DESC, id DESC LIMIT 1",
+                    (session_id, prompt),
+                ).fetchone()
+                if row is not None:
+                    conn.commit()
+                    return str(row[0])
             task_id = kanban_db.create_task(
                 conn,
                 title=clean_title,
@@ -213,13 +234,20 @@ class WorkstationKanbanBridge:
                 created_by="workstation",
                 session_id=session_id,
                 board=self.board,
-                initial_status="running",
+                initial_status="running", triage=defer_execution,
+                idempotency_key=(
+                    "workstation:" + hashlib.sha256(
+                        f"{session_id}:{envelope.correlation_id}:{prompt}".encode()
+                    ).hexdigest()
+                    if defer_execution and envelope.correlation_id else None
+                ),
             )
-            claimed_task = kanban_db.claim_task(conn, task_id, claimer=f"workstation:{session_id}")
-            if claimed_task and claimed_task.current_run_id:
-                claimed_run_id = claimed_task.current_run_id
+            if not defer_execution:
+                claimed_task = kanban_db.claim_task(conn, task_id, claimer=f"workstation:{session_id}")
+                if claimed_task and claimed_task.current_run_id:
+                    claimed_run_id = claimed_task.current_run_id
             contract = acceptance_contract or AcceptanceContract()
-            conn.execute("INSERT INTO task_acceptance_contracts(task_id, contract_json) VALUES (?,?)",
+            conn.execute("INSERT OR IGNORE INTO task_acceptance_contracts(task_id, contract_json) VALUES (?,?)",
                          (task_id, json.dumps(asdict(contract))))
             conn.commit()
 
@@ -231,6 +259,27 @@ class WorkstationKanbanBridge:
             metadata={"source": "automatic_multistep_promotion", "prompt": prompt, "run_id": claimed_run_id},
         )
         return task_id
+
+    def start_triaged_task(self, task_id: str, *, session_id: str, objective: str) -> str:
+        """Claim a run at the first real execution boundary; never adopt a foreign run.
+
+        Existing Kanban transitions own CAS, parent checks and worker notification.
+        No blocked/cancelled/revoked task is reopened here.
+        """
+        with self.get_connection() as conn:
+            task = kanban_db.get_task(conn, task_id)
+            if task is None or task.session_id != session_id or task.body != objective:
+                raise PermissionError("canonical_task_session_or_objective_mismatch")
+            if task.status == "triage":
+                if not kanban_db.specify_triage_task(conn, task_id):
+                    raise RuntimeError("triage_transition_lost")
+                task = kanban_db.get_task(conn, task_id)
+            if task.status != "ready" or task.current_run_id is not None:
+                raise RuntimeError(f"canonical_task_not_claimable:{task.status}")
+            claimed = kanban_db.claim_task(conn, task_id, claimer=f"workstation:{session_id}")
+            if not claimed or not claimed.current_run_id:
+                raise RuntimeError("canonical_run_claim_lost")
+            return str(claimed.current_run_id)
 
     def record_discovered_followup(
         self,
@@ -307,7 +356,7 @@ class WorkstationKanbanBridge:
         task_id: str,
         report: BrowserTaskReport,
         *,
-        expected_run_id: Optional[int] = None,
+        expected_run_id: int | None = None,
     ) -> bool:
         """Complete Kanban task with structured Workstation report metadata."""
         metadata = report.to_kanban_metadata()
@@ -486,7 +535,7 @@ class WorkstationKanbanBridge:
         session_id: str,
         turn_result: dict,
         *,
-        expected_run_id: Optional[int] = None,
+        expected_run_id: int | None = None,
     ) -> dict:
         """Verify persisted execution before submitting the turn's outcome candidate."""
         from workstation.artifacts import ArtifactStore
@@ -498,6 +547,10 @@ class WorkstationKanbanBridge:
             task = kanban_db.get_task(conn, task_id)
             if task is None or task.session_id != session_id:
                 raise ValueError("Outcome candidate must belong to the canonical task/session")
+            if task.status in {"triage", "todo", "ready"} and task.current_run_id is None:
+                # Admission creates durable responsibility, not fabricated execution.
+                # No candidate may auto-block or complete work that never ran.
+                return {"task_id": task_id, "status": "queued_unstarted", "acceptance_approved": False}
             if task.status == "done":
                 run = kanban_db.latest_run(conn, task_id)
                 metadata = run.metadata if run and isinstance(run.metadata, dict) else {}

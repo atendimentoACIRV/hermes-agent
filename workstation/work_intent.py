@@ -73,6 +73,7 @@ class WorkIntent:
     handoff_policy: str = "explicit"
     repeatability_hint: bool = False
     constraints: dict = field(default_factory=dict)
+    admission_kind: str = "conversation"
 
 
 def work_intent(envelope: MessageEnvelope, structured: dict | None = None) -> WorkIntent:
@@ -82,12 +83,15 @@ def work_intent(envelope: MessageEnvelope, structured: dict | None = None) -> Wo
     steps = (structured or {}).get("steps", [])
     command = recognize_current_command(envelope.content)
     browser = command is not None or any(str(s.get("tool", "")).startswith("browser_") for s in steps)
-    durable = structured is not None or batch_intent(envelope.content)
-    requires_task = envelope.can_create_work and (command is not None or durable or is_multistep_request(envelope.content))
+    durable = bool(structured and any(structured.get(k) for k in ("steps", "items", "operation_intent", "capability_id")))
+    durable = durable or batch_intent(envelope.content) or is_multistep_request(envelope.content)
+    requires_task = bool(envelope.can_create_work and durable)
+    admission_kind = "durable_task" if requires_task else "point_action" if command is not None else "conversation"
     return WorkIntent(kind, requires_task, browser, False, "durable" if durable else "turn",
                       RiskLevel.MEDIUM if durable else RiskLevel.LOW,
                       AcceptanceContract(), repeatability_hint=durable,
-                      constraints=(structured or {}).get("constraints", {}))
+                      constraints=(structured or {}).get("constraints", {}),
+                      admission_kind=admission_kind)
 
 
 def prepare_turn_work(agent, content, envelope: MessageEnvelope | None = None) -> WorkIntent:
@@ -105,36 +109,99 @@ def prepare_turn_work(agent, content, envelope: MessageEnvelope | None = None) -
     agent._message_envelope = envelope
     agent._work_intent = intent
     agent._work_repeatability_hint = batch_intent(envelope.content)
-    if intent.requires_task:
-        from workstation.kanban import WorkstationKanbanBridge
-        from hermes_cli import kanban_db
-        bridge = WorkstationKanbanBridge()
-        current_id = getattr(agent, "_canonical_work_task_id", None)
-        current_run_id = getattr(agent, "_canonical_work_run_id", None)
-        if current_id:
-            conn = bridge.get_connection()
-            try:
-                current = kanban_db.get_task(conn, current_id)
-                if (current is None or current.session_id != session_id or current.status in {"done", "cancelled"}
-                        or current.body != envelope.content):
-                    current_id = None
-                    current_run_id = None
+    # A conversation is not the work lease. The old TaskRun cannot leak into
+    # a new turn that only asks a question or performs a one-shot action.
+    if not intent.requires_task:
+        # Point actions do not CREATE work. An explicitly attached, still-live
+        # canonical TaskRun may nevertheless execute its own exact objective.
+        # This exception never adopts a different run or unrelated conversation.
+        prebound_task = getattr(agent, "_canonical_work_task_id", None)
+        prebound_run = getattr(agent, "_canonical_work_run_id", None)
+        prior_turn_id = getattr(agent, "_canonical_work_turn_id", None)
+        keep_explicit = False
+        if (prebound_task and prebound_run is not None and envelope.can_create_work
+                # Neither absent nor empty lineage identifies the current turn.
+                and envelope.correlation_id
+                and prior_turn_id == envelope.correlation_id):
+            from hermes_cli import kanban_db
+            from workstation.kanban import WorkstationKanbanBridge
+            with WorkstationKanbanBridge().get_connection() as conn:
+                live = kanban_db.get_task(conn, prebound_task)
+            keep_explicit = bool(
+                live is not None and live.session_id == session_id
+                and live.body == envelope.content and live.status == "running"
+                and str(live.current_run_id) == str(prebound_run)
+            )
+        if not keep_explicit and hasattr(agent, "_canonical_work_task_id"):
+            agent._canonical_work_task_id = None
+            agent._canonical_work_run_id = None
+        agent._work_blocked_task_id = None
+        return intent
+
+    from workstation.kanban import WorkstationKanbanBridge
+    from hermes_cli import kanban_db
+    bridge = WorkstationKanbanBridge()
+    current_id = getattr(agent, "_canonical_work_task_id", None)
+    current_run_id = None
+    blocked_id = None
+    if current_id:
+        with bridge.get_connection() as conn:
+            current = kanban_db.get_task(conn, current_id)
+        if current is None or current.session_id != session_id or current.body != envelope.content:
+            current_id = None
+        elif current.status in {"blocked", "cancelled", "done", "archived", "scheduled"}:
+            blocked_id = current_id if current.status == "blocked" else None
+            current_id = None
+        elif current.status == "running":
+            # A legitimately pinned in-flight execution survives repeated entry
+            # only when run, objective, session and trusted turn lineage agree.
+            # No new run is adopted merely because it belongs to this session.
+            pinned_run = getattr(agent, "_canonical_work_run_id", None)
+            pinned_turn = getattr(agent, "_canonical_work_turn_id", None)
+            if (pinned_run is not None
+                    and str(current.current_run_id) == str(pinned_run)
+                    and envelope.can_create_work
+                    # A missing turn correlation cannot prove a run belongs
+                    # to this turn; fail closed rather than adopting an old run.
+                    and envelope.correlation_id
+                    and pinned_turn == envelope.correlation_id):
+                current_run_id = current.current_run_id
+            else:
+                blocked_id = current_id
+                current_id = None
+        else:
+            current_run_id = current.current_run_id
+    if current_id is None and blocked_id is None:
+        # Restore unfinished work without lending a previous TaskRun's lease.
+        # Completed work is excluded: the same objective can be requested again.
+        with bridge.get_connection() as conn:
+            row = conn.execute(
+                "SELECT id FROM tasks WHERE session_id=? AND body=? "
+                "AND created_by='workstation' "
+                "AND status IN ('triage','todo','ready','running','blocked','scheduled') "
+                "ORDER BY created_at DESC, id DESC LIMIT 1",
+                (session_id, envelope.content),
+            ).fetchone()
+            existing = kanban_db.get_task(conn, row[0]) if row else None
+        if existing is not None:
+            if existing.status in {"triage", "todo", "ready"} and existing.current_run_id is None:
+                current_id = existing.id
+            else:
+                blocked_id = existing.id
+    if current_id is None and blocked_id is None:
+        created = bridge.promote_request_if_multistep(
+            envelope.content, session_id=session_id, envelope=envelope,
+            acceptance_contract=intent.acceptance_policy, defer_execution=True)
+        if created:
+            with bridge.get_connection() as conn:
+                current = kanban_db.get_task(conn, created)
+            if current and current.session_id == session_id and current.body == envelope.content:
+                if current.status in {"triage", "todo", "ready"} and current.current_run_id is None:
+                    current_id = created
                 else:
-                    current_run_id = current.current_run_id
-            finally:
-                conn.close()
-        if current_id is None:
-            current_id = bridge.promote_request_if_multistep(envelope.content, session_id=session_id, envelope=envelope,
-                                                           force=recognize_current_command(envelope.content) is not None,
-                                                           acceptance_contract=intent.acceptance_policy)
-            if current_id:
-                conn = bridge.get_connection()
-                try:
-                    current = kanban_db.get_task(conn, current_id)
-                    if current:
-                        current_run_id = current.current_run_id
-                finally:
-                    conn.close()
-        agent._canonical_work_task_id = current_id
-        agent._canonical_work_run_id = current_run_id
+                    blocked_id = created
+    agent._canonical_work_task_id = current_id
+    agent._canonical_work_run_id = current_run_id
+    agent._canonical_work_turn_id = envelope.correlation_id
+    agent._work_blocked_task_id = blocked_id
     return intent

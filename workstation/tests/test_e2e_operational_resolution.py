@@ -43,7 +43,7 @@ from workstation.operational_capabilities import (
 )
 
 # Force Workstation adapter installation by importing workstation
-import workstation  # noqa: F401
+import workstation
 
 
 SESSION_ID = "e2e-session"
@@ -312,6 +312,9 @@ def execute_spy(monkeypatch):
 
 def _bind_agent(agent, task_id: str, body: str = MULTISTEP_PROMPT):
     agent._canonical_work_task_id = task_id
+    # Explicitly bind the existing trusted run: an unbound session may no
+    # longer borrow a Kanban TaskRun merely by matching task body text.
+    agent._canonical_work_run_id = _run_id_of(task_id)
     agent._message_envelope = MessageEnvelope(
         MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK, SESSION_ID, body
     )
@@ -365,7 +368,7 @@ def test_known_promoted_capability_bypasses_llm(
     task_id = canonical_task()
     run_id = _run_id_of(task_id)
     goal = EQ("exists", True)
-    plan_id = store_intent(
+    _plan_id = store_intent(
         intent(goal),
         task_id,
         semantic_state={"exists": False},
@@ -459,7 +462,7 @@ def test_durable_dispatcher_parity(
     task_id = canonical_task(prompt="First add the todo item then verify the list")
     body = "First add the todo item then verify the list"
     goal = EXISTS("todo_item")
-    plan_id = store_intent(
+    _plan_id = store_intent(
         intent(goal, target="todo", effect="todo_list", operation_family="todo.write",
                target_family="todo"),
         task_id,
@@ -652,7 +655,7 @@ def test_invalid_certificate_no_dispatch(
     occurs through the pre-reasoning boundary.
     """
     task_id = canonical_task()
-    plan_id = store_intent(
+    _plan_id = store_intent(
         intent(EQ("exists", True)),
         task_id,
         semantic_state={"exists": False},
@@ -717,7 +720,7 @@ def test_invalid_certificate_no_dispatch(
 def test_quarantined_capability_no_dispatch(workstation_adapter_installed, temp_hermes_home, monkeypatch):
     """E003: a non-promoted capability is never selected for deterministic dispatch."""
     task_id = canonical_task()
-    plan_id = store_intent(
+    _plan_id = store_intent(
         intent(EQ("exists", True)),
         task_id,
         semantic_state={"exists": False},
@@ -803,7 +806,7 @@ def test_verifier_failure_no_commit(
     task_id = canonical_task()
     run_id = _run_id_of(task_id)
     goal = EQ("exists", True)
-    plan_id = store_intent(
+    _plan_id = store_intent(
         intent(goal),
         task_id,
         semantic_state={"exists": False},

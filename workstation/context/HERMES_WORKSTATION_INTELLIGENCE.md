@@ -1,5 +1,9 @@
 # Inteligência Centralizada — Hermes Workstation (Hermes Work)
 
+## 2026-10-11 — D-045: Kanban assists work; it does not own chat conversations
+A Session persists conversation; a Task persists a durable responsibility; a TaskRun is a fenced *execution attempt*. D-045 keeps automatic Kanban for genuine multi-stage/repetitive work, but one-shot browser/UI commands and answers do not become cards merely by keyword. Auto-created durable cards wait in `triage` until a trusted real execution boundary claims the canonical Run. An unstarted card is `queued_unstarted`, not `verified_completed` or falsely `blocked`. A blocked task is shown as historical responsibility, never a borrowed lease; cross-turn repeat requests reuse unfinished canonical identity. This is not a scheduler/approval/verifier rewrite. Reference D-045 and isolated implementation journal for RED→GREEN and release-gate limits.
+
+
 ## 2026-10-11 — BROW-C2C: Otimizações do Ecossistema Browser no Runtime e UX
 **Síntese de Implementação:** O ecossistema de navegação foi aprimorado sem introduzir novos engines concorrentes ao `TaskCompiler`, sem quebrar o lease `BrowserHumanControlLease`, sem reexecuções cegas de mutações incertas e sem violar o isolamento de perfis (§2 do `SECURITY.md`).
 - **Batch Actions (`browser_batch_actions`):** Execução sequencial estrita com assert de lease a cada passo, receipts rastreáveis (`BrowserOwnerReceipt`) e interrupção no primeiro efeito incerto.
@@ -4391,3 +4395,6 @@ Real Trello/HyperFrames/repetition baseline BLOCKED: installed native controller
 A new real local adoption regression exposed a remaining lifetime gap: revoking the qualification after the first reused item did not stop the three later items in the same checkpoint. Valid RED: four items executed instead of one (29.1s runner; initial fixture-error attempt is not counted as security evidence). Runtime now re-queries qualified offers at every item boundary, records denial and halts the checkpoint. The independently verified first item remains completed; no blind rollback/retry.
 GREEN: complete online safety file, 38 passed, zero failed, 149.0s. Config/expiry/scope changes apply at item boundaries; this is not an atomic distributed revocation guarantee for an effect already in progress. No Trello write or production trust provisioning.
 Native regression at bb1888976e: existing headless-load contract passed with four real Electron/Chromium BrowserTasks (8.5s test; 1.6m including bootstrap under concurrent tests). Inference and pages are fixtures: native lifecycle/IPC evidence only, not E1 completion or measured product latency/cost. Broader Workstation regression still running; CI remains skipped by maintainer.
+
+## P0 completion and historical recovery qualification note — 2026-10-11
+The finalization adapter must not equate a receipt, a status label, or acceptance alone with a verified effect. Admission now requires concordant canonical identity, verification and acceptance. P0.5 historical reconciliation must remain offline/read-only by default: old deleted tasks stay `RETAIN_DELETED`; orphan handoffs never grant execution authority. See `P0_PROOF_RECONCILIATION_2026-10-11.md`. These are partial P0 improvements, not release qualifications.
