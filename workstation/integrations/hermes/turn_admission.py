@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from agent.turn_ingress import TurnIngress, TurnOrigin, TurnTrustClass
 from agent.turn_route_policy import TurnRoutePolicy, set_current_turn_route_policy
 from workstation.contracts import IntentAuthority, MessageEnvelope, MessageOrigin
@@ -17,7 +17,7 @@ def workstation_turn_admission(
     ingress: Optional[Any] = None,
 ) -> None:
     """Translate generic turn ingress into canonical Workstation WorkIntent & task binding."""
-    admitted_at = datetime.now(timezone.utc).isoformat()
+    admitted_at = datetime.now(UTC).isoformat()
     root = getattr(agent, "_conversation_root_id", lambda: None)()
     session_id = str(root or getattr(agent, "session_id", None) or "")
 
@@ -103,24 +103,17 @@ def workstation_turn_admission(
 
     # Prefab Fast Path: extract exact-match navigation/read intents from human-origin turns
     # Only for authenticated human turns with CREATE_WORK or UPDATE_WORK authority
+    envelope_origin = getattr(getattr(envelope, "origin", None), "value", getattr(envelope, "origin", None))
+    envelope_authority = getattr(getattr(envelope, "intent_authority", None), "value", getattr(envelope, "intent_authority", None))
     if (isinstance(envelope, MessageEnvelope) and
-        str(envelope.origin).lower() == "human" and
-        str(envelope.intent_authority).lower() in {"create_work", "update_work"}):
+        str(envelope_origin).lower() == "human" and
+        str(envelope_authority).lower() in {"create_work", "update_work"}):
         nav_key = prepare_user_navigation(envelope)
         if nav_key:
             agent._prefab_navigation_intent = nav_key
         trello_intent = prepare_user_trello_read(envelope)
         if trello_intent:
             agent._prefab_trello_read_intent = trello_intent
-        instagram_intent = prepare_user_instagram_read(envelope)
-        if instagram_intent:
-            agent._prefab_instagram_read_intent = instagram_intent
-        whatsapp_intent = prepare_user_whatsapp_read(envelope)
-        if whatsapp_intent:
-            agent._prefab_whatsapp_read_intent = whatsapp_intent
-        chatgpt_intent = prepare_user_chatgpt_read(envelope)
-        if chatgpt_intent:
-            agent._prefab_chatgpt_read_intent = chatgpt_intent
         instagram_intent = prepare_user_instagram_read(envelope)
         if instagram_intent:
             agent._prefab_instagram_read_intent = instagram_intent

@@ -61,7 +61,7 @@ class WorkstationBrowserError(RuntimeError):
         state_changed: bool = False,
         recommended_action: str = "ESCALATE",
         resource_ref: str | None = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
         http_status: int | None = None,
     ) -> None:
         super().__init__(message)
@@ -75,7 +75,7 @@ class WorkstationBrowserError(RuntimeError):
         self.http_status = http_status
 
     @classmethod
-    def from_payload(cls, payload: Dict[str, Any], *, http_status: int | None = None) -> "WorkstationBrowserError":
+    def from_payload(cls, payload: dict[str, Any], *, http_status: int | None = None) -> WorkstationBrowserError:
         message = str(payload.get("message") or payload.get("error") or "Hermes Browser action failed")
         error_code = str(payload.get("error_code") or "CAPABILITY_MISSING")
         target_cls = WorkstationBrowserUnavailable if error_code == "CONTROLLER_DOWN" else cls
@@ -91,7 +91,7 @@ class WorkstationBrowserError(RuntimeError):
             http_status=http_status,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": False,
             "error_code": self.error_code,
@@ -122,7 +122,7 @@ def _bool_env(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _browser_config() -> Dict[str, Any]:
+def _browser_config() -> dict[str, Any]:
     try:
         from hermes_cli.config import cfg_get, read_raw_config
 
@@ -298,8 +298,8 @@ def read_native_browser_session_state(
             raise ValueError(f"BrowserTask receipt safeUrl does not match target URL: receipt={last_receipt.get('safeUrl')}, expected={expected_url}")
         if last_receipt.get("executedAt") and state.get("savedAt"):
             try:
-                exec_at = datetime.fromisoformat(str(last_receipt["executedAt"]).replace("Z", "+00:00"))
-                saved_at = datetime.fromisoformat(str(state["savedAt"]).replace("Z", "+00:00"))
+                exec_at = datetime.fromisoformat(str(last_receipt["executedAt"]))
+                saved_at = datetime.fromisoformat(str(state["savedAt"]))
                 if (exec_at - saved_at).total_seconds() > 2.0:
                     raise ValueError("BrowserTask receipt executedAt is temporally after savedAt")
             except (ValueError, TypeError) as err:
@@ -327,7 +327,7 @@ def _canonical_browser_task_binding(task_id: Optional[str], session_id: Optional
         return "unknown"
     path = workstation_browser_task_state_path()
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
         return "unknown"
     except (OSError, json.JSONDecodeError):
@@ -351,10 +351,10 @@ def workstation_control_path() -> Path:
     return _workstation_home() / "Runtime" / "browser-control.json"
 
 
-def _read_control() -> Dict[str, Any]:
+def _read_control() -> dict[str, Any]:
     path = workstation_control_path()
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8-sig"))
     except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
         raise WorkstationBrowserUnavailable(f"Hermes Browser controller unavailable: {exc}") from exc
     if not isinstance(raw, dict):
@@ -373,11 +373,11 @@ def _read_control() -> Dict[str, Any]:
 def _request_json(
     method: str,
     suffix: str,
-    payload: Optional[Dict[str, Any]] = None,
+    payload: Optional[dict[str, Any]] = None,
     *,
     timeout: float,
     action: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     control = _read_control()
     base = str(control["url"]).rstrip("/")
     data = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -391,7 +391,7 @@ def _request_json(
     )
     act = action or (payload.get("action") if isinstance(payload, dict) else None)
     try:
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310
+        with urlopen(request, timeout=timeout) as response:
             raw_body = response.read().decode("utf-8")
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
@@ -414,7 +414,7 @@ def _request_json(
             recommended_action="ESCALATE", http_status=exc.code,
             details={"http_status": exc.code},
         ) from exc
-    except (TimeoutError, socket.timeout) as exc:
+    except TimeoutError as exc:
         is_mutation = False
         if act:
             from tools.effects import tool_effect, ToolEffect
@@ -501,7 +501,7 @@ def workstation_controller_available(*, force: bool = False) -> bool:
     return value
 
 
-def workstation_controller_resources(*, timeout: float = _DEFAULT_TIMEOUT_SECONDS) -> Dict[str, Any]:
+def workstation_controller_resources(*, timeout: float = _DEFAULT_TIMEOUT_SECONDS) -> dict[str, Any]:
     """Read the UI-neutral resource projection from the Electron controller.
 
     The controller is the owner of BrowserTask/page identity. This small
@@ -516,7 +516,7 @@ def workstation_controller_events(
     task_id: Optional[str] = None,
     limit: int = 200,
     timeout: float = _DEFAULT_TIMEOUT_SECONDS,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Read bounded canonical journal events from the Electron controller."""
 
     bounded_limit = min(200, max(1, int(limit)))
@@ -574,7 +574,7 @@ def _contains_secret_prefix(value: str) -> bool:
     return bool(_PREFIX_RE.search(value) or _PREFIX_RE.search(decoded))
 
 
-def _validate_navigation(args: Dict[str, Any]) -> None:
+def _validate_navigation(args: dict[str, Any]) -> None:
     raw = str(args.get("url") or "").strip()
     if not raw:
         raise WorkstationBrowserError("browser_navigate requires a URL or search target")
@@ -617,7 +617,7 @@ def _force_redact(value: Any) -> Any:
 
 
 def resolve_browser_type_text(
-    args: Dict[str, Any],
+    args: dict[str, Any],
     *,
     task_id: Optional[str] = None,
     session_id: Optional[str] = None,
@@ -715,7 +715,7 @@ def resolve_browser_type_text(
 
 def _dispatch(
     action: str,
-    args: Dict[str, Any],
+    args: dict[str, Any],
     *,
     task_id: Optional[str] = None,
     session_id: Optional[str] = None,
@@ -800,7 +800,7 @@ def _dispatch(
     op_id = operation_id or clean_args.pop("operation_id", None) or os.environ.get("HERMES_OPERATION_ID") or f"op_{action}_{uuid.uuid4().hex[:12]}"
     args.pop("operation_id", None)
     from workstation.batch_detection import call_key
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "action": action,
         "arguments": clean_args,
         "task_id": key,
@@ -841,7 +841,7 @@ call_workstation_browser = _dispatch
 
 def workstation_routed_browser_handler(
     action: str,
-    args: Dict[str, Any],
+    args: dict[str, Any],
     *,
     fallback: Callable[[], Any],
     task_id: Optional[str] = None,

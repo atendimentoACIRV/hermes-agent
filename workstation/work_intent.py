@@ -28,19 +28,37 @@ def current_command_objective(envelope: MessageEnvelope, task_id: str, run_id: s
     command = recognize_current_command(envelope.content)
     if not envelope.can_create_work or command is None:
         return None
+    from urllib.parse import urlsplit
     from workstation.control_plane.intent import OperationIntent
     from workstation.control_plane.ir import EQ, SET
     family, target = command
     native = family == "browser.open_site"
-    path = "url" if native else "creative.studio.ready"
-    value = target if native else True
     operation_id = "op_current_" + hashlib.sha256(
-        f"{task_id}:{run_id}:{envelope.content}".encode("utf-8")).hexdigest()[:24]
-    intent = OperationIntent(id=operation_id, target="native_browser" if native else "creative_studio",
-        goal=EQ(path, value), effect_budget=[SET(path, value)],
+        f"{task_id}:{run_id}:{envelope.content}".encode()).hexdigest()[:24]
+    if native:
+        parsed = urlsplit(target)
+        host = parsed.hostname or target
+        page_family = parsed.path or "/"
+        goal = EQ("host", host)
+        effect_budget = [
+            SET("url", target),
+            SET("host", host),
+            SET("page_family", page_family),
+            SET("recovery_state", "*"),
+        ]
+        inputs = {"url": target}
+        target_family = "native_browser"
+    else:
+        goal = EQ("creative.studio.ready", True)
+        effect_budget = [SET("creative.studio.ready", True)]
+        inputs = {"engine": target}
+        target_family = "creative_studio"
+
+    intent = OperationIntent(id=operation_id, target=target_family,
+        goal=goal, effect_budget=effect_budget,
         metadata={"operation_family": family, "recognition": "deterministic_alias"})
     return {"operation_id": operation_id, "operation_intent": intent.to_dict(),
-            "inputs": {"url": target} if native else {"engine": target}}
+            "inputs": inputs}
 
 
 @dataclass(slots=True)

@@ -1,7 +1,6 @@
 import type { GatewayWsUrlResult } from '@hermes/shared'
 import type { HermesSkin } from '@hermes/shared/skin'
 import type { TranslucencyState } from '@hermes/shared/translucency'
-import type { WorkstationBrowserBridge } from './app/browser/types'
 
 import type { ChallengeOutcome } from '../electron/challenge-window'
 import type { ScreenshotApi } from '../electron/command-screenshot-types'
@@ -14,6 +13,7 @@ import type { UpdateHoldWire } from '../electron/update-hold-types'
 import type { UpdateRunReport } from '../electron/updater/update-metrics'
 import type { WindowSizeMode } from '../electron/window-size-types'
 
+import type { WorkstationBrowserBridge } from './app/browser/types'
 import type { WakeIndicatorState } from './lib/wake-indicator'
 import type {
   PetOverlayBounds,
@@ -887,6 +887,10 @@ export interface DesktopUpdateStatus {
   channelSelectable?: boolean
   /** The latest release tag on a release-feed channel, e.g. `v0.18.0`. */
   latestTag?: string | null
+  /** Source stable: the release version the channel resolves to, e.g. `0.21.6`. */
+  sourceVersion?: string
+  /** Source stable: true when forward-only (newer than the release); absent from older checkers. */
+  aheadOfRelease?: boolean
   targetSha?: string
   commits?: DesktopUpdateCommit[]
   dirty?: boolean

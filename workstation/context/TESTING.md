@@ -1,6 +1,11 @@
 # Workstation Testing
 
 
+## 2026-10-12 — Fork CI cost-control status
+
+The fork's workflow settings and the Stage A lane design are recorded in [CI_COST_CONTROL.md](CI_COST_CONTROL.md). Cost control does not waive this file's behavior, platform/native, packaged, baseline, or exact-head evidence. A required lane that was disabled, skipped unexpectedly, or not run against the exact candidate SHA is **PENDING**, not green. The owned Windows workflow is now manual-only in source and retains its full gates, but it has not been dispatched; its source change is not a receipt. Whenever native or packaged behavior is impacted, promotion still requires its exact-candidate run and passing receipt. The Ubuntu Workstation command explicitly collects 72 unconditional OPC RED specification placeholders; these are not qualification tests and remain a known suite collection blocker pending separate handling. Preserve them outside auto-collection without altering the actual credential-backed tests, and keep OPC **NOT QUALIFIED**. As of this record, Stage A has no committed candidate SHA or exact-head Actions receipt and remains **NOT QUALIFIED**.
+
+
 ## Operational speed P0–P2 Implementation Testing — 2026-10-10 / 2026-10-11
 Upstream pin: `66605471e9f0b0832abbefaf625ce08e948ca540`.
 Status: **43 TESTES PYTHON + 20 TESTES VITEST GREEN.**

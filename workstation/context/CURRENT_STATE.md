@@ -1,5 +1,11 @@
 # Current State
 
+## 2026-10-12 — Fork CI cost containment and Stage A qualification
+
+For `kevynlucasprofissional-stack/hermes-agent`, GitHub API listed 57 workflow definitions before this settings change. The authorized reversible settings update disabled 11 inherited workflows; the fork-owned Workstation CI/Browser workflows and the named targeted/security workflows remain active. That settings operation did not edit workflow files. Later local, uncommitted YAML edits narrowed the Ubuntu lane and made the owned Windows lane manual-only; no Actions run was started, and neither source change is qualification evidence. The exact IDs, event scopes, and fork lane contract are in [CI_COST_CONTROL.md](CI_COST_CONTROL.md).
+
+The Stage A worktree remains uncommitted at baseline `a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. It has no exact candidate SHA or exact-head green receipt. **Stage A is PENDING / NOT QUALIFIED.**
+
 <!-- creative-D043-overlay -->
 ## 2026-10-10 — D-043 Creative Workstation: arquitetura e implementação engine-neutral
 **Decisão:** HyperFrames não é motor canônico mandatório; D-043 projeta Creative Document, Command Bus comum UI/IA/headless, timebase racional, NLE linked A/V, Semantic Edit Plan, freeform seek e adapters. [Arquitetura](../creative-workstation/ENGINE_NEUTRAL_ARCHITECTURE_2026-10-10.md) · [Handoff](../creative-workstation/ENGINE_NEUTRAL_IMPLEMENTER_HANDOFF_2026-10-10.md).

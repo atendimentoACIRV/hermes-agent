@@ -26,7 +26,7 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def do_GET(self):  # noqa: N802
+    def do_GET(self):
         if not self._auth():
             self._json(401, {"success": False})
             return
@@ -35,7 +35,7 @@ class _Handler(BaseHTTPRequestHandler):
             return
         self._json(404, {"success": False})
 
-    def do_POST(self):  # noqa: N802
+    def do_POST(self):
         if not self._auth():
             self._json(401, {"success": False})
             return
@@ -102,7 +102,7 @@ def test_controller_health_and_dispatch(controller):
 
 
 def test_bound_task_fails_closed_after_controller_loss(controller, monkeypatch):
-    server, control = controller
+    _server, control = controller
     bw.workstation_routed_browser_handler(
         "browser_navigate",
         {"url": "https://example.com"},
@@ -306,3 +306,21 @@ def test_adaptive_browser_loop_uses_one_task_despite_repeatability(controller):
     assert [r['action'] for r in decoded] == [n for n, _ in sequence]
     assert {r['task_id'] for r in decoded} == {'task-a'}
     assert all(r['run_id'] == 'run-test' and r['kanban_card_id'] == 'card-test' for r in decoded)
+
+
+def test_controller_health_accepts_utf8_bom_in_control_descriptor(controller):
+    _server, control = controller
+    control.write_bytes(b"\xef\xbb\xbf" + control.read_bytes())
+    bw._LAST_HEALTH_AT = 0.0
+    assert bw.workstation_controller_available(force=True)
+
+
+def test_canonical_browser_task_binding_accepts_utf8_bom(tmp_path, monkeypatch):
+    task_file = tmp_path / "browser-tasks.json"
+    payload = {"version": 1, "browserTaskCounter": 1, "tasks": [
+        {"taskId": "task-bom", "sessionHost": "session-bom", "status": "parked"}
+    ]}
+    task_file.write_bytes(b"\xef\xbb\xbf" + json.dumps(payload).encode("utf-8"))
+    monkeypatch.setenv("HERMES_WORKSTATION_BROWSER_TASK_FILE", str(task_file))
+    bw.clear_workstation_task_binding("task-bom", "session-bom")
+    assert bw.workstation_route_is_bound("task-bom", "session-bom")

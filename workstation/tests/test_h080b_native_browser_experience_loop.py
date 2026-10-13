@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -49,7 +49,7 @@ def _persist_browser(browser_home, task_id, run_id, *, url=None, session=SESSION
     url = URL if url is None else url
     directory = browser_home / "Runtime"
     directory.mkdir(exist_ok=True)
-    saved_at = datetime.now(timezone.utc).isoformat()
+    saved_at = datetime.now(UTC).isoformat()
     task_entry = {
         "taskId": task_id, "sessionHost": session, "runId": str(run_id),
         "status": "hidden", "recoveryState": "fresh",
@@ -347,7 +347,7 @@ def test_real_browser_readback_validates_and_promotes_compiled_capability(local_
                 trust_class="trusted_runtime", observer_failure_domain="browser_session_persistence",
                 resource_id=f"browser_task:{task_id}:tab:{readback['tab_id']}",
                 resource_version=readback["saved_at"],
-                observed_at=datetime.now(timezone.utc).isoformat(), read_after_write=True,
+                observed_at=datetime.now(UTC).isoformat(), read_after_write=True,
                 covered_predicates=covered, artifact_ref=ref,
                 task_id=task_id, run_id=run_id, operation_id=operation_id,
             )]
@@ -386,7 +386,7 @@ def test_real_browser_readback_validates_and_promotes_compiled_capability(local_
         from tools.browser_extension_router import routed_browser_handler
 
         def replay(steps, _deadline):
-            bridge, _, replay_task, replay_run = _task()
+            _bridge, _, replay_task, replay_run = _task()
             trial = deepcopy(cap)
             trial.implementation["steps"] = steps
             operation_id = "controlled-native-navigation"
@@ -433,6 +433,7 @@ def test_real_browser_readback_validates_and_promotes_compiled_capability(local_
         from hermes_cli import kanban_db
         bridge = WorkstationKanbanBridge()
         envelope = MessageEnvelope(MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK, SESSION, "Abre o Trello.")
+        monkeypatch.setattr("workstation.integrations.hermes.operational_resolution.maybe_resolve_navigation", lambda _ctx: None)
         future_task = bridge.promote_request_if_multistep(envelope.content, session_id=SESSION,
             envelope=envelope, force=True)
         with bridge.get_connection() as conn:
@@ -595,10 +596,10 @@ def test_strict_run_binding_and_receipt_validation(local_state):
         "revision": 2,
         "action": "browser_navigate",
         "safeUrl": URL,
-        "executedAt": datetime.now(timezone.utc).isoformat(),
+        "executedAt": datetime.now(UTC).isoformat(),
     }
     (directory / "browser-session.json").write_text(json.dumps({
-        "version": 1, "savedAt": datetime.now(timezone.utc).isoformat(),
+        "version": 1, "savedAt": datetime.now(UTC).isoformat(),
         "activeTabId": "tab-strict-1",
         "tabs": [{"id": "tab-strict-1", "browserTaskId": task_id, "safeUrl": URL,
                   "safeTitle": None, "recoveryPolicy": "browser-task-lazy",
@@ -645,7 +646,7 @@ def test_owner_receipt_strict_falsification_matrix(local_state, falsify_field, e
     directory.mkdir(exist_ok=True)
     task_id = "task-falsify-receipt"
     run_id = "run-falsify-99"
-    saved_at = datetime.now(timezone.utc).isoformat()
+    saved_at = datetime.now(UTC).isoformat()
 
     receipt = {
         "operationId": "op_canonical_42" if falsify_field != "wrong_operation_id" else "op_divergent_99",
@@ -749,7 +750,7 @@ def test_experience_validation_promotion_coordinator_lifecycle(local_state, monk
     assert len(set(run_ids)) == 2
     assert cap.lifecycle.value == "discovered"
 
-    calls = _fake_physical_controller(local_state, monkeypatch)
+    _calls = _fake_physical_controller(local_state, monkeypatch)
     coordinator = ExperienceValidationPromotionCoordinator(registry, compiler, ArtifactStore())
 
     # 1. Candidate discovery
@@ -797,7 +798,7 @@ def test_experience_validation_promotion_coordinator_lifecycle(local_state, monk
                 trust_class="trusted_runtime", observer_failure_domain="browser_session_persistence",
                 resource_id=f"browser_task:{task_id}:tab:{readback['tab_id']}",
                 resource_version=str(readback.get("revision", 1)),
-                observed_at=readback.get("saved_at") or datetime.now(timezone.utc).isoformat(),
+                observed_at=readback.get("saved_at") or datetime.now(UTC).isoformat(),
                 read_after_write=True,
                 covered_predicates=covered, artifact_ref=ref,
                 task_id=task_id, run_id=run_id, operation_id=op_id,
@@ -825,7 +826,7 @@ def test_experience_validation_promotion_coordinator_lifecycle(local_state, monk
     # 4. Replay runner in SafeEnvironment
     def replay_runner_factory(capability, env):
         def runner(steps, _deadline):
-            bridge, _, replay_task, replay_run = _task()
+            _bridge, _, replay_task, replay_run = _task()
             trial = deepcopy(capability)
             trial.implementation["steps"] = steps
             operation_id = f"coord-replay-{replay_run}"
@@ -887,7 +888,7 @@ def test_promotion_lifecycle_restart_and_idempotency(local_state):
     from workstation.operational_capabilities import OperationalCapabilityRegistry
     from workstation.experience_compiler.models import CausalGrade
 
-    compiler, registry, cap, run_ids = _compiled_two_run_capability(local_state)
+    compiler, registry, cap, _run_ids = _compiled_two_run_capability(local_state)
     artifacts = ArtifactStore()
 
     # Restart 1: Candidate is in registry, unvalidated
@@ -967,7 +968,7 @@ def test_product_owned_completion_mines_and_promotes_candidate(local_state, monk
     telemetry_path = tmp_path / "h080b-product-telemetry.sqlite"
     set_telemetry_sink(SQLiteTelemetrySink(telemetry_path))
 
-    calls = _fake_physical_controller(local_state, monkeypatch)
+    _calls = _fake_physical_controller(local_state, monkeypatch)
 
     # 1. Run 1: Normal adaptive completion
     bridge1, env1, task1, run1 = _task()
@@ -1007,7 +1008,7 @@ def test_product_owned_completion_mines_and_promotes_candidate(local_state, monk
                     trust_class="trusted_runtime", observer_failure_domain="browser_session_persistence",
                     resource_id=f"browser_task:{case_task}:tab:{readback['tab_id']}",
                     resource_version=str(readback.get("revision", 1)),
-                    observed_at=readback.get("saved_at") or datetime.now(timezone.utc).isoformat(),
+                    observed_at=readback.get("saved_at") or datetime.now(UTC).isoformat(),
                     read_after_write=True,
                     covered_predicates=covered, artifact_ref=ref,
                     task_id=case_task, run_id=case_run, operation_id=op_id,
@@ -1027,7 +1028,7 @@ def test_product_owned_completion_mines_and_promotes_candidate(local_state, monk
 
     def replay_runner_factory(capability, env):
         def runner(steps, _deadline):
-            bridge, _, replay_task, replay_run = _task()
+            _bridge, _, replay_task, replay_run = _task()
             trial = deepcopy(capability)
             trial.implementation["steps"] = steps
             operation_id = f"auto-replay-{replay_run}"

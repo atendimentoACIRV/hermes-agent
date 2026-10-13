@@ -314,21 +314,26 @@ def _url_is_private(url: str) -> bool:
         return False
 
 
-def _navigation_session_key(task_id: str, url: str) -> str:
-    """Session key that should handle ``url`` for ``task_id``: ``f"{task_id}::local"`` (hybrid
-    local sidecar while the cloud session keeps serving public URLs) only when ALL hold —
-    cloud provider configured, ``browser.auto_local_for_private_urls`` on, private URL, no
-    CDP override (it owns the whole session), Camofox off (already local-only)."""
-    if task_id is None:
-        task_id = "default"
-    hybrid = (
+def _hybrid_routes_locally(url: str) -> bool:
+    """True when ``url`` belongs on the hybrid LOCAL sidecar instead of the cloud provider: a cloud provider
+    configured, ``browser.auto_local_for_private_urls`` on, a private URL, no CDP override (it owns the
+    whole session), Camofox off (already local-only). Shared by browser_navigate and browser_exec."""
+    return (
         not _cdp._get_cdp_override_raw()
         and not _is_camofox_mode()
         and _cloud._get_cloud_provider() is not None
         and _cloud._auto_local_for_private_urls()
         and _url_is_private(url)
     )
-    return f"{task_id}{_LOCAL_SUFFIX}" if hybrid else task_id
+
+
+def _navigation_session_key(task_id: str, url: str) -> str:
+    """Session key that should handle ``url`` for ``task_id``: ``f"{task_id}::local"`` (hybrid
+    local sidecar while the cloud session keeps serving public URLs) when
+    ``_hybrid_routes_locally`` holds for ``url``."""
+    if task_id is None:
+        task_id = "default"
+    return f"{task_id}{_LOCAL_SUFFIX}" if _hybrid_routes_locally(url) else task_id
 
 
 def _is_local_sidecar_key(session_key: str) -> bool:
@@ -782,10 +787,11 @@ def _secret_url_error_normalized(url: str) -> tuple[str, Optional[dict]]:
     return url, err
 
 
-def evaluate_url_safety(url: str) -> Optional[dict]:
-    """Run URL safety checks; None if safe, else an error dict"""
+def evaluate_url_safety(url: str, *, auto_local: bool = False) -> Optional[dict]:
+    """Run URL safety checks; None if safe, else an error dict. ``auto_local`` (the URL is served by the
+    hybrid local sidecar) relaxes only the private-address floor, never the cloud-metadata one."""
     url, err = _secret_url_error_normalized(url)
-    return err or _url_policy_error(url)
+    return err or _url_policy_error(url, auto_local=auto_local)
 
 
 _BOT_DETECTION_TITLE_PATTERNS = (
@@ -1005,7 +1011,7 @@ def browser_type(
     text: Optional[str] = None,
     task_id: Optional[str] = None,
     mode: str = "insert_text",
-    semantic_anchor: Optional[Dict[str, Any]] = None,
+    semantic_anchor: Optional[dict[str, Any]] = None,
     clear: bool = True,
     append: bool = False,
     text_ref: Optional[str] = None,
@@ -1464,7 +1470,7 @@ def _fallback_call(fn_name: str, arg_defaults: dict[str, Any], extra_kw: tuple =
 def browser_read_http(
     url: str,
     method: str = "GET",
-    headers: Optional[Dict[str, str]] = None,
+    headers: Optional[dict[str, str]] = None,
     task_id: Optional[str] = None,
     session_id: Optional[str] = None,
     **kwargs,
@@ -1516,7 +1522,6 @@ def browser_read_http(
                            "error": "Browser-session readback runtime unavailable"})
 
     args = {"url": raw_url, "method": method, "headers": headers or {}}
-    kw = {"task_id": task_id, "session_id": session_id, **kwargs}
     res = routed_browser_handler(
         "browser_read_http", args, fallback=_fallback, task_id=task_id,
         session_id=session_id, run_id=kwargs.get("run_id"),

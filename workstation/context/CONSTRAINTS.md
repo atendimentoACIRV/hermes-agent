@@ -119,6 +119,10 @@ See [Adaptive Execution & Progressive Compilation](ADAPTIVE_EXECUTION_COMPILATIO
 - Normal install/CI validates committed source; it must not auto-heal missing downstream edits before tests run.
 - Keep dependencies pinned and license policy intact.
 
+## Fork CI and compute boundaries
+
+The fork uses its own path-scoped exact-head qualification lanes; it does not restore broad inherited upstream triggers to qualify Stage A. High-cost native/packaged suites stay deliberate and remain blocking whenever the affected surface or promotion criteria require them. Read [CI_COST_CONTROL.md](CI_COST_CONTROL.md) for the current fork settings and lane contract. No skipped, disabled, or stale-head check may be reported as green.
+
 ## Active milestone scope boundary
 
 V1 #1 BrowserSessionState and the pre-1.5 Mainline Consolidation Gate remain promoted history. The **Canonical Execution Reliability Gate** is now the active handoff and supersedes the historical V1 #1.5/later feature sequence until its executable exit criteria pass.

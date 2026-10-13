@@ -102,13 +102,16 @@ def test_scan_skips_tests_lockfiles_ci_and_translations(tmp_path):
         "node_modules/x/index.js": "'/tmp'\n",
         "evals/e.py": '"/tmp"\n',
         "vendor.rs": 'let p = "/tmp";\n',
+        "workstation/third_party/laya/README.md": "Use /tmp/laya-run\n",
+        "workstation/dogfood/dados/session.json": '{"path": "/tmp/archive"}\n',
+        "workstation/tools/helper.py": 'PATH = "/tmp/first-party"\n',
     }
     for rel, text in files.items():
         p = tmp_path / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8")
     hits = mod.scan(root=tmp_path)
-    assert sorted(hits) == ["app/src/a.ts", "skills/x/SKILL.md", "tools/a.py", "website/docs/guide.md"]
+    assert sorted(hits) == ["app/src/a.ts", "skills/x/SKILL.md", "tools/a.py", "website/docs/guide.md", "workstation/tools/helper.py"]
     assert all(len(v) == 1 for v in hits.values())
 
 def test_baseline_entries_are_burned_down_not_grown(tmp_path, monkeypatch, capsys):

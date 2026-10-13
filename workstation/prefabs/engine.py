@@ -32,7 +32,14 @@ def _as_data(raw: Any) -> Any:
         try:
             return json.loads(raw)
         except (ValueError, TypeError):
-            return {"text": raw[:1000]}
+            pass
+        if "{" in raw and "}" in raw:
+            json_part = raw[raw.find("{"):raw.rfind("}") + 1]
+            try:
+                return json.loads(json_part)
+            except (ValueError, TypeError):
+                pass
+        return {"text": raw[:1000]}
     return {}
 
 

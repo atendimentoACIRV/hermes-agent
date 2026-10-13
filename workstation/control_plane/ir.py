@@ -100,7 +100,7 @@ class Predicate(ABC):
         """Stable SHA-256 fingerprint."""
         return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Predicate):
             return False
         return self.canonical_json() == other.canonical_json()
@@ -368,7 +368,15 @@ def entails(p1: Predicate, p2: Predicate) -> bool:
         # EQ(path, val) entails EXISTS(path)
         return p1.path == p2.path
     if isinstance(p1, EQ) and isinstance(p2, EQ):
-        return p1.path == p2.path and p1.value == p2.value
+        if p1.path == p2.path and p1.value == p2.value:
+            return True
+        if p1.path == "url" and p2.path == "host":
+            from urllib.parse import urlsplit
+            return urlsplit(str(p1.value)).hostname == str(p2.value)
+        if p1.path == "host" and p2.path == "url":
+            from urllib.parse import urlsplit
+            return str(p1.value) == urlsplit(str(p2.value)).hostname
+        return False
     if isinstance(p1, TRANSITION) and isinstance(p2, EQ):
         # TRANSITION(path, before, after) entails EQ(path, after)
         return p1.path == p2.path and p1.after == p2.value
@@ -409,7 +417,7 @@ class Effect(ABC):
     def fingerprint(self) -> str:
         return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Effect):
             return False
         return self.canonical_json() == other.canonical_json()

@@ -2,52 +2,60 @@ name: Workstation Browser Windows
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "apps/desktop/electron/workstation-browser-runtime.ts"
-      - "apps/desktop/electron/workstation-browser-task.ts"
-      - "apps/desktop/electron/workstation-browser-*.test.ts"
-      - "apps/desktop/src/app/browser/**"
-      - "apps/desktop/e2e/**"
-      - "apps/desktop/playwright*.config.ts"
-      - "workstation/**"
-      - "tools/browser_workstation.py"
-      - "tools/browser_tool.py"
-      - "apps/desktop/electron/main.ts"
-      - "apps/desktop/electron/preload.ts"
-      - "apps/desktop/src/global.d.ts"
-      - "apps/desktop/src/app/routes.ts"
-      - "apps/desktop/src/app/chat/sidebar/index.tsx"
-      - "apps/desktop/src/app/contrib/surfaces.tsx"
-      - "apps/desktop/src/plugins/kanban/plugin.tsx"
-      - "apps/desktop/package.json"
-      - "package-lock.json"
-      - "START-HERMES-WORKSTATION.bat"
-      - ".github/workflows/workstation-browser-windows.yml"
-
+    inputs:
+      candidate_sha:
+        description: Exact 40-character candidate commit to qualify
+        type: string
+        required: true
+      qualification_reason:
+        description: Why this candidate requires full Windows native and package qualification
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: workstation-browser-windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  PYTHONIOENCODING: utf-8
 jobs:
   desktop-typecheck:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Verify exact candidate checkout
         shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          WORKFLOW_SHA: ${{ github.sha }}
+          QUALIFICATION_REASON: ${{ inputs.qualification_reason }}
         run: |
-          $expected = "${{ github.event.pull_request.head.sha || github.sha }}"
+          $expected = $env:EXPECTED_SHA
+          if ($expected -notmatch '^[0-9a-fA-F]{40}$') {
+            throw "Full Windows qualification requires a 40-character candidate SHA."
+          }
+          if ($expected -ne $env:WORKFLOW_SHA) {
+            throw "Dispatch the workflow from the candidate branch at the specified SHA."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:QUALIFICATION_REASON)) {
+            throw "Full Windows qualification requires a recorded reason."
+          }
           $actual = (git rev-parse HEAD).Trim()
           Write-Host "Expected candidate SHA: $expected"
           Write-Host "Checked out SHA:       $actual"
+          Write-Host "Qualification reason: $env:QUALIFICATION_REASON"
           if ($actual -ne $expected) {
             throw "Windows Browser gate is not running the exact candidate SHA."
           }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: ".nvmrc"
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.14"
       - name: Validate committed Workstation integration
@@ -102,8 +110,14 @@ jobs:
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # 8.2.0
         with:
           version: "0.12.3"
-      - name: Sync locked validation environment
-        run: uv sync --locked --python 3.14 --group dev --extra anthropic --extra workstation-laya
+      - name: Build isolated locked validation environment
+        shell: pwsh
+        run: >-
+          python -m pm.build_env --source . --out .venv
+          --cache "$env:RUNNER_TEMP\uv-cache"
+          --python (python -c "import sys; print(sys.executable)")
+          --group dev --group test
+          --extra anthropic --extra workstation-laya --extra acp
       - name: Emit clean-machine install evidence
         id: clean_machine_evidence
         shell: pwsh
@@ -145,7 +159,7 @@ jobs:
           }
       - name: Upload release qualification evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: workstation-release-qualification
           path: |
@@ -177,7 +191,7 @@ jobs:
           Write-Host ("Workstation live memory peak: {0} / bound {1}" -f $report.max_live_memory_records, $memoryBound)
       - name: Upload Workstation soak evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: workstation-soak
           path: |
@@ -241,7 +255,7 @@ jobs:
           }
       - name: Upload Desktop E2E evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: workstation-desktop-e2e
           path: |
@@ -330,7 +344,7 @@ jobs:
           Write-Host ("Native Browser runtime soak: {0} episodes / {1} iterations" -f $report.episodes, $report.totalIterations)
       - name: Upload native Browser runtime soak evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: workstation-native-browser-soak
           path: |
@@ -362,7 +376,7 @@ jobs:
           Write-Host ("Headless backend soak: {0} cycles / {1} turns / {2} reconnects / {3} backend restarts" -f $report.completed_cycles, $report.turns, $report.reconnects, $report.backend_restarts)
       - name: Upload headless backend soak evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: workstation-headless-backend-soak
           path: |

@@ -98,6 +98,7 @@ These documents extend existing owners and gates. They do not authorize parallel
 a second control plane, a second scheduler or bypass of H-080/H-079/H-078.
 
 19. [`TESTING.md`](TESTING.md) — validation ladder and evidence required before a Workstation change is considered stable.
+   - For Stage A workflow scope and compute controls, read [`CI_COST_CONTROL.md`](CI_COST_CONTROL.md); it preserves the evidence ladder while defining the fork-owned exact-head lanes.
 20. [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) — reproduced/observed problems whose causes must not be guessed.
 21. [`engineering-journal/CURRENT.md`](engineering-journal/CURRENT.md) — active hypothesis/experiment ledger. H-078/H-078A/H-078B are the upstream-migration and minimum-first-party-seam program; H-077.1 is the current post-merge qualification closure; H-077 is the parent architectural-falsification/external-validity program; H-071 is the PR #29 Browser Operational Admission audit; H-072 is the Browser Ownership/Recovery post-implementation corrective audit; H-076 records the verification-contract/operational-truth audit; H-075 records the in-flight operationalization falsification/implementation; H-074 is the PR #32 implementation claim corrected by H-075; H-073 records the hierarchical operational-learning/reasoning-amortization audit; H-070 records the landed admission implementation claim and H-069 the Control Plane milestone.
 22. [`../PATCH_MANIFEST.md`](../PATCH_MANIFEST.md) when touching an upstream integration point, rebase/migration tooling, or the downstream patch surface.

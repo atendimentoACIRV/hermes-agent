@@ -1,93 +1,153 @@
 name: Workstation CI
-
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "workstation/**"
-      - "apps/desktop/electron/workstation-browser-runtime.ts"
-      - "apps/desktop/src/app/browser/**"
-      - "tools/browser_workstation.py"
-      - "tools/browser_tool.py"
-      - "cli-config.yaml.example"
-      - ".github/workflows/workstation-*.yml"
-      - "tools/registry.py"
-      - "tools/effects.py"
-      - "agent/turn_constraints.py"
-      - "agent/agent_init.py"
-      - "agent/chat_completion_helpers.py"
-      - "agent/auxiliary_client.py"
-      - "tools/mcp_tool.py"
-      - "agent/tool_guardrails.py"
-      - "agent/conversation_loop.py"
-      - "agent/context_compressor.py"
-      - "agent/conversation_compression.py"
-      - "agent/tool_result_classification.py"
-      - "agent/tool_executor.py"
-      - "run_agent.py"
-      - "uv.lock"
-      - "pyproject.toml"
+      - 'workstation/**/*.py'
+      - 'workstation/first_party_seams.json'
+      - 'workstation/components.lock.json'
+      - 'workstation/config*.yaml'
+      - 'workstation/prompts/**'
+      - 'workstation/skills/**'
+      - 'workstation/install*'
+      - 'apps/desktop/electron/workstation-browser-runtime.ts'
+      - 'apps/desktop/src/app/browser/**'
+      - 'tools/browser_workstation.py'
+      - 'tools/browser_tool.py'
+      - 'cli-config.yaml.example'
+      - '.github/workflows/workstation-*.yml'
+      - 'tools/registry.py'
+      - 'tools/effects.py'
+      - 'agent/turn_constraints.py'
+      - 'agent/agent_init.py'
+      - 'agent/chat_completion_helpers.py'
+      - 'agent/auxiliary_client.py'
+      - 'tools/mcp_tool.py'
+      - 'agent/tool_guardrails.py'
+      - 'agent/conversation_loop.py'
+      - 'agent/context_compressor.py'
+      - 'agent/conversation_compression.py'
+      - 'agent/tool_result_classification.py'
+      - 'agent/tool_executor.py'
+      - 'run_agent.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
+      - 'agent/reasoning_carriers.py'
+      - 'agent/reasoning_replay_route.py'
+      - 'agent/turn_context.py'
+      - 'tools/tool_search.py'
+      - 'pm/**'
+      - 'hermes_cli/update_cmd*.py'
+      - 'tests/agent/transports/**'
+      - 'tests/agent/test_reasoning_carriers.py'
+      - 'tests/agent/test_context_compressor*.py'
+      - 'tests/tools/test_tool_search*.py'
+      - 'tests/tools/test_browser*.py'
+      - 'tests/pm/**'
+      - 'scripts/check*'
+      - 'scripts/code_health/**'
+      - 'tests/scripts/test_check_no_tmp_literals.py'
+      - '**/AGENTS.md'
   push:
     branches: [main]
     paths:
-      - "workstation/**"
-      - "apps/desktop/electron/workstation-browser-runtime.ts"
-      - "apps/desktop/src/app/browser/**"
-      - "tools/browser_workstation.py"
-      - "tools/browser_tool.py"
-      - "cli-config.yaml.example"
-      - ".github/workflows/workstation-*.yml"
-      - "tools/registry.py"
-      - "tools/effects.py"
-      - "agent/turn_constraints.py"
-      - "agent/agent_init.py"
-      - "agent/chat_completion_helpers.py"
-      - "agent/auxiliary_client.py"
-      - "tools/mcp_tool.py"
-      - "agent/tool_guardrails.py"
-      - "agent/conversation_loop.py"
-      - "agent/context_compressor.py"
-      - "agent/conversation_compression.py"
-      - "agent/tool_result_classification.py"
-      - "agent/tool_executor.py"
-      - "run_agent.py"
-      - "uv.lock"
-      - "pyproject.toml"
-
+      - 'workstation/**/*.py'
+      - 'workstation/first_party_seams.json'
+      - 'workstation/components.lock.json'
+      - 'workstation/config*.yaml'
+      - 'workstation/prompts/**'
+      - 'workstation/skills/**'
+      - 'workstation/install*'
+      - 'apps/desktop/electron/workstation-browser-runtime.ts'
+      - 'apps/desktop/src/app/browser/**'
+      - 'tools/browser_workstation.py'
+      - 'tools/browser_tool.py'
+      - 'cli-config.yaml.example'
+      - '.github/workflows/workstation-*.yml'
+      - 'tools/registry.py'
+      - 'tools/effects.py'
+      - 'agent/turn_constraints.py'
+      - 'agent/agent_init.py'
+      - 'agent/chat_completion_helpers.py'
+      - 'agent/auxiliary_client.py'
+      - 'tools/mcp_tool.py'
+      - 'agent/tool_guardrails.py'
+      - 'agent/conversation_loop.py'
+      - 'agent/context_compressor.py'
+      - 'agent/conversation_compression.py'
+      - 'agent/tool_result_classification.py'
+      - 'agent/tool_executor.py'
+      - 'run_agent.py'
+      - 'uv.lock'
+      - 'pyproject.toml'
+      - 'agent/reasoning_carriers.py'
+      - 'agent/reasoning_replay_route.py'
+      - 'agent/turn_context.py'
+      - 'tools/tool_search.py'
+      - 'pm/**'
+      - 'hermes_cli/update_cmd*.py'
+      - 'tests/agent/transports/**'
+      - 'tests/agent/test_reasoning_carriers.py'
+      - 'tests/agent/test_context_compressor*.py'
+      - 'tests/tools/test_tool_search*.py'
+      - 'tests/tools/test_browser*.py'
+      - 'tests/pm/**'
+      - 'scripts/check*'
+      - 'scripts/code_health/**'
+      - 'tests/scripts/test_check_no_tmp_literals.py'
+      - '**/AGENTS.md'
+permissions:
+  contents: read
+concurrency:
+  group: workstation-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  PYTHONIOENCODING: utf-8
 jobs:
   contracts:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HERMES_PYTHON: ${{ github.workspace }}/.venv/bin/python
+      HERMES_WORKSTATION_HOME: ${{ runner.temp }}/hermes-workstation-ci
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@v5
+      - name: Verify exact candidate checkout
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: "3.14"
-      - name: Install uv
+          python-version: '3.14'
+      - name: Install pinned uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # 8.2.0
         with:
-          version: "0.12.3"
+          version: '0.12.3'
           enable-cache: true
           cache-dependency-glob: |
             pyproject.toml
             uv.lock
-      - name: Install locked project environment
-        uses: ./.github/actions/retry
-        with:
-          command: uv sync --locked --python 3.14 --group dev --extra anthropic --extra workstation-laya
+      - name: Build isolated locked test environment
+        run: >-
+          python -m pm.build_env --source . --out .venv
+          --cache "$RUNNER_TEMP/uv-cache"
+          --python "$(python -c 'import sys; print(sys.executable)')"
+          --group dev --group test
+          --extra anthropic --extra workstation-laya --extra acp
       - name: Validate lockfile
         run: .venv/bin/python workstation/scripts/validate_lock.py
       - name: Validate license policy
         run: .venv/bin/python workstation/scripts/verify_licenses.py
+      - name: Maintained code checks
+        run: |
+          export PATH="$PWD/.venv/bin:$PATH"
+          .venv/bin/python scripts/check
       - name: Workstation contract tests
-        env:
-          HERMES_PYTHON: ${{ github.workspace }}/.venv/bin/python
         run: bash scripts/run_tests.sh workstation/tests -j 4 -q
       - name: Durable execution core seam regressions
-        env:
-          HERMES_PYTHON: ${{ github.workspace }}/.venv/bin/python
         run: >-
           bash scripts/run_tests.sh -j 4 -q
           tests/tools/test_registry.py
@@ -96,18 +156,39 @@ jobs:
           tests/agent/test_auxiliary_client.py
           tests/agent/test_tool_guardrails.py
           tests/agent/test_compaction_operational_refs.py
+      - name: Provider browser and package-management regressions
+        run: >-
+          bash scripts/run_tests.sh -j 4 -q
+          tests/agent/test_reasoning_carriers.py
+          tests/agent/transports/test_chat_completions.py
+          tests/agent/transports/test_chat_completions_reasoning_details_replay.py
+          tests/agent/test_context_compressor.py
+          tests/agent/test_context_compressor_reasoning_fallback.py
+          tests/tools/test_tool_search.py
+          tests/tools/test_tool_search_multiquery.py
+          tests/tools/test_browser_hybrid_routing.py
+          tests/tools/test_browser_ssrf_local.py
+          tests/tools/test_browser_hardening.py
+          tests/pm/test_workspace.py
+          tests/pm/test_workspace_build_inputs.py
+          tests/pm/test_environment_build.py
+          tests/pm/test_install_extra.py
       - name: Controlled canary and recipe replay
         run: .venv/bin/python -m workstation.benchmarks.trello_regression
-
   core-patch-dry-run:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@v5
+      - name: Verify exact candidate checkout
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: "3.14"
+          python-version: '3.14'
       - name: Validate downstream integration anchors
         run: python workstation/scripts/apply_core_integration.py --root . --check

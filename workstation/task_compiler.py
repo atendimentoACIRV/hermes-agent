@@ -8,7 +8,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 from enum import Enum
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 import hashlib
 import json
 import time
@@ -56,7 +56,7 @@ def batch_intent(prompt: Any) -> bool:
     count = re.search(r"\b(?:[2-9]|[1-9][0-9]+)\s+[\w-]+s\b", lower)
     fan_out = re.search(r"\b(?:cada\s+(?:registro|item|arquivo|usuário|usuario)|todos?\s+(?:esses?|estes?|os)|mesma\s+.+\s+ness(?:es|as)|each\s+|all\s+these)", lower)
     structured = False
-    for candidate in [prompt] + re.findall(r"```(?:json)?\s*(.*?)```", prompt, re.S):
+    for candidate in [prompt] + re.findall(r"```(?:json)?\s*(.*?)```", prompt, re.DOTALL):
         try:
             payload = json.loads(candidate)
         except ValueError:
@@ -363,7 +363,7 @@ class TaskCompiler:
                     raise ValueError("External mutation target requires a real mutation step; preparation cannot establish persistence verification")
                 from workstation.browser_transaction import evidence_strength
                 for mutation in matching:
-                    for verifier in sum(canonical_graph.values(), []):
+                    for verifier in [v for vs in canonical_graph.values() for v in vs]:
                         if mutation in verifier.get('verifies', []) and verifier['tool'] == 'browser_snapshot':
                             if int(evidence_strength(verifier)) < 2:
                                 raise ValueError('External commit requires persisted readback; native browser snapshot is same-session semantic evidence')
@@ -419,7 +419,7 @@ class TaskCompiler:
         # Cached procedures still verify each item. Only a matching recipe plus
         # successful persisted preflight can skip the admission canary.
         canary_required = mutable_batch and not (recipe_reused and preflight)
-        all_steps = (sum(graph.values(), []) if graph else steps) + preflight
+        all_steps = ([v for vs in graph.values() for v in vs] if graph else steps) + preflight
         if kind == WorkClass.PROMPT_QUEUE and not any(s.get("wait") for s in steps):
             raise ValueError("Prompt queue requires a bounded completion wait before advancing")
         if not steps or len(steps) > 64 or len(request["items"]) > 10000:
@@ -759,7 +759,7 @@ class TaskCompiler:
                         if subscription is not None:
                             from workstation.runtime import WaitContract
                             contract = WaitContract(wait["event_type"], task_id,
-                                (datetime.now(timezone.utc) + timedelta(seconds=max(0, deadline - time.monotonic()))).isoformat(),
+                                (datetime.now(UTC) + timedelta(seconds=max(0, deadline - time.monotonic()))).isoformat(),
                                 str(_bind(wait["correlation_id"], payload, bindings)), session_id)
                             try:
                                 event_bus.wait(contract, subscription=subscription)
@@ -1021,7 +1021,7 @@ class TaskCompiler:
         # request["authority"] may only narrow this owner-supplied scope below.
         trusted_authority = None
         if getattr(self, "trusted_authority", None) is not None:
-            trusted_authority = getattr(self, "trusted_authority")
+            trusted_authority = self.trusted_authority
         elif canonical_task_id or task_id:
             try:
                 from hermes_cli import kanban_db
@@ -1453,6 +1453,10 @@ class TaskCompiler:
         if caller_run is not None and str(caller_run) != run_id:
             return {"status": "AUTHORITY_SUPERSEDED", "continuation_run_id": run_id, "dispatched": False}
         inputs = request.get('capability_inputs') or request.get('inputs') or {}
+        selected = kernel.resolver.resolve(request['capability_id'], request.get('capability_version') or '*')
+        if selected and getattr(selected, "input_schema", None) and selected.input_schema.get("additionalProperties") is False:
+            props = selected.input_schema.get("properties", {})
+            inputs = {k: v for k, v in inputs.items() if k in props}
         identity = 'cap_exec_' + digest({'owner': owner, 'run_id': run_id, 'session_id': session_id,
             'capability_id': request['capability_id'], 'inputs': sanitize(inputs),
             'operation_key': request.get('operation_key')})[:24]
@@ -1478,7 +1482,6 @@ class TaskCompiler:
         if plan and plan.metadata.get('capability_result_ref'):
             result = self.artifacts.read_json(plan.metadata['capability_result_ref'])
             return {**result, 'plan_id': plan.id, 'results_ref': plan.metadata['capability_result_ref']}
-        selected = kernel.resolver.resolve(request['capability_id'], request.get('capability_version') or '*')
         if not plan:
             objective = self.artifacts.store(identity, 'objective.json', sanitize(request))
             plan = self.store.create_plan(identity, selected.name, [{}], session_id=session_id, run_id=run_id,

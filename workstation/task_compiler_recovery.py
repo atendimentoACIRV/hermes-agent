@@ -6,7 +6,7 @@ def bind_native_reprobe(compiler, objective, task, session_id):
     """Use native owner persistence for the already-established URL goal."""
     from workstation.control_plane.ir import Predicate, EQ
     goal = Predicate.from_dict(objective["operation_intent"]["goal"])
-    if not isinstance(goal, EQ) or goal.path != "url" or objective["operation_intent"].get("target") != "native_browser":
+    if not isinstance(goal, EQ) or goal.path not in ("url", "host") or objective["operation_intent"].get("target") != "native_browser":
         return
     operation_id = objective.get("operation_id")
     if not operation_id or task.current_run_id is None:
@@ -23,7 +23,8 @@ def bind_native_reprobe(compiler, objective, task, session_id):
         from tools.browser_workstation import read_native_browser_session_state
         from workstation.experience_compiler.state_abstraction import abstract_state
         try:
-            observed = read_native_browser_session_state(task.id, session_id, str(task.current_run_id), str(goal.value),
+            url_target = str(goal.value if goal.path == "url" else objective.get("inputs", {}).get("url", goal.value))
+            observed = read_native_browser_session_state(task.id, session_id, str(task.current_run_id), url_target,
                 expected_operation_id=operation_id, require_owner_receipt=True)
         except (OSError, ValueError, RuntimeError):
             return []
