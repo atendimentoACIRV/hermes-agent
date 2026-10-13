@@ -1100,6 +1100,31 @@ async def get_workstation_task_cockpit(task_id: str, request: Request, board: st
     return await handler(task_id=task_id, request=request, board=board)
 
 
+@app.get("/api/workstation/handoffs")
+async def get_native_workstation_handoffs(request: Request, session_id: str):
+    """An authenticated, session-filtered projection of canonical pending reviews."""
+    _require_token(request)
+    from plugins.workstation.dashboard.plugin_api import list_native_handoff_reviews
+
+    return await list_native_handoff_reviews(session_id=session_id)
+
+
+@app.post("/api/workstation/handoffs/{handoff_id}/review")
+async def approve_native_workstation_handoff(handoff_id: str, request: Request):
+    """Human acknowledgement only: NEVER an external-mutation execution grant."""
+    _require_token(request)
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="review body must be an object")
+    from plugins.workstation.dashboard.plugin_api import resume_native_handoff_review
+
+    return await resume_native_handoff_review(
+        handoff_id,
+        session_id=payload.get("session_id", "") if isinstance(payload.get("session_id"), str) else "",
+        run_id=payload.get("run_id", "") if isinstance(payload.get("run_id"), str) else "",
+    )
+
+
 # Plugin API routes and the dashboard auth routes (/login, /auth/*, /api/auth/*)
 # mount before the SPA catch-all so /{full_path:path} doesn't swallow them. Auth
 # routes are always mounted — the gate middleware decides enforcement.

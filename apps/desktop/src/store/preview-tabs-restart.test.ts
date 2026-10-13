@@ -33,3 +33,18 @@ it('hydrates persisted default-scope tabs on a cold renderer import', async () =
 
   expect($previewTabs.get().map(tab => tab.target.source)).toEqual(['workstation-browser'])
 })
+
+
+it('explicit transfer from Browser Hub opens chat right-rail Browser preview', async () => {
+  const previousPath = window.location.pathname
+  window.history.replaceState({}, '', '/browser')
+
+  try {
+    const { $previewTabs, setPreviewScope, openWorkstationBrowserPreview } = await import('./preview')
+    setPreviewScope('default')
+    openWorkstationBrowserPreview({ fromHub: true })
+    expect($previewTabs.get().some(tab => tab.target.source === 'workstation-browser')).toBe(true)
+  } finally {
+    window.history.replaceState({}, '', previousPath)
+  }
+})

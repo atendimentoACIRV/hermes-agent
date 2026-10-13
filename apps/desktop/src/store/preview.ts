@@ -1018,14 +1018,16 @@ export function openBrowserTab() {
 }
 
 export function isBrowserHubRoute(): boolean {
-  if (typeof window === 'undefined') return false
+  if (typeof window === 'undefined') {return false}
 
   return window.location.pathname.startsWith('/browser') || window.location.hash.includes('/browser')
 }
 
 /** Re-front the task-owned native Workstation Browser without creating a guest webview. */
-export function openWorkstationBrowserPreview() {
-  if (isBrowserHubRoute()) return
+export function openWorkstationBrowserPreview({ fromHub = false }: { fromHub?: boolean } = {}) {
+  // An explicit Hub-to-Chat transfer is allowed to create the preview BEFORE
+  // the router finishes leaving /browser; background opens remain guarded.
+  if (isBrowserHubRoute() && !fromHub) {return}
 
   openPreview({
     kind: 'url',

@@ -11,7 +11,6 @@ import {
 } from 'react'
 import { useNavigate } from 'react-router'
 
-import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { cn } from '@/lib/utils'
@@ -116,14 +115,6 @@ export function BrowserView() {
   const [auditTaskId, setAuditTaskId] = useState<string | null>(null)
   const [resourceSnapshot, setResourceSnapshot] = useState<WorkstationResourceSnapshot | null>(null)
 
-  // A keep-alive tab keeps this surface mounted with a rect identical to the
-  // visible tab's, and the native view paints above the DOM from the window
-  // content view — it would swallow that tab's clicks. Gate it on this pane
-  // being the visible one and on its box still having area.
-  const paneVisible = usePaneVisible()
-  const [hostRectOk, setHostRectOk] = useState(true)
-  const [viewportRevision, setViewportRevision] = useState(0)
-
   const activeTab = useMemo(
     () => state.tabs.find(tab => tab.id === state.activeTabId) ?? state.tabs[0] ?? null,
     [state.activeTabId, state.tabs]
@@ -181,21 +172,11 @@ export function BrowserView() {
       const rect = hostRef.current.getBoundingClientRect()
 
       if (rect.width < 1 || rect.height < 1) {
-        // Collapsed box: the view would keep its last bounds — over a rect no
-        // pane occupies any more — and eat clicks for whatever moved in there.
-        setHostRectOk(false)
-
         return
       }
 
-      setHostRectOk(true)
-
       const bounds = rectToBounds(rect)
       setState(await (attach ? bridge.attach(bounds, 'hub') : bridge.setBounds(bounds, 'hub')))
-
-      // `attach()` forces the view back on inside the runtime, so re-assert the
-      // composed decision (visible tab + area + no overlay) right after it.
-      setViewportRevision(revision => revision + 1)
     },
     [bridge]
   )
@@ -216,7 +197,7 @@ export function BrowserView() {
   }, [bridge])
 
   const transferToChat = useCallback(() => {
-    openWorkstationBrowserPreview()
+    openWorkstationBrowserPreview({ fromHub: true })
 
     if (navigate) {
       navigate('/')
@@ -373,10 +354,7 @@ export function BrowserView() {
     }
   }, [bridge, publishBounds])
 
-  useNativeViewOcclusion(bridge, 'hub', {
-    enabled: paneVisible && hostRectOk,
-    revision: viewportRevision
-  })
+  useNativeViewOcclusion(bridge, 'hub')
 
   const submitAddress = (event: FormEvent) => {
     event.preventDefault()
