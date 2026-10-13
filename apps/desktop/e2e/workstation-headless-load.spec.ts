@@ -10,11 +10,11 @@
  * window while exercising native WebContentsView instances.
  */
 
-import * as http from 'node:http'
+import { execFile } from 'node:child_process'
 import * as fs from 'node:fs'
+import * as http from 'node:http'
 import * as path from 'node:path'
-
-import { expect, test } from './test'
+import { promisify } from 'node:util'
 
 import {
   buildAppEnv,
@@ -23,6 +23,7 @@ import {
   setupMockBackend,
   waitForAppReady
 } from './fixtures'
+import { expect, test } from './test'
 
 interface ControllerFile {
   url: string
@@ -123,6 +124,8 @@ function readBoundedInteger(name: string, fallback: number, minimum: number, max
 
   return value
 }
+
+const execFileAsync = promisify(execFile)
 
 const TASK_COUNT = 4
 const SUSTAINED_TASK_COUNT = readBoundedInteger('HERMES_DESKTOP_E2E_SUSTAINED_TASKS', 8, 1, 32)
@@ -344,7 +347,9 @@ async function createRealChat(fixture: MockBackendFixture, prompt: string): Prom
           sessions: Array<{ id: string; preview?: string | null; title?: string | null }>
         }>({ path: '/api/sessions?limit=50&offset=0&min_messages=1&archived=exclude&order=recent' })
         const session = response.sessions.find(row => row.preview?.includes(expected))
-        if (!session) throw new Error(`H013 real chat did not persist: ${expected}`)
+        if (!session) {
+          throw new Error(`H013 real chat did not persist: ${expected}`)
+        }
         return { id: session.id, label: session.title || session.preview || expected }
       }, prompt)
     )
@@ -970,6 +975,97 @@ test('P0: native two-session human takeover denies writes with 409 then safely r
 })
 
 
+test('P0: five genuine AIAgent turns reach real Electron Browser and survive a lost ACK', async () => {
+  test.setTimeout(240_000)
+  if (!fixture || !controller) {
+    throw new Error('native five-turn fixture unavailable')
+  }
+
+  // The renderer creates both real chat sessions; the child process uses
+  // exactly their identities through AIAgent.run_conversation, not synthetic
+  // Kanban TaskRuns. Only model responses are scripted.
+  const a = await createRealChat(fixture, 'P0 agent native multi-turn chat A')
+  const b = await createRealChat(fixture, 'P0 agent native multi-turn chat B')
+  const controlPath = path.join(fixture.sandbox.root, 'workstation', 'Runtime', 'browser-control.json')
+  const python = process.env.HERMES_DESKTOP_PYTHON || process.env.HERMES_E2E_PYTHON
+  if (!python) {
+    throw new Error('Set HERMES_DESKTOP_PYTHON to the isolated Python test environment')
+  }
+
+  const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..')
+  const childEnv = {
+    ...buildAppEnv(fixture.sandbox),
+    PYTHONPATH: repoRoot,
+    HERMES_WORKSTATION_BROWSER: '1',
+    HERMES_WORKSTATION_BROWSER_ROUTING: '0',
+    HERMES_WORKSTATION_BROWSER_CONTROL_FILE: controlPath
+  }
+  // Async child is essential: the test's loopback HTML server must stay live
+  // while native WebContentsView navigation uses it.
+  const { stdout } = await execFileAsync(
+    python,
+    [path.join(repoRoot, 'workstation', 'tests', 'p0_native_browser_agent_driver.py'),
+      a.id, b.id, pageBaseUrl, controlPath],
+    { cwd: repoRoot, env: childEnv, timeout: 180_000, maxBuffer: 1024 * 1024 }
+  )
+  const lastLine = stdout.trim().split(/\r?\n/).at(-1)
+  const report = JSON.parse(lastLine || '{}') as {
+    accepted?: boolean; agent_turns?: number; lost_acks?: number;
+    terminal_after_lost_ack?: boolean; kanban_cards?: number
+  }
+  expect(report).toMatchObject({
+    accepted: true, agent_turns: 5, lost_acks: 1,
+    terminal_after_lost_ack: true, kanban_cards: 0
+  })
+
+  // The BrowserTask owner is the session, not a TaskRun borrowed from an old
+  // chat. Check actual controller resources and persisted native readback.
+  const resources = await controllerRequest('/resources')
+  const own = (resources.resources || []).filter(item => item.resource_type === 'browser_task')
+  const taskIdsA = own.filter(item => item.session_id === a.id).map(item => item.task_id)
+  const taskIdsB = own.filter(item => item.session_id === b.id).map(item => item.task_id)
+  expect(taskIdsA, `BrowserTasks of chat A: ${JSON.stringify(taskIdsA)}`).toHaveLength(1)
+  expect(taskIdsB, `BrowserTasks of chat B: ${JSON.stringify(taskIdsB)}`).toHaveLength(1)
+  const taskA = own.find(item => item.session_id === a.id)
+  const taskB = own.find(item => item.session_id === b.id)
+  expect(taskA?.task_id).toEqual(expect.any(String))
+  expect(taskB?.task_id).toEqual(expect.any(String))
+  expect(taskA?.task_id).not.toBe(taskB?.task_id)
+
+  const snapshot = async (taskId: unknown, sessionId: string) =>
+    controllerRequest('/v1/action', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'browser_snapshot', task_id: taskId,
+        session_id: sessionId, arguments: {}
+      })
+    })
+  expect((await snapshot(taskA!.task_id, a.id)).result?.url).toBe(`${pageBaseUrl}/p0-agent-youtube`)
+  expect((await snapshot(taskB!.task_id, b.id)).result?.url).toBe(`${pageBaseUrl}/p0-agent-other-chat`)
+
+  // The Browser button opens the Hub, not the Chat preview. The Hub owns its
+  // viewport even if the user changes chats; selection requires the existing
+  // TaskRail "Show" control (do not steal the Hub by changing chat selection).
+  const selectBrowserTask = async (session: { id: string; label: string }, targetUrl: string) => {
+    await openStoredSessionByTitle(fixture!.page, session.label)
+    await fixture!.page.getByRole('button', { name: 'Browser', exact: true }).click()
+    // TaskRail falls back to native page title if its session catalog has not
+    // yet projected the externally produced BrowserTask. Select by the
+    // deterministic page title, not by the chat list's title.
+    const browserTitle = `H013 ${new URL(targetUrl).pathname.slice(1)}`
+    const card = fixture!.page.getByRole('complementary', { name: 'Browser Task Rail' })
+      .locator('.group.rounded-md').filter({ hasText: browserTitle }).first()
+    await expect(card).toBeVisible()
+    await card.getByRole('button', { name: 'Show', exact: true }).click()
+    await expect.poll(async () => activeViewportChild(await nativeViewportSnapshot(fixture!.app)).url,
+      { timeout: 20_000 }).toBe(targetUrl)
+  }
+  await selectBrowserTask(b, `${pageBaseUrl}/p0-agent-other-chat`)
+  await selectBrowserTask(a, `${pageBaseUrl}/p0-agent-youtube`)
+})
+
+
 test('P0: Browser UI Take Control and Release Control buttons are actually clickable', async () => {
   if (!fixture || !controller) {
     throw new Error('P0 native UI fixture is not ready')
@@ -999,7 +1095,9 @@ test('P0: Browser UI Take Control and Release Control buttons are actually click
 // Native Browser mutation tests must run before the deliberate cold restart
 // test, which closes and replaces the shared Electron E2E fixture.
 test('P0: native Browser mutation remains observable after lost controller acknowledgment', async () => {
-  if (!fixture || !controller) throw new Error('P0 native uncertainty fixture unavailable')
+  if (!fixture || !controller) {
+    throw new Error('P0 native uncertainty fixture unavailable')
+  }
   uncertainNativeEffectCount = 0
   const taskId = 'p0-native-uncertain-effect'
   const sessionId = 'p0-native-uncertain-session'

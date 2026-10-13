@@ -528,7 +528,10 @@ def workstation_controller_events(
 
 
 def _task_key(task_id: Optional[str], session_id: Optional[str]) -> str:
-    return str(task_id or session_id or "default").strip() or "default"
+    # Agent effective_task_id is a *per-turn* UUID, not a BrowserTask owner.
+    # For a chat, the authenticated session is stable across model turns.
+    # Without a session, preserve legacy explicit task-based ownership.
+    return str(session_id or task_id or "default").strip() or "default"
 
 
 def _is_bound(key: str) -> bool:
@@ -751,8 +754,10 @@ def _dispatch(
         card_id = str(kanban_card_id or os.environ.get("HERMES_KANBAN_TASK") or "").strip() or None
         rid = str(run_id or os.environ.get("HERMES_KANBAN_RUN_ID") or "").strip() or None
 
-    if card_id and not task_id:
-        key = card_id
+    if card_id and rid:
+        # Explicit canonical work retains the requested BrowserTask identity;
+        # only unbound per-turn agent UUIDs collapse to the stable chat.
+        key = str(task_id or card_id)
 
     # A partial explicit binding has no canonical authorization. Do not
     # downgrade it to an unbound Browser session or forward a card-only hint.

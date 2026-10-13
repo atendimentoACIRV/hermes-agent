@@ -111,3 +111,13 @@ def test_nonexistent_or_incomplete_explicit_binding_fails_closed(
         )
     assert err.value.error_code == "STALE_RUN"
     assert dispatch == []
+
+def test_conversation_browser_owner_survives_ephemeral_turn_task_ids():
+    """New turn UUIDs must not fork the BrowserTask of one selected chat."""
+    from tools import browser_workstation as bw
+
+    assert bw._task_key("turn-generated-1", "session-A") == "session-A"
+    assert bw._task_key("turn-generated-2", "session-A") == "session-A"
+    assert bw._task_key("turn-generated-3", "session-B") == "session-B"
+    # Non-chat callers still retain their explicit task ownership.
+    assert bw._task_key("headless-task", None) == "headless-task"
