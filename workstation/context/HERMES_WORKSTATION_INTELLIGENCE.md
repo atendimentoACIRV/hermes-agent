@@ -4445,3 +4445,99 @@ Native regression at bb1888976e: existing headless-load contract passed with fou
 
 ## P0 completion and historical recovery qualification note — 2026-10-11
 The finalization adapter must not equate a receipt, a status label, or acceptance alone with a verified effect. Admission now requires concordant canonical identity, verification and acceptance. P0.5 historical reconciliation must remain offline/read-only by default: old deleted tasks stay `RETAIN_DELETED`; orphan handoffs never grant execution authority. See `P0_PROOF_RECONCILIATION_2026-10-11.md`. These are partial P0 improvements, not release qualifications.
+
+## HCW hybrid-composition lane — 2026-10-11 (development only)
+
+Hermes Creative Workstation preserves canonical `CreativeDocument`, `CreativeProjectStore`, TaskRun, ProcessRegistry, journal and artifact owners. EffectCraft (native `.ecproj`) and HyperFrames (HTML/JS) are candidates for linked editable native subcompositions. The first falsifiable integration is source-faithful alpha PNG footage from HyperFrames imported by EffectCraft via `file.import`, subsequently composited with an EffectCraft effect/text and independently decoded from PNG+MP4. **This experiment has not yet been executed with both real engines.**
+
+The active isolated branch `feat/hcw-hybrid-01-20261011` adds validated native composition refs to canonical project revisions, a pure rational cross-engine source frame map and a fail-closed FFmpeg frame decoder. Unit checks do not prove native project compatibility, Electron E2E, dual-engine parameter mutation, agent Tool/TaskRun qualification, or distributed atomic commit. Release/promotion H-079 remains blocked. Source of evidence: `../creative-workstation/evidence/HCW-HYBRID-01.md`.
+
+
+### HCW-HYBRID-FINAL — 2026-10-12 native vertical proof (development only)
+
+Hermes now has reproducible opt-in integration tests of real pinned HyperFrames
+transparent 2s/30fps moving RGBA output imported by real EffectCraft 0.7.0
+through its native file.import; EffectCraft edits native typography and actual
+blur 20, persists editable .ecproj, and generates verified moving H264 MP4.
+Existing CreativeExecutionScope/ProcessRegistry, owner/session and fail-closed
+approval were exercised without mocked approval; real engine files preserved
+inside canonical CreativeDocument revisions with ETag checks. Do not mistake
+these native tracer tests for full TaskRun admission, Electron human/AI edits,
+HF native source editing, distributed transaction, H-C8 or H-C9 qualification.
+Reference evidence: workstation/creative-workstation/evidence/HCW-HYBRID-01.md,
+ledger: workstation/creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.
+
+
+### HCW-HYBRID-FINAL — opt-in canonical authority advancement (2026-10-12)
+
+The native dual-engine tracer was extended from static copied fixtures
+to an official declared-parameter HyperFrames source, edited with
+strict --variables-file (not HTML source mutation). Two different
+1920x1080 RGBA renders produce different pixels, imported into actual
+EffectCraft and further changed with native EffectCraft text. Three
+CreativeDocument immutable revisions contain real editable engine
+sources and referenced silence.wav. The opt-in canonical publication
+backend now uses durable HEAD/ETag CAS, OS lock, idempotency by typed
+command digest and clone-based batch rollback on error. A real live
+Kanban TaskRun admitted canonical-create/open/apply-batch and persisted
+artifacts/journal; named actor fields in command JSON remain unauthenticated
+trace metadata (do not claim human identity attestation). This is NOT
+complete manual React/Electron synchronization, distributed dual-engine
+atomic native transaction, on-demand hybrid render or H-079.
+See ledger and evidence files for tested paths and gates.
+
+
+### HCW H-C2 desktop read-model 2026-10-12
+
+The React /creative route previously omitted the mandatory workspace
+provider and maintained writable project state twice. Now mounting
+uses the provider and React display state accepts a parsed canonical
+CreativeDocument HEAD with revisionId and ETag. A pure strict adapter
+validates schema, project ID and dimensions; its rational-second parser
+and strong ETag syntax were corrected by tests against real backend
+serialization. THIS IS ONLY THE VIEW SIDE: the secure Electron
+main/preload bridge to Python TaskRun canonical-open/apply-batch
+is still missing; the renderer cannot publish a canonical revision.
+Do not elevate H-C2 to integrated editor or qualified release.
+
+### 2026-10-12 H-C2 security boundary finding
+
+React can submit typed creative commands and consume verified Python
+HEAD response without local project mutation, but no reliable server
+proof currently associates the invoking Electron WebContents with a
+live claimed Kanban TaskRun. A default-deny main binding is safer than
+trusting taskId/sessionKey/actorId supplied in renderer JS. Current
+main resolver returns null and all live edits are refused.
+Add authenticated backend owner association and negative IPC/E2E tests
+before promoting H-C2. No general-purpose command shell is exposed.
+
+
+### H-C2/H-C4 creative IPC trust boundary — 2026-10-12
+
+React canonical CreativeDocument projection/preload exists but is not
+authoritative on its own. Main creative IPC now binds owner to each sender
+event, reattests identity/admission across async boundaries and requires
+an acknowledged write receipt matching the separately reloaded canonical
+HEAD before changing UI. Distinguish secure IPC contract testing (11
+passed) from authenticated production TaskRun bridge (NOT implemented):
+main currently deliberately rejects all creative operations because it
+cannot attest owner from backend. Never infer authority from renderer
+task/session/profile or a client-supplied actor label. Revised plan:
+creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
+
+### 2026-10-12 HCW P0A owner verifier
+
+Added tested creative-taskrun-attestation.ts: verifies backend proof against Electron main window/session/connection/profile/navigation and enforces lease, principal and live TaskRun flags; 14 new TDD cases and 25 focused tests GREEN. No authenticated backend source yet: main canonical IPC continues deny-all; no human/agent E2E. Cannot elevate contract test to P0A completion. Backend must derive principal/TaskRun/lease from trusted authenticated transport, never renderer identity.
+
+
+### HCW P0A trusted backend admission — 2026-10-12
+
+TaskRun admission source now exists in `workstation/creative_taskrun_attestation.py`: only a canonical claimed run with a matching backend session record, authenticated actor, explicit trusted human-control clearance and ContextVar-bound gateway identity can produce a short-lived owner proof. Proof lifetime never outlives claim lease. Helper is NOT exposed by an authenticated gateway route; detached HTTP handlers fail closed and cannot borrow ambient HERMES_SESSION_* values. Production main still deny-all. 25 focused Python regressions GREEN, no Electron E2E or exact-head CI. The OAuth/cookie session principal, canonical SessionDB owner and live TaskRun gateway context must be joined without synthetic identities before enabling edits.
+
+### HCW authenticated HTTP identity verification (not execution authority)
+
+2026-10-12 continuation after 85b0448fa: Added workstation/creative_http_identity.py and GET /api/workstation/creative/owner-readiness in hermes_cli/web_server.py. Read-only authenticated interactive-principal → canonical SessionDB (user_id/session_key) → unique live Kanban TaskRun lookup with workspace, profile, expiry, lock and supersession fences. OAuth/native-session request.state.session is required; loopback token and service token are not considered interactive actor authentication. TDD RED module absent (exit 1), route not registered (1 failed exit 1), GREEN 38 passed, 0 failed in 47.06s, 1 Starlette/httpx deprecation warning, command python -m pytest workstation/tests/test_hcw_http_principal_owner.py workstation/tests/test_hcw_taskrun_backend_attestation.py workstation/tests/test_hcw_hybrid_taskrun_command.py workstation/tests/test_hcw_hybrid_revision_cas.py -q. No sessionKey or claimLock returned; authorityGranted=false. Not an authenticated mutation RPC or live gateway authority proof. main.ts remains resolveTrustedOwner: () => null; P0A PARTIAL, P0B BLOCKED; H-C2 no promotion, H-079 and exact-head CI unverified.
+
+### HCW-P0A Electron selector registry (2026-10-12): new apps/desktop/el
+
+HCW-P0A Electron selector registry (2026-10-12): new apps/desktop/electron/creative-main-sender-scope.ts and .test.ts implement a MAIN-process-only in-memory sender object+mainFrame-verified registry with monotonic navigation epoch, explicit rehome/revoke, concurrent-session fencing, destruction check and defensive snapshots. TDD RED: missing module, Vitest exit 1. GREEN: 31/31 Electron focused tests across registry, existing attestation, canonical IPC, preload, exit 0. ESLint --max-warnings 0 exit 0 after targeted fixes. Global tsc still exit 1 ONLY known electron/git-review-ops.test.ts:124 TS2349. Registry deliberately NOT WIRED to main.ts: session/connection obtained from renderer messages/URL are selectors not authenticated authority. main.ts remains DENY-ALL. No P0A or H-C2 promotion. Backend HTTP readiness previously qualified 38/38 tests, no mutation grant.

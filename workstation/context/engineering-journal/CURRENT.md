@@ -5981,3 +5981,160 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 - Critical UI defect: `CreativeWorkspacePage` read `useCreativeWorkspace()` without any mounted provider; added explicit provider around existing page. Previously blank-project route showed a static welcome with no create/open action, and toolbar/Inspector/Graph buttons logged or did nothing.
 - Implemented limited editable vector sandbox in existing renderer context: typed edits, bounded undo, keyframe interpolation, human controls, explicit JSON import/export, SVG frame, fail-closed script/media input validation. This is **not** the shared canonical creative project owner. Full details: `creative-workstation/MVP_EDITOR_DELIVERY_2026-10-11.md`.
 - Focused Vitest model+context 7 passed; page 3 passed on rerun; renderer TypeScript `tsc -p . --noEmit` succeeded. Full Electron typecheck from unintegrated main showed the known simple-git mismatch; PR #70 provides independent lock repair. No native packaged UI/AI parity proof, video export, GLB or exact SHA CI; draft only.
+
+### HCW-HYBRID-01 — 2026-10-11 — isolated implementation evidence
+
+- Worktree `C:\Github\hermes-agent\.worktrees\hcw-hybrid-01`; branch `feat/hcw-hybrid-01-20261011`; baseline `origin/main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. Main checkout dirty (34 entries) left untouched.
+- H-079 upstream pinned ancestor `66605471...`; fresh fetch upstream/main `835c3dd038d903182a66ecc45e34bf5e0de65f00`, baseline divergence 963 downstream / 245 upstream. No Stage A merge or exact-head baseline qualification. **DEVELOPMENT_ONLY**, not ready to merge.
+- EffectCraft CLI `cargo build --offline --locked -p effectcraft-cli` exit 1, missing pinned FilmCraft Git dependency. No real HyperFrames+EffectCraft media render evidence; H-C1 BLOCKED.
+- Test-first functionality: `save_hybrid_project_revision` and canonical `save_creative_document(..., native_files=...)` preserve hashed EffectCraft/HyperFrames source bytes under a single revision, with negative source/path/ETag tests; `HybridTimeMapping` uses exact rational clocks; `creative_export` fails closed on no source and undecodable frame (previous pseudo-hash and black fallback).
+- Regression and exact verification results: see `../creative-workstation/evidence/HCW-HYBRID-01.md` and PR test report. No Electron E2E or release claim.
+
+
+### HCW-HYBRID-01 follow-up — transparent source and dependency contracts
+
+Pinned HF source `6ae1af7470133db72de6d9bbceeaf80e85695c68` cloned to isolated temporary location and Bun `--frozen-lockfile --ignore-scripts` dependencies installed (1,457 packages). Pinned EC Git FilmCraft dep fetched; Cargo build progressing. A direct attempt to execute the source HyperFrames CLI was refused by connector security, and was not bypassed. No engine E2E result/PNG/MP4 claimed. Added test-first RGBA footage validator, graph topology and declared-binding checks enforced on hybrid revision, and content-addressed render fingerprints. These are bounded source-only components, not a production render/cache/agent/editor integration. Preserve H-079 NO PROMOTION. See `../creative-workstation/evidence/HCW-HYBRID-01.md`.
+
+
+- Updated partial hybrid source regression (26 files, 21 legacy excluding yaml environment issue + 5 new): **121 passed, 1 Windows symlink skip**, exit 0, 100.62s. Native EffectCraft/HyperFrames E2E remains unexecuted and H-079 promotion still blocked.
+
+
+### 2026-10-12 — HCW-HYBRID-FINAL native build and import verification
+
+- Reused isolated PR #81 worktree; root checkout 34 dirty changes preserved.
+- Native EffectCraft CLI executable at C:\Temp\hcw-hybrid01-effectcraft-target\debug\effectcraft-cli.exe passed --help and actual --demo frame PNG render. Newly added opt-in real-engine pytest creates/saves/reopens .ecproj, uses native file.import with RGBA sequence and verifies different decoded pixels across time; avoids claiming Pillow frames came from HyperFrames.
+- Added strict effectcraft_import_invocation returning pinned CreativeInvocation for existing start_creative_process; confirmed RED missing function then native GREEN, pathname/output/binary fingerprint negatives.
+- HyperFrames SHA 6ae1af7470133db72de6d9bbceeaf80e85695c68: core/parsers/lint/studio-server/producer built from source with exit 0; CLI --version 0.8.143 exit 0. Full CLI build-copy needed studio dist; studio build in progress. Strict render of first 2s fixture refused missing_gsap_script; no HF output qualified. Remote HTML edit was denied by security settings and not bypassed.
+- Persistent checkpoint: creative-workstation/HCW_HYBRID_EXECUTION_STATE.md. H-079 NO PROMOTION. CI/native HF->EC E2E still pending.
+
+
+### 2026-10-12 — HCW-HYBRID-FINAL continuation, real dual-engine moving native proof
+
+Confirmed clean worktree feat/hcw-hybrid-01-20261011 at starting fe8d5a7c5f, root
+checkout preserved with 34 uncommitted changes. Pinned HyperFrames official
+animated transparent fixture rendered 60 frames 640x360 30fps, 7 distinct hashes,
+CLI exit 0; EffectCraft imported true frames with typed native invocation,
+reopened .ecproj, generated title layer and a Gaussian Blur effect set to 20.
+Rendering produced changes independently proven by decoded pixel comparisons.
+Actual scoped ProcessRegistry launch with real approvals passed, and actual
+canonical CreativeDocument revisions preserved both real source engines with
+stale ETag rejected. Export of hybrid native source produced 60-frame
+640x360 H264 MP4; FFprobe/FFmpeg independently verified 2.0s, 30fps,
+codec, frame count, and different decoded frames. No fake fallback.
+28-file scoped regression 128 PASSED / 1 SKIPPED; separate pinned source
+producer->EffectCraft opt-in test PASSED in 49.03s. Full CI, H-079, independent
+native HF authored edit, Electron human/AI shared editing and 1920x1080 10s
+demo remain blocked. Draft PR #81, no main merge. Details/evidence in
+creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.
+
+
+Final validation receipt: 28-file Creative scope, pinned native engines fully
+opted in, 130 passed / 1 skipped / 0 failures in 128.07s,
+FINAL_SCOPED_EXIT=0. Not full CI, no merge/main modification.
+
+
+### 2026-10-12 — HCW hybrid parameter edits, CAS backend and TaskRun CLI
+
+Resumed clean baseline PR #81 SHA 5638aeee66 in linked worktree;
+root at 9fffa7f3ff with 34 unrelated dirty changes untouched.
+Official HF variables-prod source rendered two 1920x1080, strict-mode,
+declared-parameter variants; independent PNG SHA changed. Native EC
+import pixels changed and a separate EC text-layer edit changed pixels.
+Persisted all native dependencies (.ecproj, HTML, JSON, silence.wav)
+through three immutable CreativeDocument revisions, stale ETag rejected.
+New opt-in durable HEAD CAS, OS interprocess lock, command batch
+atomic clone and receipt-based idempotency; concurrent human/agent
+one-winner test, failed batch third command no head movement.
+Added admitted TaskRun backend/CLI for canonical-create/open/apply-batch
+with session, active run, policy, artifact/journal receipt, and carry-
+forward of unchanged hashed native assets. TDD RED/GREEN observed,
+existing main and legacy writers not changed. No Electron UI verified;
+no distributed engine-native transaction, identity proof, H-079 or
+global CI. Ledger and evidence in creative-workstation. Full 32-file
+regression PID 19584 pending final receipt at writing time.
+
+Final tests: 32 scoped files with native opt-in engines configured,
+151 passed / 1 skipped / 0 failed in 175.02 s, FINAL_SCOPE_EXIT=0.
+Targeted Ruff and Python compileall checks passed. H-079, full CI,
+Electron UI and verified human identity not established.
+
+Historical idempotency defect found RED: replaying an already applied
+human command after an agent revision failed to return original
+receipt. Added verified per-operation on-disk index with ancestry
+check, strict digest and parent match; 8 CAS tests green.
+Global scoped native pytest launched PID 75136; read final status
+before release. No merge or root checkout changes.
+
+Final independent regression after history-index CAS fix:
+32 Creative modules, 152 passed / 1 skipped / 0 failed, 158.95s,
+CAS_FINAL_TEST_EXIT=0; Ruff/compileall targeted passed. Continue to
+React/Electron canonical handoff, full CI and H-079; no main merge.
+
+
+### 2026-10-12 — Frontend H-C2 read-model and /creative route continuation
+
+PR #81 baseline SHA 62dc14f66f at beginning; isolated worktree used,
+root checkout still 34 unrelated dirty entries preserved.
+Found missing CreativeWorkspaceProvider on /creative route and independent
+React useState/$creativeProject authority; fixed route and converted
+UI project state to a validated canonical HEAD read-model only.
+Added TS projection tests RED/GREEN for schema, revision/ETag,
+rational CanonicalTime and actual backend-generated ETag format
+(quoted 16hex-16hex, NOT hex SHA256). Node actual-backend adapter tests
+4 passed; focused React UI Vitest 9 passed.
+Missing IPC/preload/main and gateway Creative route remain a real
+blocker for human/agent E2E; no false claim of UI editing. npm
+isolated --legacy-peer-deps install for tests; no lockfile/main changes.
+Next: secure main-process TaskRun-bound IPC, then UI command and refresh.
+
+Frontend verification final: 9 Vitest passed (2 files), 4 Node
+projection tests passed against real Python-generated HEAD;
+TypeScript renderer typecheck exit 0 (118.34s); scoped ESLint exit 0.
+No new Electron IPC or full E2E claims.
+
+### 2026-10-12 — Electron H-C2 typed UI readback seam
+
+Clean starting PR #81 SHA 4af6c117, main 34 dirty unchanged.
+Added strict IPC command adapter, preload surface and React methods
+which wait for backend readback. Main TaskRun owner resolver is
+intentionally null pending authentication, thus no real edit yet.
+Four targeted Vitest files 11 passed. Renderer TypeScript passed;
+global Electron TypeScript preexisting simple-git failure.
+Still needs real server route and trusted TaskRun ownership.
+No main merge or release qualification.
+
+Final H-C2 IPC and React tests: 4 Vitest files, 11 passed,
+0 failed, exit 0. Targeted ESLint exit 0, renderer TypeScript
+prior run exit 0; Electron global tsc has prior simple-git error.
+No real Electron manual edit, TaskRun binding or CI qualification.
+
+
+### 2026-10-12 — H-C2 sender-attestation + readback hardening
+
+Started with local clean worktree head 2c58391db5 (remote 4af6c1177b)
+and preserved dirty main checkout. Implemented IPC owner keyed to
+specific Electron sender and rechecked across async boundaries.
+Commit receipt revision must match independently reopened canonical
+head before UI acknowledgement; session/window navigation revokes
+acknowledgement. RED->GREEN observed. Vitest IPC/preload 11 passed,
+ESLint targeted exit 0; TypeScript global blocker in unrelated
+git-review-ops.test.ts:124. main.ts remains fail-closed null resolver;
+not an authorized live UI/TaskRun E2E. See revised plan review and
+HCW ledger. No H-079 promotion or merge.
+
+### 2026-10-12 — HCW P0A attestation groundwork
+
+PR #81 starting a3527baa7a, clean isolated worktree. TDD RED/GREEN delivered main-side creative-taskrun-attestation.ts verifier, 14 new negative/positive cases; 25 focused tests passed. Backend attestor, trusted main sender-scope registry and actual live Electron UI/CAS remain missing. main.ts null owner remains deny-all; do not promote H-C2. Preserve D-043, H-079 and protected checkout; see HCW ledger.
+
+
+### 2026-10-12 — HCW P0A continued after acb518e5ba
+
+Implemented a test-first backend TaskRun admission helper (`workstation/creative_taskrun_attestation.py`) and `gateway.session_context.get_bound_session_env` to forbid environment/approval-key impersonation outside a gateway ContextVar. Admission uses a verified actor matching canonical SessionDB identity, existing Kanban claim + CreativeRunContext policy and a trusted lease predicate; its proof TTL is capped at the shortest claim expiry. Three RED cases observed (missing module, unbound ambient identity accepted, proof overlong); 25 focused Python backend/CAS tests passed. This is NOT an authenticated production HTTP endpoint and NOT P0A complete. Production Electron main IPC remains deny-all; prioritize principal/session binding and main window mapping, then real E2E. No H-079 promotion.
+
+### HCW: verified HTTP principal/readiness lookup
+
+2026-10-12 continuation after 85b0448fa: Added workstation/creative_http_identity.py and GET /api/workstation/creative/owner-readiness in hermes_cli/web_server.py. Read-only authenticated interactive-principal → canonical SessionDB (user_id/session_key) → unique live Kanban TaskRun lookup with workspace, profile, expiry, lock and supersession fences. OAuth/native-session request.state.session is required; loopback token and service token are not considered interactive actor authentication. TDD RED module absent (exit 1), route not registered (1 failed exit 1), GREEN 38 passed, 0 failed in 47.06s, 1 Starlette/httpx deprecation warning, command python -m pytest workstation/tests/test_hcw_http_principal_owner.py workstation/tests/test_hcw_taskrun_backend_attestation.py workstation/tests/test_hcw_hybrid_taskrun_command.py workstation/tests/test_hcw_hybrid_revision_cas.py -q. No sessionKey or claimLock returned; authorityGranted=false. Not an authenticated mutation RPC or live gateway authority proof. main.ts remains resolveTrustedOwner: () => null; P0A PARTIAL, P0B BLOCKED; H-C2 no promotion, H-079 and exact-head CI unverified.
+
+### HCW-P0A Electron selector registry (2026-10-12): new apps/desktop/el
+
+HCW-P0A Electron selector registry (2026-10-12): new apps/desktop/electron/creative-main-sender-scope.ts and .test.ts implement a MAIN-process-only in-memory sender object+mainFrame-verified registry with monotonic navigation epoch, explicit rehome/revoke, concurrent-session fencing, destruction check and defensive snapshots. TDD RED: missing module, Vitest exit 1. GREEN: 31/31 Electron focused tests across registry, existing attestation, canonical IPC, preload, exit 0. ESLint --max-warnings 0 exit 0 after targeted fixes. Global tsc still exit 1 ONLY known electron/git-review-ops.test.ts:124 TS2349. Registry deliberately NOT WIRED to main.ts: session/connection obtained from renderer messages/URL are selectors not authenticated authority. main.ts remains DENY-ALL. No P0A or H-C2 promotion. Backend HTTP readiness previously qualified 38/38 tests, no mutation grant.

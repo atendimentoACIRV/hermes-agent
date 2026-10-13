@@ -218,6 +218,7 @@ import type { RegistryConnection } from './connection-registry'
 import type { RosterProfileMetadata } from './connection-registry'
 import { liveWindowState, overlayWindowState } from './connection-window-state'
 import { describeCrashReason, installCrashForensics } from './crash-forensics'
+import { registerCreativeCanonicalHandlers } from './creative-canonical-ipc'
 import {
   adoptServedDashboardToken,
   isAttachedBackendTokenDrifted,
@@ -15752,6 +15753,19 @@ ipcMain.handle('hermes:window:openInstance', async (event, options) => {
   createInstanceWindow(options, BrowserWindow.fromWebContents(event.sender))
 
   return { ok: true }
+})
+// H-C2: authenticated TaskRun binding is not yet exposed by the main process.
+ // Keep the channel discoverable but DENY ALL creative operations until a
+ // server-attested owner resolver is installed. Renderer-provided task IDs,
+ // profile paths or actor claims must NEVER unlock this bridge.
+registerCreativeCanonicalHandlers(ipcMain, {
+  resolveTrustedOwner: () => null,
+  open: async () => { throw new Error('creative_owner_unavailable') },
+  apply: async () => { throw new Error('creative_owner_unavailable') }
+}, event => {
+  const invoke = event as IpcMainInvokeEvent
+  const browser = BrowserWindow.fromWebContents(invoke.sender)
+  return Boolean(browser && !browser.isDestroyed() && invoke.senderFrame === invoke.sender.mainFrame)
 })
 registerWindowControlIpc(ipcMain, sender => BrowserWindow.fromWebContents(sender))
 ipcMain.handle('hermes:window:openBrowser', async (_event, tabId) => {

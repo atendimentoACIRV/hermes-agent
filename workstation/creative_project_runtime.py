@@ -131,3 +131,104 @@ def publish_project_revision(config: WorkstationConfig, context: CreativeRunCont
     ExecutionJournal(task_id=context.task_id, session_id=context.session_id).record(
         ExecutionEventKind.DELIVERABLE, "Creative source revision persisted", metadata=receipt)
     return receipt
+
+
+def publish_creative_command_batch_for_run(
+    config: WorkstationConfig,
+    context: CreativeRunContext,
+    *, project_id: str, transaction,
+    expected_head_revision: str, expected_etag: str,
+    native_files: dict[str, bytes] | None = None,
+) -> dict:
+    """Admit canonical human/agent commands against an EXISTING live TaskRun.
+
+    TaskRun/session/policy checks precede any mutation. A durable HEAD CAS
+    prevents a stale writer from forking the current project revision. Source
+    artifact/journal publication happens after the canonical commit; failures
+    after this point are uncertain and MUST NOT be blindly retried.
+    """
+    from workstation.creative_revision_cas import (
+        load_creative_head, publish_creative_command_batch_cas,
+    )
+    workspace = context.validate(config)
+    latest = load_creative_head(project_id)
+    if latest is None or not latest.source_path.is_relative_to(workspace):
+        raise PermissionError("Canonical Creative document outside TaskRun workspace")
+    if native_files is None and latest.native_files:
+        # A canonical command alters the CreativeDocument, not an engine source.
+        # Carry forward exactly the already-hashed immutable native files.
+        native_files = {}
+        for name, expected_digest in latest.native_files:
+            path = latest.manifest_path.parent / name
+            if path.is_symlink() or not path.is_file():
+                raise ValueError("Creative native source missing or redirected")
+            blob = path.read_bytes()
+            if hashlib.sha256(blob).hexdigest() != expected_digest:
+                raise ValueError("Creative native source changed outside revision")
+            native_files[name] = blob
+    destination = latest.manifest_path.parent.parent.parent
+    evaluation = ScopedPolicyEngine().evaluate(ActionScope(
+        task_id=context.task_id,
+        session_id=context.session_id,
+        capability="filesystem", action_name="write",
+        target=str(destination), workspace_root=str(workspace),
+    ))
+    if evaluation.decision is not PolicyDecision.ALLOW:
+        raise PermissionError(f"Creative project policy: {evaluation.decision.value}")
+    context.validate(config)
+    operation_id = transaction.transaction_id
+    journal = ExecutionJournal(task_id=context.task_id, session_id=context.session_id)
+    journal.record(
+        ExecutionEventKind.ACTION, "Creative canonical command batch prepared",
+        metadata={"operation_id": operation_id, "run_id": context.run_id,
+                  "expected_head_revision": expected_head_revision},
+    )
+    revision = publish_creative_command_batch_cas(
+        project_id, transaction, expected_head_revision=expected_head_revision,
+        expected_etag=expected_etag, native_files=native_files,
+    )
+    try:
+        return publish_project_revision(
+            config, context, revision, operation_id=operation_id,
+        )
+    except Exception as error:
+        raise CreativeEffectUncertain(operation_id) from error
+
+
+def create_canonical_document_for_run(
+    config: WorkstationConfig,
+    context: CreativeRunContext,
+    doc,
+) -> dict:
+    """Admitted creation of a fresh engine-neutral CreativeDocument HEAD.
+
+    Exposes no arbitrary native source files; native composition creation
+    remains a separately authorized and validated future operation.
+    """
+    from workstation.creative_revision_cas import publish_creative_document_cas
+
+    workspace = context.validate(config)
+    destination = Path(context.profile_home).resolve() / "workstation" / "creative" / "projects"
+    evaluation = ScopedPolicyEngine().evaluate(ActionScope(
+        task_id=context.task_id, session_id=context.session_id,
+        capability="filesystem", action_name="write",
+        target=str(destination), workspace_root=str(workspace),
+    ))
+    if evaluation.decision is not PolicyDecision.ALLOW:
+        raise PermissionError(f"Creative project policy: {evaluation.decision.value}")
+    context.validate(config)
+    operation_id = uuid4().hex
+    ExecutionJournal(task_id=context.task_id, session_id=context.session_id).record(
+        ExecutionEventKind.ACTION, "Creative canonical document creation prepared",
+        metadata={"operation_id": operation_id, "run_id": context.run_id},
+    )
+    revision = publish_creative_document_cas(
+        doc, operation_id=operation_id,
+    )
+    try:
+        receipt = publish_project_revision(
+            config, context, revision, operation_id=operation_id,
+        )
+        return {**receipt, "etag": revision.etag}
+    except Exception as error:
+        raise CreativeEffectUncertain(operation_id) from error

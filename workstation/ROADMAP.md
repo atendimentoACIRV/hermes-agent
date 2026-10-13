@@ -3102,3 +3102,151 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 
 ## 2026-10-11 — CWN renderer-first vector MVP (development only)
 See `creative-workstation/MVP_EDITOR_DELIVERY_2026-10-11.md`. Renderer route provider, explicit vector project open/create, text/rectangle edit, keyframe interpolation, functional Inspector/Graph controls, undo/redo, JSON source save and current SVG frame export. **HOLD production promotion:** no shared Python creative commands/CAS persistence, no packaged Electron E2E, no true MP4 or 3D, no exact-head CI. Implement CWN-02 typed native command bridge before engine expansion.
+
+## HCW-HYBRID-01 — EffectCraft + HyperFrames native composition (2026-10-11)
+
+This lane extends D-043, preserving Hermes as the project/TaskRun owner. **DEVELOPMENT_ONLY / BLOCKED_FOR_PROMOTION.** Evidence: `creative-workstation/evidence/HCW-HYBRID-01.md`.
+
+| Milestone | Observed status | Required next proof |
+|---|---|---|
+| H-C0 | PARTIAL / isolated worktree | H-079 upstream Stage A qualification; valid pinned installed engines |
+| H-C1 | BLOCKED | actual HyperFrames RGBA sequence → EffectCraft `file.import` → effect+title → decoded PNG+MP4 |
+| H-C2 | UNIT_TESTED | real `.ecproj` source validity, durable TaskRun publication, ETag/atomic head reconciliation |
+| H-C3 | UNIT_TESTED PARTIAL | rational frame mapping is tested; cross-engine parameter updates not implemented |
+| H-C4 | NOT_IMPLEMENTED | staged two-engine edit plan with real preview, CAS and owner receipts |
+| H-C5/H-C6/H-C7 | NOT_IMPLEMENTED | contextual editor, procedural mattes, measured cache invalidation |
+| H-C8/H-C9 | NOT_IMPLEMENTED | on-demand frame bridge and nested compositions after H-C1 proof |
+
+P0 export verification defects were addressed in development-only source: failed decode no synthetic hash; missing source no silent black fallback. Existing first-clip export is **not** a qualified multilayer compositor.
+
+
+### HCW-HYBRID-01 continuation — narrowed contract proof (development-only)
+
+- H-C0: pinned HyperFrames source and locked dependencies prepared in isolated temporary folder; EffectCraft pinned FilmCraft dependency recovered, build progressing. Real native-engine integration and H-079 Stage A still blocking.
+- H-C1/H-C6 partial **UNIT_TESTED SOURCE CONTRACT**: validate numbered RGBA frames + alpha + visible change and prepare `file.import` payload. No native frame producer/real EffectCraft proof.
+- H-C3 partial **UNIT_TESTED SCHEMA**: declared typed bindings checked on project revision save; cross-engine updates NOT IMPLEMENTED.
+- H-C7 partial **UNIT_TESTED FINGERPRINT**: per-frame source/asset SHA, fps, renderer version/profile cache key; actual bounded cache/invalidator NOT IMPLEMENTED.
+- H-C9 partial **UNIT_TESTED GRAPH**: dependency topological order, maximum depth, cycle/missing-node rejections; runtime nested compositions NOT IMPLEMENTED.
+- H-C4/H-C5/H-C8 remain NOT_IMPLEMENTED. Do not promote as complete.
+
+Evidence: `creative-workstation/evidence/HCW-HYBRID-01.md`.
+
+
+### HCW-HYBRID-01 addendum — 2026-10-12 native vertical tracer
+
+Later than the status matrix above: H-C1 has advanced from synthetic fixture-only to
+**NATIVE_VERTICAL_PROVEN / BLOCKED_FOR_PROMOTION**. The pinned official
+HyperFrames CLI rendered moving, transparent 60x PNG RGBA 640x360/30fps; real
+EffectCraft imported and reopened the image sequence, added native text and
+non-default Gaussian Blur, and exported real 640x360/30fps 2s/60-frame H.264 MP4.
+Native PNG and MP4 decoded pixel comparisons demonstrate actual changes/motion.
+Real scoped start_creative_process/ProcessRegistry exercised without mocked
+approval. Canonical CreativeDocument stored real engine source bytes and
+rejected stale ETag. Tests at this checkpoint: 128 passed / 1 skipped scoped,
+plus separately executed pinned producer test passed. H-C1 full promotion
+remains BLOCKED on independent HyperFrames source edit in the same project and
+the UI/TaskRun authority E2E. H-C4/H-C5/H-C8 and H-079 remain incomplete.
+The original Matrix entries describe earlier historical states; use the
+checkpoint in creative-workstation/HCW_HYBRID_EXECUTION_STATE.md for current state.
+
+
+Final update to the above HCW addendum: scoped Creative test suite re-executed
+on this source with all opt-in native engines and FFprobe: 28 files, 130 passed,
+1 symlink skip, 128.07 seconds, exit 0. CI/H-079 remain blocked for promotion.
+
+
+### HCW-HYBRID-01 — continued H-C1/H-C2/H-C3/H-C4 implementation, 2026-10-12
+
+An authorized, *unchanged* official HyperFrames variables-prod template
+now yields actual different rendered pixels when strict CLI
+--variables-file changes title/subtitle/bgColor. The real EffectCraft
+imports both source variants and native text edits produce further
+pixel differences. Three immutable revisions of the SAME CreativeDocument
+store editable real .ecproj, HTML, JSON overrides and the referenced
+silence.wav. A NEW opt-in canonical HEAD CAS + typed batch publisher
+tests interprocess lock, ETag, idempotent replay, 409 stale/race,
+third-command failure atomicity, orphan rejection and native source
+retention. Real claimed Kanban TaskRun CLI create/open/apply-batch
+passes with session/authority/policy and journal. Not integrated into
+React manual UI; the new backend has not replaced the old UI state.
+H-C4 cross-engine distributed atomicity/undo, H-C5 Electron
+EffectCraft Web, nested render, 10s final video, full CI and H-079
+remain open. H-C0–H-C9 must NOT be marked QUALIFIED. For exact
+fresh tests, SHA and continuation steps use
+creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.
+
+Current scoped test result: 32 Creative test files, 151 passed,
+1 skipped, 0 failures, 175.02 s, exit 0. Next gating priority is
+Electron renderer edits through live TaskRun canonical-open/apply-batch;
+this backend receipt is not an Electron E2E qualification.
+
+H-C4 backend progress: historical operation replay is now O(1)
+receipt-index lookup with verified published ancestry and
+stable typed-command digest; repeated older command after
+intervening commit returns original receipt without new revision.
+Nonmatching or orphan receipts are refused. 8 CAS tests green.
+Not yet native dual-engine distributed transaction, durable undo/redo,
+verified Electron actor identity or H-079 qualified.
+
+Post-history-index CAS regression: 32 selected Creative files,
+152 passed / 1 skipped, 158.95s, exit 0. H-C4 partial, unqualified
+pending true editor identity, live Electron and distributed engine edits.
+
+
+### HCW-HYBRID — 2026-10-12 H-C2 React presentation seam
+
+New frontend trace: /creative now mounts CreativeWorkspaceProvider; a
+single React display state is projected from validated canonical HEAD,
+not writable duplicated useState/Nanostore project. Real Python
+CreativeProjectRevision.etag syntax and rational-seconds CanonicalTime
+strings are verified in Node projection tests. Focused UI Vitest
+9 green and real-backend Node tests 4 green. H-C2 is NOT QUALIFIED:
+the renderer is not yet connected to an authenticated Electron IPC
+or gateway endpoint, nor to an authorized live TaskRun identity.
+Next stage must implement that link (no arbitrary shell interface)
+and prove human mouse -> canonical HEAD -> agent command -> UI refresh
+with actual Electron E2E. All H-079 and exact-head CI gates remain.
+
+### H-C2 typed Electron contract — 2026-10-12
+
+New typed main/preload command allowlist and React view readback
+are unit/integration-contract tested but NOT live authenticated
+Electron-to-TaskRun integration. Current main resolver deliberately
+returns no owner. P0: implement and independently verify server-attested
+TaskRun owner lookup, authenticated canonical RPC; then update main
+resolver and run real human mouse -> CAS -> agent -> refreshed UI
+E2E including restart/conflict/lease fences. Native H-C1 prior
+tests remain valid; H-C4 distributed native transaction and H-C5-H-C9,
+H-079 and full CI remain incomplete.
+
+
+### H-C2/H-C4 IPC plan re-evaluation — 2026-10-12
+
+Electron canonical IPC now reattests the exact sender's trusted owner
+across async edit/readback and requires a matching durable CAS revision
+receipt, never acknowledging an old/stale head. Unit tests + preload
+(11 passed) and targeted ESLint passed. main.ts still registers the
+bridge fail-closed with a null owner resolver: **no live manual
+TaskRun-backed Electron edit**; enabling from renderer-provided
+task/session/actor IDs is forbidden. P0 must first implement
+gateway/backend-authenticated TaskRun attestation per main-owned
+window/connection and then native UI+agent revision roundtrip.
+The revised H-C0–H-C9 dependencies and explicit promotion gates are in
+creative-workstation/HCW_HYBRID_PLAN_REVIEW_2026-10-12.md.
+
+### HCW-HYBRID P0A — 2026-10-12 partial attestation contract
+
+Electron main-side verifier validates fresh backend proof against main-owned webContents/navigation/connection/profile/session, TaskRun live flags, actor principal and lease expiry. 14 TDD tests new; 25 focused GREEN. Production owner resolver remains null/deny-all until authenticated backend attestation and main sender registry exist. NOT H-C2 integrated or usable editor. Next P0A endpoint + main binding; then P0B human/agent CAS E2E. H-079 and release gates unchanged.
+
+
+### HCW P0A backend-bound TaskRun admission (2026-10-12)
+
+Added `creative_taskrun_attestation.py` using existing Kanban/CreativeRunContext with a verified session-record identity, ContextVar-only gateway key, short proof lifetime fenced by actual task/run claim leases, and rejection of competing runs or detached context. 25 focused Python backend/CAS regressions passed. This is **not** a production authenticated endpoint, nor an Electron main-owned sender binding, therefore P0A/H-C2 remain unqualified and `resolveTrustedOwner: () => null` remains intentional. Next: authenticated HTTP/gateway principal + actor mapping, main-owned window connection/session binding, bounded canonical RPC and native E2E. H-079 unchanged.
+
+### HCW-P0A: read-only HTTP identity → TaskRun association
+
+2026-10-12 continuation after 85b0448fa: Added workstation/creative_http_identity.py and GET /api/workstation/creative/owner-readiness in hermes_cli/web_server.py. Read-only authenticated interactive-principal → canonical SessionDB (user_id/session_key) → unique live Kanban TaskRun lookup with workspace, profile, expiry, lock and supersession fences. OAuth/native-session request.state.session is required; loopback token and service token are not considered interactive actor authentication. TDD RED module absent (exit 1), route not registered (1 failed exit 1), GREEN 38 passed, 0 failed in 47.06s, 1 Starlette/httpx deprecation warning, command python -m pytest workstation/tests/test_hcw_http_principal_owner.py workstation/tests/test_hcw_taskrun_backend_attestation.py workstation/tests/test_hcw_hybrid_taskrun_command.py workstation/tests/test_hcw_hybrid_revision_cas.py -q. No sessionKey or claimLock returned; authorityGranted=false. Not an authenticated mutation RPC or live gateway authority proof. main.ts remains resolveTrustedOwner: () => null; P0A PARTIAL, P0B BLOCKED; H-C2 no promotion, H-079 and exact-head CI unverified.
+
+### HCW-P0A Electron selector registry (2026-10-12): new apps/desktop/el
+
+HCW-P0A Electron selector registry (2026-10-12): new apps/desktop/electron/creative-main-sender-scope.ts and .test.ts implement a MAIN-process-only in-memory sender object+mainFrame-verified registry with monotonic navigation epoch, explicit rehome/revoke, concurrent-session fencing, destruction check and defensive snapshots. TDD RED: missing module, Vitest exit 1. GREEN: 31/31 Electron focused tests across registry, existing attestation, canonical IPC, preload, exit 0. ESLint --max-warnings 0 exit 0 after targeted fixes. Global tsc still exit 1 ONLY known electron/git-review-ops.test.ts:124 TS2349. Registry deliberately NOT WIRED to main.ts: session/connection obtained from renderer messages/URL are selectors not authenticated authority. main.ts remains DENY-ALL. No P0A or H-C2 promotion. Backend HTTP readiness previously qualified 38/38 tests, no mutation grant.

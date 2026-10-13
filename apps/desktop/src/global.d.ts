@@ -35,6 +35,20 @@ export type DesktopMachineProfile = MachineProfile
 declare global {
   interface Window {
     hermesDesktop: {
+      creativeCanonical: {
+        open: (payload: { projectId: string }) => Promise<unknown>
+        apply: (payload: {
+          projectId: string
+          expectedRevisionId: string
+          etag: string
+          transactionId: string
+          command: {
+            commandId: 'layer.create' | 'layer.setProperty'
+            params: Record<string, unknown>
+            idempotencyKey: string
+          }
+        }) => Promise<unknown>
+      }
       workstationBrowser: WorkstationBrowserBridge
       // Resolve a backend connection. Omit `profile` (or pass the primary) for
       // the window's backend; pass a named profile to lazily spawn/reuse that

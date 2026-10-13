@@ -1062,6 +1062,23 @@ app.include_router(_dashboard_ui_routes.router)
 app.include_router(_shared_metrics_routes.router)
 app.include_router(_experience_compiler_routes.router)
 
+@app.get("/api/workstation/creative/owner-readiness")
+async def get_workstation_creative_owner_readiness(request: Request, session_id: str):
+    """Read-only identity/TaskRun join; NEVER return mutation authority.
+
+    The dashboard OAuth/native bearer gate must have verified the interactive
+    principal, and the current served profile is chosen by the backend.
+    The session_id query value is a selector only, never an owner credential.
+    """
+    from workstation.creative_http_identity import (
+        CreativeHttpIdentityDenied, resolve_creative_http_identity,
+    )
+    try:
+        return await asyncio.to_thread(resolve_creative_http_identity, request, session_id)
+    except CreativeHttpIdentityDenied as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
 @app.get("/api/workstation/resources")
 async def get_workstation_resources():
     """Project the Electron Workstation resources for Dashboard clients (delegates to workstation plugin)."""
