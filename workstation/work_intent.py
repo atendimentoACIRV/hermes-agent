@@ -30,34 +30,42 @@ def current_command_objective(envelope: MessageEnvelope, task_id: str, run_id: s
         return None
     from urllib.parse import urlsplit
     from workstation.control_plane.intent import OperationIntent
-    from workstation.control_plane.ir import EQ, SET
+    from workstation.control_plane.ir import AND, CALL, EQ, SET
     family, target = command
     native = family == "browser.open_site"
-    operation_id = "op_current_" + hashlib.sha256(
-        f"{task_id}:{run_id}:{envelope.content}".encode()).hexdigest()[:24]
     if native:
         parsed = urlsplit(target)
-        host = parsed.hostname or target
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+            return None
+        # The native Browser owner verifies host/page_family/recovery_state.
+        # An intent against an opaque "url" field cannot be certified against
+        # that learned contract. Describe the exact native effects without
+        # broadening the requested destination or bypassing its owner.
+        host = parsed.hostname
         page_family = parsed.path or "/"
-        goal = EQ("host", host)
+        goal = AND(EQ("host", host), EQ("page_family", page_family), EQ("recovery_state", "live"))
         effect_budget = [
             SET("url", target),
             SET("host", host),
             SET("page_family", page_family),
-            SET("recovery_state", "*"),
+            SET("recovery_state", "live"),
+            # The user's allowlisted open-site request explicitly budgets
+            # navigation on this exact host, never arbitrary Browser calls.
+            CALL("browser.navigate", host),
         ]
-        inputs = {"url": target}
-        target_family = "native_browser"
+        inputs = {}
     else:
         goal = EQ("creative.studio.ready", True)
         effect_budget = [SET("creative.studio.ready", True)]
         inputs = {"engine": target}
-        target_family = "creative_studio"
-
-    intent = OperationIntent(id=operation_id, target=target_family,
+    operation_id = "op_current_" + hashlib.sha256(
+        f"{task_id}:{run_id}:{envelope.content}".encode()).hexdigest()[:24]
+    intent = OperationIntent(id=operation_id, target="native_browser" if native else "creative_studio",
         goal=goal, effect_budget=effect_budget,
         metadata={"operation_family": family, "recognition": "deterministic_alias"})
     return {"operation_id": operation_id, "operation_intent": intent.to_dict(),
+            # Fixed named-site commands are fully bound by the typed goal/effect.
+            # Do not inject an undeclared url input into a promoted capability.
             "inputs": inputs}
 
 
@@ -85,6 +93,8 @@ def work_intent(envelope: MessageEnvelope, structured: dict | None = None) -> Wo
     browser = command is not None or any(str(s.get("tool", "")).startswith("browser_") for s in steps)
     durable = bool(structured and any(structured.get(k) for k in ("steps", "items", "operation_intent", "capability_id")))
     durable = durable or batch_intent(envelope.content) or is_multistep_request(envelope.content)
+    if isinstance(envelope.metadata, dict) and envelope.metadata.get("explicit_force_work") is True:
+        durable = True
     requires_task = bool(envelope.can_create_work and durable)
     admission_kind = "durable_task" if requires_task else "point_action" if command is not None else "conversation"
     return WorkIntent(kind, requires_task, browser, False, "durable" if durable else "turn",

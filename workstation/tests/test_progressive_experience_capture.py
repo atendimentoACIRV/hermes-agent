@@ -4,7 +4,6 @@ from workstation.experience_compiler.corpus import ExperienceCorpus
 from workstation.experience_compiler.models import TransitionOutcome, Verification
 from workstation.experience_compiler.progressive import capture_progressive
 from workstation.integrations.hermes.tool_observer import workstation_raw_post_tool_observer
-from workstation.task_compiler import execution_context
 
 
 def test_post_tool_capture_during_run_is_durable_and_not_verified(tmp_path, monkeypatch):
@@ -35,8 +34,19 @@ def test_durable_tool_path_and_terminal_preference_preserve_counterevidence(tmp_
     finally:
         _execution_active.reset(token)
     store = ArtifactStore()
+    owner_readback = store.store("t", "verified_owner_readback.json", {
+        "task_id": "t", "run_id": "r", "operation_id": "op", "matched": True,
+    }, schema="workstation.run_local_readback.v1").ref
+    from workstation.execution_policy import EvidenceStrength
+
     capture_progressive(store, task_id="t", run_id="r", operation_id="op", primitive="write_file", route="filesystem",
-        outcome="verified_success", state={"exists": True}, verification=Verification(status="VERIFIED", evidence_refs=["owner:proof"]))
+        outcome="verified_success", state={"exists": True},
+        verification=Verification(
+            status="VERIFIED", evidence_refs=[owner_readback],
+            evidence_strength=EvidenceStrength.SEMANTIC_PERSISTED_READBACK,
+            trust_class="trusted_runtime", observer="workstation.readback",
+            verifier_fingerprint="owner-readback-fingerprint",
+        ))
     corpus = ExperienceCorpus(store, discover=True)
     assert corpus.query()[0].outcome is TransitionOutcome.VERIFIED_SUCCESS
     assert len(corpus.query(include_history=True)) == 2

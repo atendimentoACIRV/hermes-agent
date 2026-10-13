@@ -3024,3 +3024,27 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 - Python scoped admission + handoff tests **11 PASS**; selected canonical Python regression **33 PASS** before the additional typed test; a full re-run after the added typed test is pending terminal result. Electron/Vitest native owner regression **58 PASS**. E2E TypeScript check and Ruff passed, git diff whitespace passed. Record canonical final Python outcome separately.
 - **Still OPEN:** actual Hermes native UI human review control wired to `HumanHandoffManager` via owner-approved transport, single consumption and verified typed readback, work-item checkpoint continuation without repeating the uncertain mutation; deidentified task-admission corpus, supersession/crash recovery, type-specific acceptance, historical dry-run only, native packaged binary, exact-head CI/H-079 and stacked PR chain qualification. KANBAN-04 remains PARTIAL. Do not represent synthetic result or local server test as native human approval E2E.
 - Next test name: `P0: uncertain native Browser mutation requires single human handoff, independent readback and safe resume`. Next code seam: `workstation/integrations/hermes/tool_batch_admission.py::workstation_tool_batch_admission`, tracing `BatchAdmissionAction.HANDOFF` through `agent/turn_tool_round.py` and `run_agent.py` into the actual Desktop renderer/IPC. Reuse `evaluate_verification` with a real trusted read-only observer and exact task/run/operation/resource evidence. No fresh permission after readback, no uncertain replay. Implement TDD, native E2E, complete release gates.
+
+### 2026-10-12 — Experience Compiler activation (PR #82, draft; qualification HOLD)
+- EC-01: native command intent aligned to canonical Browser host/page_family/recovery_state IR; 42 targeted/integration regressions passed; not production certified.
+- EC-02: candidate-bound filesystem canary/replay fail-closed patch previously committed as e81d23a812; real DIRECT/Electron E2E pending.
+- EC-03: owner cache requires explicit TaskRun identity (focused tests passed); deeper lease/restart E2E pending.
+- EC-07: telemetry projects canonical EvidenceRef to URI only, avoiding JSON serialization failure; 13 focused pytest passed. System1 runtime lacks laya in this test environment.
+- Continue EC-03 to EC-14 using workstation/context/experience-compiler-activation documents; H-079/H-081/H-082 exact-head and main merge remain HOLD.
+
+### 2026-10-12 — Experience Compiler EC-03/EC-04 authority continuation (PR #82 DRAFT)
+- EC-03: Browser navigation now mapped to explicit HTTPS scoped external effect, lease/authority/budget/readback admission; stale owner bound per TaskRun and rechecked at call time. Item-start and pre-step lease/uncertainty rechecks implemented with race regressions. Native H-082 remains unqualified.
+- EC-04: progressive VERIFIED_SUCCESS guarded by real persisted task/run/operation-bound verifier receipt with independent underlying evidence; Kernel supplies canonical verification proof. Full active TaskRun -> Laya -> offer -> VERIFIED_REUSE E2E remains pending.
+- EC-05: vendored Laya 0.3.23 lock provenance validated; System-1 telemetry 2 PASS on vendored source, no live DIRECT checkpoint yet.
+- EC-06+: open, especially explicit approved CALL budget for Browser native reuse; EC-13 HOLD. Exact-head CI, H-079/H-081/H-082 HOLD. Details in workstation/context/experience-compiler-activation/.
+
+### 2026-10-12 — EC-03 exact-site browser effect and EC-04 witnessed causal data
+- EC-03 recognized Trello open-site command explicitly budgets CALL(browser.navigate,trello.com); read authority and wrong-host denied. Local contract tests 10 PASS and H080B 2 PASS; native lease/restart/H-082 release remains HOLD.
+- EC-04 formal capability labels now flow into progressive capture; no arbitrary replay parameters are inferred. A verified poststate alone carries no causality; prestate delta requires independent persisted and scope-bound prestate receipt. Still missing native producer, actual in-flight Laya mined offer and VERIFIED_REUSE. Do not count local unit tests as productive release.
+- EC-05 locked Laya v0.3.23 three focused suites 10 PASS 1 SKIPPED; live checkpoint/DIRECT/CI HOLD. EC-06+ not completed. PR #82 draft; no merge.
+
+### 2026-10-12 — EC-04 witnessed filesystem capture (draft PR #82)
+- OperationalKernel filesystem/composite state observation now resolves scoped base_dir correctly.
+- Existing durable owner emits independent prestate for single fs_write; second canonical admission/status check prevents cancelled plans from mutating after witness. Filesystem fs_hash/stat readbacks persisted as hash/metadata-only evidence, linked to canonical verification; mismatched pre/post resources fail closed.
+- One real two-item WorkPlan scenario demonstrates corpus VERIFIED_SUCCESS while a second item remains pending; this is NOT candidate mining, offer, VERIFIED_REUSE or Laya real qualification. Next P0: attested replay parameters and full active TaskRun mine/validate/offer/adopt readback path.
+- H-079/H-081/H-082 and exact-head CI HOLD; PR stays draft/unmerged.

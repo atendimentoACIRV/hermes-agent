@@ -74,12 +74,22 @@ def workstation_turn_admission(
         )
 
         content = user_content or str(ingress.metadata.get("content", "") if ingress.metadata else "")
+        metadata = dict(ingress.metadata) if isinstance(ingress.metadata, dict) else {}
+        existing = getattr(agent, "_message_envelope", None)
+        corr_id = ingress.correlation_id
+        if isinstance(existing, MessageEnvelope) and existing.session_id == session_id:
+            if isinstance(existing.metadata, dict):
+                for k, v in existing.metadata.items():
+                    metadata.setdefault(k, v)
+            if not corr_id and existing.correlation_id:
+                corr_id = existing.correlation_id
         envelope = MessageEnvelope(
             origin=origin,
             intent_authority=authority,
             session_id=session_id,
             content=content,
-            correlation_id=ingress.correlation_id,
+            correlation_id=corr_id,
+            metadata=metadata,
         )
     else:
         existing = getattr(agent, "_message_envelope", None)

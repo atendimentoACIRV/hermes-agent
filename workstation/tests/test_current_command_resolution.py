@@ -41,8 +41,8 @@ def test_one_shot_trello_command_is_not_a_durable_kanban_task():
         lifecycle=CapabilityLifecycle.PROMOTED,
         formal_contract=CapabilityFormalContract(
             operation_family="browser.open_site", target_family="native_browser",
-            typed_postconditions=[EQ("url", "https://trello.com/")],
-            effect_footprint=[SET("url", "https://trello.com/")],
+            typed_postconditions=[EQ("host", "trello.com"), EQ("page_family", "/"), EQ("recovery_state", "live")],
+            effect_footprint=[SET("host", "trello.com"), SET("page_family", "/"), SET("recovery_state", "live")],
             authority_required=AuthorityScope(level=AuthorityLevel.EXTERNAL_REVERSIBLE,
                 allowed_actions={"navigate"}, allowed_resources={"native_browser"}),
             verifier={"kind": "value", "evidence_strength": "E2"})))

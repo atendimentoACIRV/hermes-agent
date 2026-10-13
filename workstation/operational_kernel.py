@@ -6,8 +6,7 @@ and drift quarantine with handoff to reasoning when unexpected variance occurs.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import hashlib
 import json
 import os
@@ -15,15 +14,13 @@ from pathlib import Path
 import re
 import shutil
 import time
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 from uuid import uuid4
 
 from workstation.artifacts import ArtifactStore
 from workstation.operational_capabilities import (
-    CapabilityDependency,
     CapabilityDriftError,
-    CapabilityLifecycle,
-    CapabilityNotFoundError,
     CapabilityResolver,
     CapabilityValidationError,
     OperationalCapability,
@@ -31,7 +28,7 @@ from workstation.operational_capabilities import (
 )
 from workstation.recipes import sanitize, digest
 from workstation.control_plane.verification import (
-    VerificationContract, VerificationEvidence, VerificationStatus, evaluate_verification,
+    VerificationContract, VerificationEvidence, evaluate_verification,
 )
 from workstation.execution_policy import EvidenceStrength
 
@@ -507,10 +504,21 @@ class OperationalKernel:
         exec_context["run_id"] = run_id
         exec_context["operation_id"] = operation_id
         from workstation.experience_compiler.progressive import capture_progressive
+        # The admitted capability, not the tool observer, supplies these labels.
+        formal = cap.formal_contract
+        def formal_value(name):
+            return formal.get(name, "") if isinstance(formal, dict) else getattr(formal, name, "")
+        operation_family = str(formal_value("operation_family") or "")
+        target_family = str(formal_value("target_family") or "")
+
         def capture(outcome, verification=None):
             ref = capture_progressive(self.artifacts, task_id=task_id, run_id=run_id,
                 operation_id=operation_id, primitive=cap.id, route=cap.route, outcome=outcome,
-                state=exec_context.get("semantic_state"), verification=verification)
+                state=exec_context.get("semantic_state"),
+                state_before=exec_context.get("semantic_state_before"),
+                state_before_ref=exec_context.get("semantic_state_before_ref"),
+                verification=verification, operation_family=operation_family,
+                target_family=target_family, effect_class=cap.effect, scope=cap.scope)
             if ref:
                 try:
                     from workstation.experience_compiler.compilability_monitor import notify_online_compilability
@@ -524,6 +532,7 @@ class OperationalKernel:
                         route=cap.route,
                         outcome=outcome,
                         event_kind="verified_transition" if outcome == "verified_success" else "state_changed",
+                        operation_family=operation_family, target_family=target_family,
                         evidence_refs=ev_refs,
                     )
                 except Exception:
@@ -602,7 +611,7 @@ class OperationalKernel:
                 step = steps[-1] if output is not None else steps[0]
                 args = interpolate_variables(step.get('args', {}), exec_context)
                 path = args.get('path') or args.get('src')
-                return filesystem_state(path).semantic_predicates if path else {}
+                return filesystem_state(_resolve_path(path, args.get('base_dir'))).semantic_predicates if path else {}
             if cap.route == 'host_process':
                 observer = exec_context.get('process_observer')
                 if not callable(observer):
@@ -619,7 +628,7 @@ class OperationalKernel:
                             arguments = interpolate_variables(selected.get('args', {}), exec_context)
                             path = arguments.get('path') or arguments.get('src')
                             if path:
-                                state.update(filesystem_state(path).semantic_predicates)
+                                state.update(filesystem_state(_resolve_path(path, arguments.get('base_dir'))).semantic_predicates)
                     elif backend == 'host_process':
                         observer = exec_context.get('process_observer')
                         if not callable(observer):
@@ -723,11 +732,71 @@ class OperationalKernel:
                 if learned and cap.route == 'native_browser' and primitive == 'browser_navigate':
                     navigation_target = bound_args.get('url')
                 filesystem_scope = cap.scope.get('backends', {}).get('filesystem', cap.scope)
+                if learned and durable_store and mutating and route == 'filesystem':
+                    if not callable(admission):
+                        raise CapabilityDriftError('owner primitive admission required for durable mutation')
+                    if not filesystem_scope.get('base_dir'):
+                        raise CapabilityDriftError('scoped filesystem admission required for durable mutation')
                 if learned and route == 'filesystem' and filesystem_scope.get('base_dir'):
                     base = Path(filesystem_scope['base_dir']).resolve()
                     for key in ('path', 'src', 'dst'):
                         if key in bound_args and not _resolve_path(bound_args[key], bound_args.get('base_dir')).is_relative_to(base):
                             raise CapabilityDriftError('filesystem target escaped exact learned scope')
+                # EC-04: observe a single filesystem mutation through this
+                # existing durable owner, before the dispatch checkpoint.
+                # No lease or resource authority is inferred from observations.
+                if (mutating and route == 'filesystem' and cap.route == 'filesystem'
+                        and primitive in {'fs_write', 'write_file', 'write'}
+                        and len(steps) == 1 and durable_store and durable_item_id
+                        and callable(admission) and filesystem_scope.get('base_dir')):
+                    from workstation.durable_tasks import WorkItemStatus
+                    from workstation.experience_compiler.state_abstraction import filesystem_state
+
+                    current_item = durable_store.get_item(durable_item_id)
+                    current_plan = durable_store.get_plan(current_item.plan_id) if current_item else None
+                    if (current_item is None or current_plan is None
+                            or current_item.task_id != task_id
+                            or str(current_item.run_id) != run_id
+                            or str(current_item.operation_id) != operation_id
+                            or current_plan.task_id != task_id
+                            or str(current_plan.run_id) != run_id
+                            or current_plan.status != 'running'
+                            or current_item.status not in {WorkItemStatus.PENDING, WorkItemStatus.RUNNING}):
+                        raise CapabilityDriftError('canonical durable item/lease is no longer admissible')
+                    target = _resolve_path(bound_args['path'], bound_args.get('base_dir'))
+                    scoped_base = Path(filesystem_scope['base_dir']).resolve()
+                    if not target.is_relative_to(scoped_base):
+                        raise CapabilityDriftError('filesystem prestate target escaped capability scope')
+                    witnessed = filesystem_state(target).semantic_predicates
+                    pre_ref = self.artifacts.store(task_id,
+                        'prestate_' + digest({
+                            'task_id': task_id, 'run_id': run_id,
+                            'operation_id': operation_id, 'step': step_id, 'resource': str(target),
+                        }) + '.json', {
+                            'task_id': task_id, 'run_id': run_id,
+                            'operation_id': operation_id,
+                            'observer': 'workstation.operational_prestate',
+                            'read_before_write': True, 'resource': str(target),
+                            'state': witnessed,
+                        }, schema='workstation.operational_prestate_readback.v1').ref
+                    exec_context['semantic_state_before'] = witnessed
+                    exec_context['semantic_state_before_ref'] = pre_ref
+                    exec_context['witnessed_filesystem_resource'] = str(target)
+                    # The pre-read and artifact write are not an execution
+                    # lease. Reconsult the same admitted owner and canonical
+                    # item immediately before the irreversible dispatch marker.
+                    admission(route, mutating)
+                    fresh_item = durable_store.get_item(durable_item_id)
+                    fresh_plan = durable_store.get_plan(fresh_item.plan_id) if fresh_item else None
+                    if (fresh_item is None or fresh_plan is None
+                            or fresh_item.task_id != task_id
+                            or str(fresh_item.run_id) != run_id
+                            or str(fresh_item.operation_id) != operation_id
+                            or fresh_plan.task_id != task_id
+                            or str(fresh_plan.run_id) != run_id
+                            or fresh_plan.status != 'running'
+                            or fresh_item.status not in {WorkItemStatus.PENDING, WorkItemStatus.RUNNING}):
+                        raise CapabilityDriftError('canonical durable item/lease changed after prestate')
                 if durable_store and mutating:
                     durable_store.update_item_checkpoint(durable_item_id, checkpoint + '_dispatch')
                 try:
@@ -812,7 +881,7 @@ class OperationalKernel:
                         trust_class='trusted_runtime', observer_failure_domain='browser_session_persistence',
                         resource_id=f"browser_task:{task_id}:tab:{readback['tab_id']}",
                         resource_version=str(readback.get('revision', readback['saved_at'])),
-                        observed_at=readback.get('saved_at') or datetime.now(timezone.utc).isoformat(), read_after_write=True,
+                        observed_at=readback.get('saved_at') or datetime.now(UTC).isoformat(), read_after_write=True,
                         covered_predicates=observed_coverage,
                         artifact_ref=ref.ref, task_id=task_id, run_id=run_id, operation_id=operation_id,
                     )]
@@ -854,6 +923,29 @@ class OperationalKernel:
                         supplied_evidence = [VerificationEvidence.from_dict(observed_val)]
                     else:
                         builtin_fs = verifier_contract.observer in {'fs_stat', 'fs_read', 'fs_hash', 'stat', 'read', 'hash_file'}
+                        persisted_readback = ""
+                        fs_resource = str(exec_context.get("resource_id", ""))
+                        # Only independent metadata/hash reads are persisted as
+                        # progressive proof. Never persist raw fs_read file content.
+                        if verifier_contract.observer in {'fs_hash', 'hash_file', 'fs_stat', 'stat'}:
+                            args = exec_context.get("observer_args") or {}
+                            if not isinstance(args, dict) or not args.get("path"):
+                                raise CapabilityDriftError('filesystem verifier resource binding absent')
+                            fs_resource = str(_resolve_path(args["path"], args.get("base_dir")))
+                            witnessed_resource = exec_context.get("witnessed_filesystem_resource")
+                            if witnessed_resource and fs_resource != witnessed_resource:
+                                raise CapabilityDriftError('post-readback targeted a different filesystem resource')
+                            persisted_readback = self.artifacts.store(task_id,
+                                'operational_fs_readback_' + digest({
+                                    'task_id': task_id, 'run_id': run_id,
+                                    'operation_id': operation_id, 'resource': fs_resource,
+                                    'observer': verifier_contract.observer, 'value': observed_val,
+                                }) + '.json', {
+                                    'task_id': task_id, 'run_id': run_id,
+                                    'operation_id': operation_id, 'resource': fs_resource,
+                                    'observer': verifier_contract.observer,
+                                    'read_after_write': True, 'value': observed_val,
+                                }, schema='workstation.operational_filesystem_readback.v1').ref
                         supplied_evidence = [VerificationEvidence(
                             evidence_id=f"observation:{cap.id}:{cap.version}",
                             observer=verifier_contract.observer if builtin_fs else "legacy_raw_observer",
@@ -862,11 +954,12 @@ class OperationalKernel:
                             evidence_strength=(EvidenceStrength.SEMANTIC_PERSISTED_READBACK if builtin_fs else EvidenceStrength.SAME_SESSION_SEMANTIC_OBSERVATION),
                             trust_class="trusted_runtime" if builtin_fs else "untrusted",
                             observer_failure_domain="filesystem" if builtin_fs else ("browser_renderer" if cap.route in {"browser", "native_browser"} else "runtime"),
-                            resource_id=str(exec_context.get("resource_id", "")),
+                            resource_id=fs_resource,
                             resource_version=str(exec_context.get("resource_version", "")),
-                            observed_at=datetime.now(timezone.utc).isoformat(),
+                            observed_at=datetime.now(UTC).isoformat(),
                             read_after_write=bool(builtin_fs), operation_id=operation_id,
                             task_id=task_id, run_id=run_id,
+                            artifact_ref=persisted_readback,
                             covered_predicates=tuple(exec_context.get("observed_predicates", ())),
                         )]
                 else:
@@ -899,11 +992,6 @@ class OperationalKernel:
                                 "predicate_coverage_count": len(verification_result.covered_predicates)})
 
             # 5. Record validation evidence & savings
-            evidence = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "status": "success",
-                "inputs_sample": sanitize(inputs),
-            }
             if verification_result.verified:
                 cap.success_count += 1
             if learned and verification_result.verified:
@@ -927,7 +1015,10 @@ class OperationalKernel:
             from workstation.experience_compiler.models import Verification
             capture("verified_success" if verification_result.verified else "uncertain", Verification(
                 status=verification_result.status.value, verifier_fingerprint=verification_result.verifier_fingerprint,
-                evidence_refs=list(verification_result.evidence_refs), observer=verifier_contract.observer,
+                # The canonical receipt binds the verifier result and its
+                # underlying evidence to this task/run/operation before online
+                # learning may classify this as VERIFIED_SUCCESS.
+                evidence_refs=[proof_ref], observer=verifier_contract.observer,
                 source_kind=verifier_contract.source_kind, trust_class="trusted_runtime",
                 evidence_strength=verifier_contract.minimum_evidence))
             auth_scope = exec_context.get("authority_scope") or getattr(self, "authority_scope", None)
@@ -955,7 +1046,7 @@ class OperationalKernel:
                 freshness_satisfied=verification_result.freshness_satisfied,
                 verification_reason=verification_result.reason,
                 authority_scope=auth_scope,
-                timestamp=datetime.now(timezone.utc).timestamp(),
+                timestamp=datetime.now(UTC).timestamp(),
             )
             self.invocations.append(invocation)
 

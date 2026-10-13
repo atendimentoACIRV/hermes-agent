@@ -92,15 +92,15 @@ def create_direct_qualification_attestation(
     model_revision: str = "",
     operation_family: str = "*",
     effect_class: str = "read_only",
-    verifier_contract: Optional[Dict[str, Any]] = None,
+    verifier_contract: Optional[dict[str, Any]] = None,
     safe_env: str = "isolated_sandbox",
-    exact_tests: Tuple[str, ...] = (),
+    exact_tests: tuple[str, ...] = (),
     issued_at: Optional[float] = None,
     expires_at: Optional[float] = None,
     revoked: bool = False,
     revocation_reason: str = "",
     attestation_id: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Issuer-side helper; requires an operator-provisioned profile secret.
 
     Possession of an artifact, a historical success or a model decision does not
@@ -108,7 +108,7 @@ def create_direct_qualification_attestation(
     """
     trust, key = _qualification_trust()
     now = time.time() if issued_at is None else issued_at
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "attestation_id": attestation_id or f"dqa_{digest({'v': code_version, 't': now})[:12]}",
         "schema": DIRECT_QUALIFICATION_SCHEMA,
         "algorithm": "HMAC-SHA256",
@@ -133,11 +133,11 @@ def create_direct_qualification_attestation(
 
 
 def verify_qualification_attestation(
-    qualification_ref: Union[str, Dict[str, Any]],
+    qualification_ref: str | dict[str, Any],
     artifacts: Optional[ArtifactStore] = None,
-) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+) -> tuple[bool, str, Optional[dict[str, Any]]]:
     """Verify that a qualification reference resolves to a valid, signed, active attestation."""
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[dict[str, Any]] = None
     if isinstance(qualification_ref, dict):
         data = qualification_ref
     elif isinstance(qualification_ref, str):
@@ -234,7 +234,7 @@ def load_learning_policy(artifacts: Optional[ArtifactStore] = None) -> LearningP
 
 def resolve_policy(
     mode: Optional[str],
-    qualification_ref: Union[str, Dict[str, Any]] = "",
+    qualification_ref: str | dict[str, Any] = "",
     enabled: bool = True,
     artifacts: Optional[ArtifactStore] = None,
 ) -> LearningPolicy:
@@ -266,10 +266,10 @@ class CompilabilityEvent:
     route: str
     outcome: str
     timestamp: float = field(default_factory=time.time)
-    state_summary: Dict[str, Any] = field(default_factory=dict)
+    state_summary: dict[str, Any] = field(default_factory=dict)
     operation_family: str = ""
     target_family: str = ""
-    evidence_refs: Tuple[str, ...] = ()
+    evidence_refs: tuple[str, ...] = ()
     # Observed reasoning (System-2) calls spent on this operation; None = not instrumented.
     system2_calls: Optional[int] = None
 
@@ -295,24 +295,27 @@ class TaskRunObservationWindow:
     max_offers: int = 4
     cooldown_seconds: float = 0.05
 
-    events: List[CompilabilityEvent] = field(default_factory=list)
+    events: list[CompilabilityEvent] = field(default_factory=list)
     seen_fingerprints: set = field(default_factory=set)
-    attempt_count_per_segment: Dict[str, int] = field(default_factory=dict)
-    segment_evidence_revisions: Dict[str, int] = field(default_factory=dict)
-    attempts_at_revision: Dict[str, Dict[int, int]] = field(default_factory=dict)
-    validation_attempts: Dict[str, int] = field(default_factory=dict)
+    attempt_count_per_segment: dict[str, int] = field(default_factory=dict)
+    segment_evidence_revisions: dict[str, int] = field(default_factory=dict)
+    attempts_at_revision: dict[str, dict[int, int]] = field(default_factory=dict)
+    validation_attempts: dict[str, int] = field(default_factory=dict)
     last_inference_time: float = 0.0
     last_touch: float = field(default_factory=time.time)
 
-    verified_success_refs: List[str] = field(default_factory=list)
-    counterexample_refs: List[str] = field(default_factory=list)
-    mined_candidate_ids: List[str] = field(default_factory=list)
-    validated_proofs: Dict[str, RunClosureProof] = field(default_factory=dict)
-    offers: Dict[str, AdoptionOffer] = field(default_factory=dict)
-    decision_receipt_refs: List[str] = field(default_factory=list)
-    shadow_decisions: List[Dict[str, Any]] = field(default_factory=list)
-    adoption_records: List[Dict[str, Any]] = field(default_factory=list)
-    system2_samples: List[int] = field(default_factory=list)
+    verified_success_refs: list[str] = field(default_factory=list)
+    counterexample_refs: list[str] = field(default_factory=list)
+    mined_candidate_ids: list[str] = field(default_factory=list)
+    validated_proofs: dict[str, RunClosureProof] = field(default_factory=dict)
+    offers: dict[str, AdoptionOffer] = field(default_factory=dict)
+    decision_receipt_refs: list[str] = field(default_factory=list)
+    shadow_decisions: list[dict[str, Any]] = field(default_factory=list)
+    adoption_records: list[dict[str, Any]] = field(default_factory=list)
+    system2_samples: list[int] = field(default_factory=list)
+    # Cumulative per-run counters (not inferred from the bounded event ring).
+    funnel_counts: dict[str, int] = field(default_factory=dict)
+    funnel_denials: dict[str, int] = field(default_factory=dict)
     owner: Optional[RunAdoptionOwner] = None
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -323,6 +326,7 @@ class TaskRunObservationWindow:
             if event.outcome in _VERIFIED_OUTCOMES:
                 if event.sample_ref and event.sample_ref not in self.verified_success_refs:
                     self.verified_success_refs.append(event.sample_ref)
+                    self.funnel_counts["verified_evidence"] = self.funnel_counts.get("verified_evidence", 0) + 1
                     self.segment_evidence_revisions[seg_key] = self.segment_evidence_revisions.get(seg_key, 0) + 1
                 if event.system2_calls is not None and len(self.system2_samples) < 256:
                     self.system2_samples.append(int(event.system2_calls))
@@ -396,11 +400,11 @@ class OnlineCompilabilityMonitor:
         self.contract_factory = contract_factory
         self.max_windows, self.window_ttl_seconds = max_windows, window_ttl_seconds
 
-        self._windows: Dict[Tuple[str, str], TaskRunObservationWindow] = {}
+        self._windows: dict[tuple[str, str], TaskRunObservationWindow] = {}
         self._windows_lock = threading.Lock()
         self._metrics_lock = threading.Lock()
 
-        self.metrics: Dict[str, Any] = {
+        self.metrics: dict[str, Any] = {
             "events_observed": 0, "events_filtered": 0, "events_shed": 0,
             "decisions_requested": 0, "decisions_abstain": 0, "decisions_shadow": 0,
             "mining_attempts": 0, "candidates_yielded": 0, "candidates_lineage_rejected": 0,
@@ -426,6 +430,62 @@ class OnlineCompilabilityMonitor:
     def _bump(self, key: str, by: int = 1) -> None:
         with self._metrics_lock:
             self.metrics[key] += by
+
+    def task_run_funnel(self, task_id: str, run_id: str) -> dict[str, Any]:
+        """Read-only operational overview, including restored checkpoint counters.
+
+        This projection never claims a missing stage is a success and never returns
+        raw evidence, site content, or user parameters to dashboard clients.
+        """
+        task_id, run_id = str(task_id), str(run_id)
+        with self._windows_lock:
+            window = self._windows.get((task_id, run_id))
+        if window is not None:
+            with window.lock:
+                counters = dict(window.funnel_counts)
+                reasons = dict(window.funnel_denials)
+                candidates = len(window.mined_candidate_ids)
+                offers = len(window.offers)
+            source = "live"
+        else:
+            # ArtifactStore._task_dir() creates directories, so a read-only
+            # dashboard must NOT call it. Mirror its filename sanitizer.
+            safe_task = "".join(c if c.isalnum() or c in "-_" else "_" for c in task_id)
+            filename = "learning_checkpoint_" + task_id + "_" + run_id + ".json"
+            safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in filename)
+            path = self.artifacts.root / safe_task / safe_name
+            try:
+                checkpoint = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+                if checkpoint.get("task_id") != task_id or str(checkpoint.get("run_id")) != run_id:
+                    checkpoint = {}
+            except (OSError, ValueError, TypeError, AttributeError):
+                checkpoint = {}
+            counters = dict(checkpoint.get("funnel_counts") or {})
+            reasons = dict(checkpoint.get("funnel_denials") or {})
+            candidates = len(checkpoint.get("mined_candidate_ids") or ())
+            offers = None  # offers exist only inside the real runtime process
+            source = "persisted_checkpoint" if checkpoint else "unknown"
+        defaults = (
+            "processed_events", "verified_evidence", "filtered_duplicate",
+            "prefilter_insufficient", "mining_attempted", "mined_candidates",
+            "validation_attempted", "validation_denied", "offers_created",
+            "adoption_denied", "verified_reuse", "adoption_attempted",
+        )
+        return {
+            "task_id": str(task_id), "run_id": str(run_id),
+            "mode": self.mode, "enabled": self.enabled,
+            "downgrade_reason": self.mode_downgrade_reason,
+            "status": "observed" if counters else "not_observed",
+            "data_source": source,
+            "mode_source": "live_runtime" if window is not None else "reader_process_only",
+            **{key: counters.get(key, 0) for key in defaults},
+            "decision_stages": {k[len("decision_"):]: v for k, v in counters.items()
+                                if k.startswith("decision_")},
+            "denial_reasons": reasons,
+            "known_candidate_ids": candidates,
+            "run_local_offers_in_memory": offers,
+            "system2_calls_avoided": None,
+        }
 
     def _ensure_worker(self) -> None:
         with self._worker_lock:
@@ -454,6 +514,8 @@ class OnlineCompilabilityMonitor:
                     },
                     "system2_samples": list(window.system2_samples),
                     "decision_receipt_refs": list(window.decision_receipt_refs),
+                    "funnel_counts": dict(window.funnel_counts),
+                    "funnel_denials": dict(window.funnel_denials),
                     "last_touch": window.last_touch,
                 }
             self.artifacts.store(
@@ -488,6 +550,8 @@ class OnlineCompilabilityMonitor:
                 }
                 window.system2_samples = [int(s) for s in data.get("system2_samples", [])]
                 window.decision_receipt_refs = list(data.get("decision_receipt_refs", []))
+                window.funnel_counts = {str(k): int(v) for k, v in (data.get("funnel_counts") or {}).items()}
+                window.funnel_denials = {str(k): int(v) for k, v in (data.get("funnel_denials") or {}).items()}
             return True
         except Exception:
             return False
@@ -580,23 +644,32 @@ class OnlineCompilabilityMonitor:
 
     # ------------------------------------------------------------------ event pipeline
 
-    def process_event(self, event: CompilabilityEvent, owner: Optional[RunAdoptionOwner] = None) -> Dict[str, Any]:
+    def process_event(self, event: CompilabilityEvent, owner: Optional[RunAdoptionOwner] = None) -> dict[str, Any]:
         """Pre-filter -> System-1 decision -> (DIRECT only) mine -> validate -> record offer."""
         window = self._get_window(event.task_id, event.run_id)
         if owner is not None:
             window.owner = owner
         if not window.add_event(event):
             self._bump("events_filtered")
+            with window.lock:
+                window.funnel_counts["filtered_duplicate"] = window.funnel_counts.get("filtered_duplicate", 0) + 1
             return {"status": "filtered_duplicate"}
+        with window.lock:
+            window.funnel_counts["processed_events"] = window.funnel_counts.get("processed_events", 0) + 1
         if event.outcome in _VERIFIED_OUTCOMES or event.outcome in _FAILURE_OUTCOMES or bool(event.sample_ref):
             self._persist_window_checkpoint(window)
         if not self._deterministic_prefilter(window, event):
             self._bump("events_filtered")
+            with window.lock:
+                window.funnel_counts["prefilter_insufficient"] = window.funnel_counts.get("prefilter_insufficient", 0) + 1
             return {"status": "prefilter_insufficient"}
 
         decision = self._query_system1_compilability(window, event)
         stage = decision.get("stage", CompilabilityStage.KEEP_COLLECTING.value)
-        summary: Dict[str, Any] = {"status": "evaluated", "stage": stage, "decision": decision,
+        with window.lock:
+            stage_key = "decision_" + str(stage).lower()
+            window.funnel_counts[stage_key] = window.funnel_counts.get(stage_key, 0) + 1
+        summary: dict[str, Any] = {"status": "evaluated", "stage": stage, "decision": decision,
                                    "task_id": event.task_id, "run_id": event.run_id}
 
         if self.mode != DIRECT:
@@ -615,6 +688,9 @@ class OnlineCompilabilityMonitor:
             if window.can_attempt_compilation(seg_key):
                 window.record_compilation_attempt(seg_key)
                 candidates = self.mine_candidate_in_run(event.task_id, event.run_id)
+                with window.lock:
+                    window.funnel_counts["mining_attempted"] = window.funnel_counts.get("mining_attempted", 0) + 1
+                    window.funnel_counts["mined_candidates"] = window.funnel_counts.get("mined_candidates", 0) + len(candidates)
                 summary["mined_candidates"] = [c.id for c in candidates]
             else:
                 summary["mining_skipped"] = "budget_exceeded"
@@ -629,6 +705,14 @@ class OnlineCompilabilityMonitor:
                 window.validation_attempts[cand_id] = window.validation_attempts.get(cand_id, 0) + 1
                 valid, proof, reasons = self.validate_candidate_run_local(
                     cand, task_id=event.task_id, run_id=event.run_id)
+                with window.lock:
+                    window.funnel_counts["validation_attempted"] = window.funnel_counts.get("validation_attempted", 0) + 1
+                    if valid and proof is not None:
+                        window.funnel_counts["offers_created"] = window.funnel_counts.get("offers_created", 0) + 1
+                    else:
+                        window.funnel_counts["validation_denied"] = window.funnel_counts.get("validation_denied", 0) + 1
+                        for reason in reasons:
+                            window.funnel_denials[str(reason)] = window.funnel_denials.get(str(reason), 0) + 1
                 if valid and proof is not None:
                     summary["validated_candidate"] = cand_id
                     summary["offer"] = window.offers[cand_id].offer_id
@@ -654,7 +738,7 @@ class OnlineCompilabilityMonitor:
             return True
         return event.event_kind in ("verified_transition", "operation_family_repeated")
 
-    def _query_system1_compilability(self, window: TaskRunObservationWindow, event: CompilabilityEvent) -> Dict[str, Any]:
+    def _query_system1_compilability(self, window: TaskRunObservationWindow, event: CompilabilityEvent) -> dict[str, Any]:
         """Ask System-1. Abstention, timeout, invalid output or exceptions never authorize anything."""
         window.last_inference_time = time.time()
         self._bump("decisions_requested")
@@ -718,7 +802,7 @@ class OnlineCompilabilityMonitor:
 
     # ------------------------------------------------------------------ mining / validation
 
-    def mine_candidate_in_run(self, task_id: str, run_id: str) -> List[OperationalCapability]:
+    def mine_candidate_in_run(self, task_id: str, run_id: str) -> list[OperationalCapability]:
         """Compile only this TaskRun's own corpus samples (selected BEFORE compilation).
 
         Candidates stay CANDIDATE; nothing is promoted. A candidate whose lineage is not
@@ -737,7 +821,7 @@ class OnlineCompilabilityMonitor:
         except Exception as exc:
             logger.warning("Compilability mining failed: %s", exc, exc_info=True)
             return []
-        run_candidates: List[OperationalCapability] = []
+        run_candidates: list[OperationalCapability] = []
         for cap in mined or []:
             if candidate_lineage_denials(cap, task_id, str(run_id)):
                 self._bump("candidates_lineage_rejected")
@@ -755,7 +839,7 @@ class OnlineCompilabilityMonitor:
         task_id: Optional[str] = None,
         run_id: Optional[str] = None,
         owner: Optional[RunAdoptionOwner] = None,
-    ) -> Tuple[bool, Optional[RunClosureProof], List[str]]:
+    ) -> tuple[bool, Optional[RunClosureProof], list[str]]:
         """Validation-only path: consume owner facts and canonical receipts; grant nothing."""
         self._bump("validations_attempted")
         window = self._get_window(task_id, run_id) if task_id and run_id else None
@@ -782,7 +866,7 @@ class OnlineCompilabilityMonitor:
 
     # ------------------------------------------------------------------ adoption sink (no authority)
 
-    def ready_offers(self, task_id: str, run_id: str) -> List[AdoptionOffer]:
+    def ready_offers(self, task_id: str, run_id: str) -> list[AdoptionOffer]:
         """Offers the runtime checkpoint may evaluate. SHADOW and disabled monitors expose none."""
         if not self.enabled or self.mode != DIRECT:
             return []
@@ -801,18 +885,31 @@ class OnlineCompilabilityMonitor:
                     and canonical_bytes(_qualified_verifier(o.proof.verifier_contract)) ==
                         canonical_bytes(_qualified_verifier(attestation["verifier_contract"]))]
 
-    def record_adoption(self, task_id: str, run_id: str, record: Dict[str, Any]) -> None:
+    def record_adoption(self, task_id: str, run_id: str, record: dict[str, Any]) -> None:
         """Account a checkpoint outcome. Only terminal, read-back-verified items count as reuse."""
         window = self._get_window(task_id, run_id)
         window.adoption_records.append(record)
         del window.adoption_records[:-64]
         if record.get("kind") == "denied":
+            with window.lock:
+                window.funnel_counts["adoption_denied"] = window.funnel_counts.get("adoption_denied", 0) + 1
+                for reason in record.get("reasons", []):
+                    key = str(reason)
+                    if len(key) > 80 or not all(c.isalnum() or c in "._:-" for c in key):
+                        key = "redacted"
+                    window.funnel_denials[key] = window.funnel_denials.get(key, 0) + 1
+            self._persist_window_checkpoint(window)
             self._bump("adoption_denials")
             with self._metrics_lock:
                 for reason in record.get("reasons", []):
                     bucket = self.metrics["adoption_denial_reasons"]
                     bucket[reason] = bucket.get(reason, 0) + 1
             return
+        with window.lock:
+            window.funnel_counts["adoption_attempted"] = window.funnel_counts.get("adoption_attempted", 0) + 1
+            if record.get("verified"):
+                window.funnel_counts["verified_reuse"] = window.funnel_counts.get("verified_reuse", 0) + 1
+        self._persist_window_checkpoint(window)
         self._bump("items_attempted")
         if record.get("completed"):
             self._bump("items_completed")
@@ -843,7 +940,7 @@ class OnlineCompilabilityMonitor:
                 self._bump("reconciliations")
         self._write_label(window, record)
 
-    def _write_label(self, window: TaskRunObservationWindow, record: Dict[str, Any]) -> None:
+    def _write_label(self, window: TaskRunObservationWindow, record: dict[str, Any]) -> None:
         """Verifier-grounded label for later calibration; never the Laya confidence itself."""
         try:
             self.artifacts.store(window.task_id, f"compilability_label_{record.get('item_id')}.json", {
@@ -915,8 +1012,8 @@ def notify_online_compilability(
     route: str,
     outcome: str,
     event_kind: str = "tool_finished",
-    state_summary: Optional[Dict[str, Any]] = None,
-    evidence_refs: Tuple[str, ...] = (),
+    state_summary: Optional[dict[str, Any]] = None,
+    evidence_refs: tuple[str, ...] = (),
     agent: Any = None,
     owner: Optional[RunAdoptionOwner] = None,
     operation_family: str = "",

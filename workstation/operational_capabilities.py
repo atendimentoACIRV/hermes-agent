@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from enum import Enum
 import hashlib
 import json
@@ -24,7 +24,7 @@ from workstation.recipes import sanitize, digest
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class CapabilityLifecycle(str, Enum):
@@ -36,32 +36,26 @@ class CapabilityLifecycle(str, Enum):
 
 class CapabilityError(Exception):
     """Base error for operational capabilities."""
-    pass
 
 
 class CapabilityNotFoundError(CapabilityError):
     """Requested capability was not found."""
-    pass
 
 
 class CapabilityCycleError(CapabilityError):
     """Circular dependency detected in capability composition."""
-    pass
 
 
 class CapabilityDepthExceededError(CapabilityError):
     """Capability dependency resolution exceeded maximum allowed depth."""
-    pass
 
 
 class CapabilityDriftError(CapabilityError):
     """Capability execution drifted or failed preconditions/postconditions."""
-    pass
 
 
 class CapabilityValidationError(CapabilityError):
     """Capability structure or contract is invalid."""
-    pass
 
 
 def matches_version(version: str, constraint: str | None) -> bool:
@@ -294,7 +288,7 @@ class OperationalCapabilityRegistry:
         except (OSError, ValueError) as exc:
             raise CapabilityValidationError('capability index unreadable; admission fails closed') from exc
 
-    def register(self, capability: OperationalCapability) -> OperationalCapability:
+    def register(self, capability: OperationalCapability, *, if_absent: bool = False) -> OperationalCapability:
         """Register a new or updated operational capability."""
         if not capability.id:
             raise CapabilityValidationError("Capability must have a non-empty id")
@@ -312,13 +306,15 @@ class OperationalCapabilityRegistry:
             index = self._load_index()
             entry_key = f"{capability.id}@{capability.version}"
             old = index.get(entry_key)
+            if old is not None and if_absent:
+                raise CapabilityValidationError('capability_version_already_exists')
             contract_fields = ('input_schema', 'output_schema', 'effect', 'route', 'scope', 'preconditions',
                 'postconditions', 'verifier_contract', 'dependencies', 'implementation', 'provenance',
                 'semantic_fingerprint', 'compatibility_fingerprint', 'trust_class', 'taint', 'learning_metadata',
                 'formal_contract', 'family_id')
             contract_digest = digest({k: sanitized.get(k) for k in contract_fields})
             learned = (
-                capability.provenance.get('source') in {'experience_compiler', 'hierarchical_experience_compiler'}
+                capability.provenance.get('source') in {'experience_compiler', 'hierarchical_experience_compiler', 'human_draft_revision'}
                 or bool(capability.learning_metadata.get('composite'))
             )
             if old and old.get('immutable_contract') and old['immutable_contract'] != contract_digest:
@@ -396,7 +392,7 @@ class OperationalCapabilityRegistry:
         cap.success_count += 1
         if cap.lifecycle == CapabilityLifecycle.DISCOVERED:
             cap.lifecycle = CapabilityLifecycle.VALIDATED
-        if cap.provenance.get('source') != 'experience_compiler' and cap.success_count >= auto_promote_threshold and cap.lifecycle == CapabilityLifecycle.VALIDATED and cap.drift_state == "healthy":
+        if cap.provenance.get('source') not in {'experience_compiler', 'hierarchical_experience_compiler', 'human_draft_revision'} and cap.success_count >= auto_promote_threshold and cap.lifecycle == CapabilityLifecycle.VALIDATED and cap.drift_state == "healthy":
             cap.lifecycle = CapabilityLifecycle.PROMOTED
         return self.register(cap)
 

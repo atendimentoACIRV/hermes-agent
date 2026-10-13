@@ -13,7 +13,7 @@ import json
 import logging
 import re
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from workstation.artifacts import ArtifactStore
 from workstation.durable_tasks import DurableTaskStore
@@ -22,16 +22,16 @@ from workstation.run_adoption import AdoptionReport, DurableRunAdoptionOwner, Ru
 
 logger = logging.getLogger(__name__)
 
-# Primitives the Hermes durable dispatcher can run and read back independently today.
-# Extended for browser and Trello API primitives per OPC-005.
+# Primitives supported by the owner. Readback admission is narrower: a raw tool
+# response is not an independent verifier for browser_snapshot / trello_api_get.
 _SUPPORTED = ("write_file", "read_file", "browser_navigate", "browser_snapshot", "trello_api_get")
-_READBACK = ("write_file", "browser_navigate", "browser_snapshot", "trello_api_get")
-_GUTTER = re.compile(r"^\s*\d+\|", re.M)
+_READBACK = ("write_file", "browser_navigate")
+_GUTTER = re.compile(r"^\s*\d+\|", re.MULTILINE)
 
 
 def _readback_write_file(dispatch, artifacts: ArtifactStore, task_id: str):
     """Independent read-after-write through the agent's own ``read_file``; exact content match."""
-    def readback(primitive: str, bound_args: dict, raw: Any) -> Optional[dict]:
+    def readback(primitive: str, bound_args: dict, raw: Any) -> dict | None:
         if primitive != "write_file" or "content" not in bound_args or "path" not in bound_args:
             return None
         try:
@@ -52,7 +52,7 @@ def _readback_write_file(dispatch, artifacts: ArtifactStore, task_id: str):
 
 def _readback_browser_navigate(dispatch, artifacts: ArtifactStore, task_id: str):
     """Independent readback for browser_navigate via browser_snapshot URL verification."""
-    def readback(primitive: str, bound_args: dict, raw: Any) -> Optional[dict]:
+    def readback(primitive: str, bound_args: dict, raw: Any) -> dict | None:
         if primitive != "browser_navigate" or "url" not in bound_args:
             return None
         expected_url = bound_args["url"]
@@ -79,7 +79,7 @@ def _readback_browser_navigate(dispatch, artifacts: ArtifactStore, task_id: str)
 
 def _readback_browser_snapshot(dispatch, artifacts: ArtifactStore, task_id: str):
     """Independent readback for browser_snapshot - verify URL matches expected."""
-    def readback(primitive: str, bound_args: dict, raw: Any) -> Optional[dict]:
+    def readback(primitive: str, bound_args: dict, raw: Any) -> dict | None:
         if primitive != "browser_snapshot":
             return None
         # browser_snapshot itself is the verification - check if result has valid URL
@@ -104,7 +104,7 @@ def _readback_browser_snapshot(dispatch, artifacts: ArtifactStore, task_id: str)
 
 def _readback_trello_api_get(dispatch, artifacts: ArtifactStore, task_id: str):
     """Independent readback for trello_api_get - verify response has expected fields."""
-    def readback(primitive: str, bound_args: dict, raw: Any) -> Optional[dict]:
+    def readback(primitive: str, bound_args: dict, raw: Any) -> dict | None:
         if primitive != "trello_api_get":
             return None
         # Verify Trello API response has expected structure
@@ -136,14 +136,15 @@ def _build_readback_fns(dispatch, artifacts: ArtifactStore, task_id: str) -> dic
     }
 
 
-def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> Optional[DurableRunAdoptionOwner]:
+def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> DurableRunAdoptionOwner | None:
     """Owner for this agent's canonical TaskRun, or ``None`` when the agent has no bound run."""
     task_id = getattr(agent, "_canonical_work_task_id", None)
     run_id = getattr(agent, "_canonical_work_run_id", None)
     if not task_id or run_id is None:
         return None
     cached = getattr(agent, "_run_adoption_owner", None)
-    if cached is not None:
+    bound = (str(task_id), str(run_id))
+    if cached is not None and getattr(cached, "_bound_task_run", None) == bound:
         return cached
 
     from workstation.integrations.hermes.scoped_execution import (
@@ -155,21 +156,36 @@ def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> Optional[Du
     inner = workstation_durable_dispatch(agent)
     artifacts = ArtifactStore()
 
+    def ensure_bound_run() -> None:
+        current = (getattr(agent, "_canonical_work_task_id", None),
+                   getattr(agent, "_canonical_work_run_id", None))
+        if tuple(str(v) for v in current) != bound:
+            raise RuntimeError("taskrun_identity_changed")
+
     def dispatch(tool: str, args: dict) -> Any:
+        ensure_bound_run()
         with workstation_scoped_execution(agent, str(task_id), None):
             return inner(tool, args, str(task_id), f"runlocal_{uuid.uuid4().hex[:10]}")
 
     readback_fns = _build_readback_fns(dispatch, artifacts, str(task_id))
 
+    def verified_readback(primitive: str, args: dict, raw: Any) -> dict | None:
+        ensure_bound_run()
+        # Do not let merely having an entry in the dispatcher prove independent
+        # verification. Only explicitly admitted primitives may use it.
+        handler = readback_fns.get(primitive) if primitive in _READBACK else None
+        return handler(primitive, args, raw) if handler is not None else None
+
     owner = DurableRunAdoptionOwner(
         DurableTaskStore, artifacts,
         authority_for_task=lambda task: trusted_effect_authority_from_agent(agent, session_id, task),
         dispatch_fn=dispatch,
-        readback_fn=None,  # Use per-primitive readback_fns via owner.readback_primitives
+        readback_fn=verified_readback,
         readback_primitives=_READBACK, supported_primitives=_SUPPORTED, system2_counter=system2_counter,
     )
-    # Attach readback functions to owner for RunLocalAdopter to use
-    owner._readback_fns = readback_fns
+    # The dispatcher closure is bound to one canonical task. Never reuse the
+    # owner across a later TaskRun on the same agent instance.
+    owner._bound_task_run = bound
     from workstation.experience_compiler.lifecycle import (
         get_validation_environment_provider,
         register_validation_environment_provider,
@@ -184,7 +200,7 @@ def build_run_adoption_owner(agent: Any, *, system2_counter=None) -> Optional[Du
     return owner
 
 
-def workstation_run_local_checkpoint(context: Any) -> Optional[AdoptionReport]:
+def workstation_run_local_checkpoint(context: Any) -> AdoptionReport | None:
     """Adopt the next verified-equivalent pending items of this run, or do nothing."""
     from workstation.experience_compiler.compilability_monitor import DIRECT, peek_compilability_monitor
 

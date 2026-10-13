@@ -5881,3 +5881,31 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 **Last implementation checkpoint observed:** #83 OPEN/DRAFT, HEAD `22498a09db`, base #80 (stack #79→#76). Historical execution reports 34 Python PASS, 58 Vitest PASS and 4 native E2E PASS; no exact-head CI statuses or workflow runs returned. **Not done:** real HANDOFF to Desktop UI approval + typed external readback + safe continuation with no mutating replay, nor packaged release. Next code seam if and only if resumed: `workstation/integrations/hermes/tool_batch_admission.py::workstation_tool_batch_admission()` through `agent/turn_tool_round.py` / `run_agent.py` to IPC/UI, `VerificationContract/evaluate_verification()`.
 
 **Artifacts:** `HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md`, `HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md`, `HERMES_WORK_PR_RECONCILIATION_2026-10-12.md`, `HERMES_WORK_SOURCE_EVIDENCE_MANIFEST_2026-10-12.md`, `HERMES_WORK_DECISION_RATIONALE_2026-10-12.md`, and `HERMES_WORK_RESUME_PROMPT_2026-10-12.md`. Canonical KI-028..KI-043 registered with technical status and independent PAUSED_BY_STRATEGY execution flag. Resume only by explicit future decision, preserving release/authority gates.
+## 2026-10-12 — Experience Compiler activation continuation (PR #82; not release-qualified)
+- Feature branch on isolated worktree: EC-01 fixed deterministic native command formal intent mismatch to promoted Browser capability, not a policy bypass; H-080B [True] and [False] passed, adjacent four-file regression 42 passed. Commit 38dc4b52a1.
+- EC-03 RED to GREEN: cached run-local owner without _bound_task_run wrongly reused; explicit identity required; owner factory 5/5 PASS.
+- EC-07 RED to GREEN: EvidenceRef telemetry refs caused SQLite JSON serialization failure; URI-only projection avoids metadata leakage; telemetry + native intent suite 13/13 PASS. System1 telemetry suite still red due to unavailable laya module.
+- EC-02 prior patch e81d23a812 not yet product qualified. H-079/H-081/H-082 exact-HEAD CI, Electron, real Laya DIRECT, lease/restart E2E and performance baseline remain HOLD. Main untouched; no merge authorized.
+
+## 2026-10-12 — Experience Compiler RED-GREEN authority and verified evidence, PR #82 DRAFT
+- EC-03: browser_navigate read-only classification and wrong-host bypass reproduced by 2 RED tests; fixed with HTTPS scoped CALL and required readback; 3 browser tests PASS. Stale cached owner dispatch/readback RED and production TaskRun binding check GREEN, 7 owner tests PASS.
+- EC-03: revoked lease after snapshot but before durable item start RED (2 unauthorized calls); runtime now rechecks authority/lease/uncertain effects at item start and immediately before every step. Two cancellation window regressions plus happy path PASS.
+- EC-04: fabricated progressive VERIFIED_SUCCESS via missing/stale/bad evidence RED; now requires E2+ persistent matched owner proof and canonical verifier linkage; 10 focused progressive/browser tests PASS. Kernel provides operation-bound canonical verification receipt.
+- H080B paired regression after changes 2 PASS. Prior full safety suite 49 PASS; final full regression for last race fix see activation EVIDENCE.md.
+- EC-05 vendored Laya 0.3.23 matches lock SHA 4aa6761be8173de4ce6d92c31b3e40b6eaf59a7c; 2 System-1 telemetry tests PASS. Real DIRECT/H-081/H-082/CI release gates remain HOLD. No main merge.
+
+## 2026-10-12 — EC-03 formal CALL + EC-04 intermediate provenance
+- RED->GREEN: named Trello navigation intent previously budgeted only SET goals while runtime adoption requires CALL external effect; add exact-host CALL, wrong-host/read-only tests; focused 10 PASS, native H080B pair 2 PASS, local commit 40f8f82a66 with Lefthook PASS.
+- RED->GREEN: verified progressive experience discarded operation/target families and did not store before/after delta. Kernel now forwards formal contract labels and only owner-known fields; refuses arbitrary replay parameters.
+- RED->GREEN: unattested caller-supplied prestate could invent causal deltas. Require independently persisted pre-readback proof with task/run/operation match and state agreement or leave delta empty. Proof schema currently has no qualified in-production producer. Negative wrong-run/wrong-value/before-false tests PASS.
+- Laya vendored 0.3.23 focused vendor+contract+routing: 10 PASS 1 SKIPPED. EC-04 full end-to-end, EC-05 live DIRECT, H-079/H-081/H-082, CI exact-head and merge remain HOLD.
+
+## 2026-10-12 — Latest EC-03/04 evidence and publication
+- Exact code commits on isolated PR #82 branch: 40f8f82a663152bcbade0fea809352973edd1dc7 and c3f87a84860615f2086f17191921605068c6932c, Lefthook native lint PASS.
+- Full regression after conservative witnessed-prestate gate: **56 PASS in 221.83s**. H080B native pair 2 PASS; owner 7 PASS, Laya focused 10 PASS /1 SKIPPED. Release authority and CI exact-head remain HOLD, no main merge.
+
+## 2026-10-12 — EC-04 real scoped prestate, hash readback and intermediate corpus
+- Production owner RED→GREEN: wrong filesystem observed from process CWD instead of step.base_dir; independent prestate missing before dispatch. Fixed within existing OperationalKernel (no parallel execution owner).
+- Scope/lease negatives: missing admission, cancelled plan, foreign RunId, scope escape, restart after dispatch marker, revocation between prestate and dispatch. Scoped single fs_write only; no broad authority grant.
+- Real fs_hash verifier RED: VERIFIED result but no VERIFIED_SUCCESS experience due lack of persisted readback ref. GREEN: hash-only canonical receipt; positive unfinished TaskRun sample in corpus, second item PENDING. Cross-resource proof laundering RED→GREEN, rejected.
+- Local focused 35 PASS after proof; larger exact-HEAD regression and H080B to be confirmed; Laya direct/checkpoint and release qualification still HOLD.

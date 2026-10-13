@@ -470,7 +470,16 @@ class WorkstationKanbanBridge:
         learned = []
         try:
             corpus = ExperienceCorpus(artifacts, discover=True)
-            corpus.accept_run(journal, outcome)
+            accepted_ref = corpus.accept_run(journal, outcome)
+            if accepted_ref:
+                # Only the canonical acceptance owner may introduce VERIFIED_SUCCESS
+                # into the online monitor. Raw tool ACKs remain observations.
+                try:
+                    from workstation.experience_compiler.accepted_observer import notify_canonical_acceptance
+                    notify_canonical_acceptance(corpus, accepted_ref, task_id, str(outcome.run_id))
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).warning("Accepted experience learning notification failed", exc_info=True)
             registry = OperationalCapabilityRegistry(artifacts)
             compiler = ExperienceCompiler(registry, corpus)
             learned = compiler.mine()

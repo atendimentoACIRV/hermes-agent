@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hermes Work · Experience Compiler</title>
+<style>
+:root{font:14px system-ui,-apple-system,Segoe UI,sans-serif;background:#0f121a;color:#f1f3f9;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}header{padding:22px 30px;border-bottom:1px solid #303544;display:flex;justify-content:space-between;align-items:center}
+h1{margin:0;font-size:23px}h2{font-size:16px;margin:0 0 15px}p{color:#aeb7ca;line-height:1.6}main{display:grid;grid-template-columns:270px minmax(360px,1fr) 350px;gap:18px;padding:20px;min-height:65vh}
+aside,section{border:1px solid #30394c;border-radius:14px;background:#191d29;padding:18px;min-width:0}
+button,input,select,textarea{font:inherit;border:1px solid #434d63;background:#121722;color:#f5f8ff;border-radius:8px;padding:9px 11px;max-width:100%}
+button{cursor:pointer}button:hover{background:#293752}input,select,textarea{width:100%;margin:6px 0 14px}textarea{min-height:60px;resize:vertical}
+.action{background:#3458cb;border-color:#5576e6}.action:hover{background:#4268df}
+.nav{display:block;width:100%;margin:5px 0;text-align:left;overflow-wrap:anywhere}.nav[aria-current=true]{border-color:#80a4ff;background:#253b71}
+.graph{display:flex;align-items:stretch;flex-wrap:wrap;gap:12px;margin:20px 0}.node{min-width:125px;max-width:230px;padding:14px;border:1px solid #5b71a0;border-radius:12px;background:#24314c}
+.node span{display:block;color:#aeb7ca;font-size:11px;margin-bottom:6px}.arrow{align-self:center;color:#92b0ff}
+small,.muted{color:#9daac1}.metadata{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.item{padding:11px;border:1px solid #333e54;border-radius:9px;overflow-wrap:anywhere}
+.controls{display:flex;gap:10px}.controls button{flex:1}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0f1522;border-radius:8px;padding:14px;font-size:12px;max-height:400px;overflow:auto}
+label{display:block;font-weight:600;font-size:12px;color:#ced5e3}.sub{border-top:1px solid #353d51;margin-top:18px;padding-top:18px}
+footer{padding:15px 28px;border-top:1px solid #303544;color:#aeb7ca}
+@media(max-width:1100px){main{grid-template-columns:230px 1fr}main>section:last-child{grid-column:1/-1}}
+@media(max-width:700px){main{display:block}main>*{margin-bottom:14px}header{display:block}}
+</style>
+</head>
+<body>
+<header><div><h1>Hermes Work · Experience Compiler</h1><p>Aprender → validar → reutilizar. Um único runtime e provas rastreáveis.</p></div><small id="system-state" role="status">Carregando capacidades...</small></header>
+<main>
+<aside><h2>Capacidades</h2><div id="catalog" aria-label="Catálogo de capacidades"></div><button id="refresh">Atualizar catálogo</button></aside>
+<section><h2 id="selected-title">Selecione uma capacidade</h2><div id="metadata" class="metadata"></div><div id="graph" class="graph" aria-label="Visualização dos passos"></div><div id="conditions"></div>
+<div class="sub"><h2>Composição visual (prévia, não executável)</h2><div class="controls"><div><label for="from-cap">Origem</label><select id="from-cap"></select></div><div><label for="to-cap">Destino</label><select id="to-cap"></select></div></div><div class="controls"><button id="compose">Visualizar conexão</button><button id="save-composition" class="action">Salvar composição candidata</button></div><div id="composition-graph" class="graph" aria-label="Grafo da composição"></div><pre id="composition-output" aria-live="polite">Sem composição.</pre></div>
+<div class="sub"><h2>Funil por TaskRun</h2><label for="task-id">Task ID</label><input id="task-id" placeholder="ID canônico da tarefa"><label for="run-id">Run ID</label><input id="run-id" placeholder="ID da execução"><button id="inspect-run">Consultar funil</button><pre id="funnel-output" aria-live="polite">Selecione uma execução.</pre></div>
+</section>
+<section><h2>Editor de revisão</h2><p>Uma edição cria uma nova versão <b>DISCOVERED</b>, nunca executada nem automaticamente promovida.</p><label for="edit-step">Passo</label><select id="edit-step"></select><label for="edit-arg">Argumento declarado</label><select id="edit-arg"></select>
+<label for="edit-value">Novo valor (texto)</label><input id="edit-value" placeholder="Novo parâmetro">
+<label for="pre">Pré-condições (uma por linha)</label><textarea id="pre"></textarea>
+<label for="post">Pós-condições (uma por linha)</label><textarea id="post"></textarea>
+<div class="controls"><button id="preview">Prévia</button><button id="save" class="action">Salvar rascunho</button></div><pre id="edit-output" aria-live="polite">Escolha uma capacidade para editar.</pre>
+<p><small>Alterações invalidam verifier, evidências de validação e fingerprints. Ramos, loops e triggers arbitrários continuam bloqueados até existir suporte formal no Operational Kernel.</small></p>
+</section>
+</main>
+<footer>Somente o OperationalKernel/Registry, o verificador canônico e o owner de TaskRun decidem execução e promoção. Este canvas não executa passos.</footer>
+<script>
+"use strict";
+const prefix="/api/workstation/experience";
+const el=(id)=>document.getElementById(id);
+let capabilities=[],selected=null;
+async function request(path,options){const response=await fetch(prefix+path,{credentials:"same-origin",...options});let data=await response.json();if(!response.ok)throw new Error(data.detail||"Erro HTTP "+response.status);return data}
+function node(tag,text,cls){const x=document.createElement(tag);if(text!==undefined)x.textContent=String(text);if(cls)x.className=cls;return x}
+function clear(elem){elem.replaceChildren()}
+function info(label,value){const x=node("div",undefined,"item");x.append(node("small",label),node("div",value));return x}
+function fillSelect(select,values){clear(select);for(const x of values){const option=node("option",x.name||x.id);option.value=x.id;select.append(option)}}
+function render(cap){
+ selected=cap;el("selected-title").textContent=cap.name+" · "+cap.id+"@"+cap.version;
+ for(const b of document.querySelectorAll(".nav"))b.setAttribute("aria-current",String(b.dataset.id===cap.id));
+ const meta=el("metadata");clear(meta);
+ for(const [k,v] of Object.entries({Estado:cap.lifecycle,Rota:cap.route,Efeito:cap.effect,Drift:cap.drift_state,Verificador:cap.verifier_present?"declarado":"ausente",Editável:cap.editable?"sim":"somente leitura"}))meta.append(info(k,v));
+ const graph=el("graph");clear(graph);
+ for(let i=0;i<cap.nodes.length;i++){if(i)graph.append(node("div","→","arrow"));const n=cap.nodes[i];const box=node("div",undefined,"node");box.append(node("span","PASSO "+(i+1)),node("strong",n.id),node("div",n.primitive),node("small",n.editable?"Edição limitada":"não representável"));graph.append(box)}
+ if(!cap.nodes.length)graph.append(node("p","Nenhum passo exposto por esta capacidade."));
+ const conditions=el("conditions");clear(conditions);
+ conditions.append(info("Pré-condições",cap.preconditions.join(" · ")||"Nenhuma"),info("Pós-condições",cap.postconditions.join(" · ")||"Nenhuma"));
+ fillSelect(el("edit-step"),cap.nodes);updateArguments();el("pre").value=cap.preconditions.join("\n");el("post").value=cap.postconditions.join("\n");el("edit-value").value="";el("edit-output").textContent="Pronto para criar revisão não executável.";
+}
+function updateArguments(){if(!selected)return;const step=selected.nodes.find(s=>s.id===el("edit-step").value);fillSelect(el("edit-arg"),(step?.argument_names||[]).map(id=>({id})))}
+function draftBody(){if(!selected)throw new Error("Selecione uma capacidade");const body={capability_id:selected.id,version:selected.version,step_arguments:{},preconditions:el("pre").value.split("\n").map(s=>s.trim()).filter(Boolean),postconditions:el("post").value.split("\n").map(s=>s.trim()).filter(Boolean)};if(el("edit-value").value){const step=el("edit-step").value,arg=el("edit-arg").value;if(!step||!arg)throw new Error("Escolha passo e argumento declarado");body.step_arguments[step]={[arg]:el("edit-value").value}}return body}
+async function load(){try{const data=await request("/capabilities");capabilities=data.capabilities;el("system-state").textContent=capabilities.length+" capacidades no catálogo"+(data.truncated?" (limitado)":"");const box=el("catalog");clear(box);for(const cap of capabilities){const b=node("button",cap.name+" · "+cap.version,"nav");b.dataset.id=cap.id;b.addEventListener("click",()=>render(cap));box.append(b)}fillSelect(el("from-cap"),capabilities);fillSelect(el("to-cap"),capabilities);if(capabilities.length)render(capabilities.find(c=>c.id===selected?.id)||capabilities[0])}catch(error){el("system-state").textContent="Falha ao consultar catálogo";el("catalog").textContent=String(error.message)}}
+function renderComposition(data){const graph=el("composition-graph");clear(graph);for(let i=0;i<(data.nodes||[]).length;i++){if(i)graph.append(node("span","→","arrow"));const cap=data.nodes[i];const box=node("div",undefined,"node");box.append(node("span","CAPACIDADE "+(i+1)),node("strong",cap.name||cap.id),node("small",cap.lifecycle||"não validada"));graph.append(box)}}
+el("refresh").addEventListener("click",load);
+el("edit-step").addEventListener("change",updateArguments);
+el("preview").addEventListener("click",async()=>{try{const x=await request("/revisions/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(draftBody())});el("edit-output").textContent=JSON.stringify(x,null,2)}catch(e){el("edit-output").textContent=String(e.message)}});
+el("save").addEventListener("click",async()=>{if(!selected||!confirm("Criar uma NOVA revisão não verificada? Ela NÃO será executada."))return;try{const x=await request("/revisions/save-draft",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(draftBody())});el("edit-output").textContent=JSON.stringify(x,null,2);await load()}catch(e){el("edit-output").textContent=String(e.message)}});
+el("compose").addEventListener("click",async()=>{try{const a=el("from-cap").value,b=el("to-cap").value;const x=await request("/compositions/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({capability_ids:[a,b],links:[[a,b]]})});renderComposition(x);el("composition-output").textContent=JSON.stringify(x,null,2)}catch(e){el("composition-output").textContent=String(e.message)}});
+el("save-composition").addEventListener("click",async()=>{if(!confirm("Registrar composição DISCOVERED de capacidades já PROMOTED? Não haverá execução."))return;try{const a=el("from-cap").value,b=el("to-cap").value;const x=await request("/compositions/save-draft",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({capability_ids:[a,b],links:[[a,b]]})});renderComposition(x);el("composition-output").textContent=JSON.stringify(x,null,2);await load()}catch(e){el("composition-output").textContent=String(e.message)}});
+el("inspect-run").addEventListener("click",async()=>{try{const task=encodeURIComponent(el("task-id").value.trim()),run=encodeURIComponent(el("run-id").value.trim());const x=await request("/runs/"+task+"/"+run);el("funnel-output").textContent=JSON.stringify(x,null,2)}catch(e){el("funnel-output").textContent=String(e.message)}});
+load();
+</script>
+</body></html>

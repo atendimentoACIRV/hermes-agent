@@ -8,22 +8,17 @@ import logging
 import threading
 import time
 import uuid
-from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
+from collections.abc import Callable
 
 from workstation.artifacts import ArtifactStore
 from workstation.control_plane.verification import (
     VerificationContract,
-    VerificationEvidence,
-    VerificationLifecycle,
     VerificationResult,
     VerificationStatus,
-    evaluate_verification,
-    validate_verifier_candidate,
-    validate_verifier_sensitivity,
 )
 from workstation.execution_policy import EvidenceStrength
 from workstation.experience_compiler.causal import (
@@ -34,7 +29,6 @@ from workstation.experience_compiler.compiler import ExperienceCompiler
 from workstation.experience_compiler.models import CausalGrade
 from workstation.experience_compiler.promotion import (
     ExperiencePromotionPolicy,
-    PromotionAdmission,
     derive_formal_contract,
 )
 from workstation.operational_capabilities import (
@@ -52,28 +46,28 @@ class CoordinatorCycleResult:
     candidate_id: str
     action: str  # "promoted", "held_as_candidate", "skipped", "validation_failed"
     admitted: bool
-    reasons: Tuple[str, ...]
-    capability: Optional[OperationalCapability] = None
+    reasons: tuple[str, ...]
+    capability: OperationalCapability | None = None
 
 
 @dataclass
 class ValidationEnvironmentProvider:
     """Optional product or test seam providing safe evaluation and replay contexts."""
-    verifier_evaluator: Optional[Callable[[OperationalCapability, VerificationContract, str, str], Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]]] = None
-    replay_runner_factory: Optional[Callable[[OperationalCapability, SafeEnvironment], Callable[[list, float], dict]]] = None
-    safe_env_factory: Optional[Callable[[OperationalCapability], SafeEnvironment]] = None
+    verifier_evaluator: Callable[[OperationalCapability, VerificationContract, str, str], tuple[dict[str, Any] | None, dict[str, Any] | None]] | None = None
+    replay_runner_factory: Callable[[OperationalCapability, SafeEnvironment], Callable[[list, float], dict]] | None = None
+    safe_env_factory: Callable[[OperationalCapability], SafeEnvironment] | None = None
 
 
-_ACTIVE_VALIDATION_PROVIDER: Optional[ValidationEnvironmentProvider] = None
+_ACTIVE_VALIDATION_PROVIDER: ValidationEnvironmentProvider | None = None
 
 
-def register_validation_environment_provider(provider: Optional[ValidationEnvironmentProvider]) -> None:
+def register_validation_environment_provider(provider: ValidationEnvironmentProvider | None) -> None:
     """Register an active validation environment provider for product-owned lifecycle."""
     global _ACTIVE_VALIDATION_PROVIDER
     _ACTIVE_VALIDATION_PROVIDER = provider
 
 
-def get_validation_environment_provider() -> Optional[ValidationEnvironmentProvider]:
+def get_validation_environment_provider() -> ValidationEnvironmentProvider | None:
     """Retrieve the currently active validation environment provider if any."""
     return _ACTIVE_VALIDATION_PROVIDER
 
@@ -85,8 +79,8 @@ class ExperienceValidationPromotionCoordinator:
         self,
         registry: OperationalCapabilityRegistry,
         compiler: ExperienceCompiler,
-        artifacts: Optional[ArtifactStore] = None,
-        policy: Optional[ExperiencePromotionPolicy] = None,
+        artifacts: ArtifactStore | None = None,
+        policy: ExperiencePromotionPolicy | None = None,
     ):
         self.registry = registry
         self.compiler = compiler
@@ -94,7 +88,7 @@ class ExperienceValidationPromotionCoordinator:
         self.policy = policy or ExperiencePromotionPolicy()
         self._lock = threading.Lock()
 
-    def discover_candidates(self) -> List[OperationalCapability]:
+    def discover_candidates(self) -> list[OperationalCapability]:
         """Discover candidate capabilities ready for validation evaluation."""
         if hasattr(self.compiler, "mine"):
             try:
@@ -105,7 +99,7 @@ class ExperienceValidationPromotionCoordinator:
                 logger.warning("ExperienceCompiler mining produced an error: %s", e)
         return [c for c in self.registry.list_capabilities() if c.lifecycle == CapabilityLifecycle.DISCOVERED]
 
-    def coordinate_all(self, **kwargs: Any) -> List[CoordinatorCycleResult]:
+    def coordinate_all(self, **kwargs: Any) -> list[CoordinatorCycleResult]:
         """Process all discovered candidate capabilities."""
         candidates = self.discover_candidates()
         return [self.process_candidate(c, **kwargs) for c in candidates]
@@ -114,14 +108,14 @@ class ExperienceValidationPromotionCoordinator:
         self,
         candidate_or_id: OperationalCapability | str,
         *,
-        contract_factory: Optional[Callable[[OperationalCapability], VerificationContract]] = None,
-        receipts: Optional[List[Dict[str, Any]]] = None,
-        negative_control_generator: Optional[Callable[[OperationalCapability, VerificationContract], Dict[str, Any]]] = None,
-        replay_runner: Optional[Callable[[OperationalCapability, SafeEnvironment], Callable[[list, float], dict]]] = None,
-        safe_env: Optional[SafeEnvironment] = None,
-        task_id: Optional[str] = None,
-        run_id: Optional[str] = None,
-        journal: Optional[Any] = None,
+        contract_factory: Callable[[OperationalCapability], VerificationContract] | None = None,
+        receipts: list[dict[str, Any]] | None = None,
+        negative_control_generator: Callable[[OperationalCapability, VerificationContract], dict[str, Any]] | None = None,
+        replay_runner: Callable[[OperationalCapability, SafeEnvironment], Callable[[list, float], dict]] | None = None,
+        safe_env: SafeEnvironment | None = None,
+        task_id: str | None = None,
+        run_id: str | None = None,
+        journal: Any | None = None,
     ) -> CoordinatorCycleResult:
         """Execute one complete validation-replay-promotion cycle for a candidate.
 
@@ -151,7 +145,7 @@ class ExperienceValidationPromotionCoordinator:
                 "state": "CANDIDATE",
                 "validation_evidence_refs": [],
                 "replay_evidence_refs": [],
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             })
             from workstation.telemetry import TelemetryEventType, emit_event
             lineage = {
@@ -215,7 +209,7 @@ class ExperienceValidationPromotionCoordinator:
 
                 current_stage = "VALIDATION_PENDING"
                 lifecycle_info["state"] = "VALIDATION_PENDING"
-                lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+                lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
                 self.registry.register(candidate)
 
             # 2. Verifier contract validation (sensitivity: positive replay + discriminative negative control)
@@ -236,13 +230,14 @@ class ExperienceValidationPromotionCoordinator:
                 )
 
             if current_stage not in ("VERIFIER_VALIDATED", "REPLAY_VALIDATED", "PROMOTED"):
-                validation_receipts: List[Dict[str, Any]] = []
+                validation_receipts: list[dict[str, Any]] = []
                 if receipts:
                     validation_receipts = receipts
                 else:
                     provider = get_validation_environment_provider()
-                    candidate_task_id = task_id or (list(run_ids)[0] if run_ids else "task-coord")
-                    candidate_run_id = run_id or (list(run_ids)[0] if run_ids else "run-coord")
+                    candidate_run_ids = list(run_ids) if run_ids else []
+                    candidate_task_id = task_id or (candidate_run_ids[0] if candidate_run_ids else "task-coord")
+                    candidate_run_id = run_id or (candidate_run_ids[0] if candidate_run_ids else "run-coord")
 
                     if provider and provider.verifier_evaluator:
                         pos, neg = provider.verifier_evaluator(candidate, contract, candidate_task_id, candidate_run_id)
@@ -257,7 +252,7 @@ class ExperienceValidationPromotionCoordinator:
 
                 if not validation_receipts:
                     lifecycle_info["state"] = "VALIDATION_PENDING"
-                    lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
                     self.registry.register(candidate)
                     return CoordinatorCycleResult(
                         candidate_id=candidate.id,
@@ -270,7 +265,7 @@ class ExperienceValidationPromotionCoordinator:
                 candidate, v_reasons = self.compiler.validate_verifier(candidate, contract, validation_receipts)
                 if v_reasons:
                     lifecycle_info["state"] = "VALIDATION_FAILED"
-                    lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
                     self.registry.register(candidate)
                     return CoordinatorCycleResult(
                         candidate_id=candidate.id,
@@ -285,7 +280,7 @@ class ExperienceValidationPromotionCoordinator:
                 lifecycle_info["validation_evidence_refs"] = [
                     r.get("evidence_ref") for r in validation_receipts if isinstance(r, dict) and r.get("evidence_ref")
                 ]
-                lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+                lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
                 self.registry.register(candidate)
                 emit_event(TelemetryEventType.VERIFIER_VALIDATION_COMPLETED,
                            source_owner="workstation.experience_lifecycle",
@@ -309,7 +304,7 @@ class ExperienceValidationPromotionCoordinator:
 
                 if not effective_runner:
                     lifecycle_info["state"] = "VERIFIER_VALIDATED"
-                    lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
                     self.registry.register(candidate)
                     return CoordinatorCycleResult(
                         candidate_id=candidate.id,
@@ -327,11 +322,11 @@ class ExperienceValidationPromotionCoordinator:
                     "state": current_stage,
                     "validation_evidence_refs": [],
                     "replay_evidence_refs": [],
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(UTC).isoformat(),
                 })
                 if candidate.causal_grade < CausalGrade.REPLAY_VALIDATED:
                     lifecycle_info["state"] = "REPLAY_FAILED"
-                    lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
                     self.registry.register(candidate)
                     return CoordinatorCycleResult(
                         candidate_id=candidate.id,
@@ -347,7 +342,7 @@ class ExperienceValidationPromotionCoordinator:
                     e.get("artifact_ref") for e in (candidate.validation_evidence or [])
                     if isinstance(e, dict) and e.get("artifact_ref")
                 ]
-                lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+                lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
                 self.registry.register(candidate)
                 emit_event(TelemetryEventType.CONTROLLED_REPLAY_COMPLETED,
                            source_owner="workstation.experience_lifecycle",
@@ -368,10 +363,10 @@ class ExperienceValidationPromotionCoordinator:
                 "state": current_stage,
                 "validation_evidence_refs": [],
                 "replay_evidence_refs": [],
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             })
             lifecycle_info["state"] = "PROMOTED"
-            lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+            lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
             admission = self.compiler.promote(candidate)
             if admission.admitted:
                 promoted = self.registry.get(candidate.id) or candidate
@@ -388,7 +383,7 @@ class ExperienceValidationPromotionCoordinator:
                 )
             else:
                 lifecycle_info["state"] = "PROMOTION_REJECTED"
-                lifecycle_info["updated_at"] = datetime.now(timezone.utc).isoformat()
+                lifecycle_info["updated_at"] = datetime.now(UTC).isoformat()
                 self.registry.register(candidate)
                 return CoordinatorCycleResult(
                     candidate_id=candidate.id,
@@ -405,8 +400,8 @@ class ExperienceValidationPromotionCoordinator:
         task_id: str,
         run_id: str,
         *,
-        passed: Optional[bool] = None,
-    ) -> Optional[Dict[str, Any]]:
+        passed: bool | None = None,
+    ) -> dict[str, Any] | None:
         """Record an isolated negative control description. Does not self-certify pass decision."""
         if passed is None:
             return None
@@ -437,8 +432,8 @@ class ExperienceValidationPromotionCoordinator:
         task_id: str,
         run_id: str,
         *,
-        passed: Optional[bool] = None,
-    ) -> Optional[Dict[str, Any]]:
+        passed: bool | None = None,
+    ) -> dict[str, Any] | None:
         """Record a positive validation description. Does not self-certify pass decision."""
         if passed is None:
             return None
@@ -464,8 +459,8 @@ class ExperienceValidationPromotionCoordinator:
 
 
 def create_local_canary_validation_provider(
-    artifacts: Optional[ArtifactStore] = None,
-    sandbox_base: Optional[Path] = None,
+    artifacts: ArtifactStore | None = None,
+    sandbox_base: Path | None = None,
 ) -> ValidationEnvironmentProvider:
     """Build a real product ValidationEnvironmentProvider for local tool operations (e.g. write_file).
 
@@ -488,22 +483,54 @@ def create_local_canary_validation_provider(
         contract: VerificationContract,
         task_id: str,
         run_id: str,
-    ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         steps = candidate.implementation.get("steps", []) if isinstance(candidate.implementation, dict) else []
-        supported = {"write_file", "read_file", "fs_write", "fs_read"}
+        supported = {"write_file"}  # Fail closed until each other primitive has its own semantic replay/readback.
         if not steps or any(s.get("primitive") not in supported for s in steps):
             return None, None
 
         try:
-            sandbox = _resolve_sandbox_root(task_id, candidate.id)
-            probe_path = sandbox / "probe_pos.txt"
-            probe_content = f"canary_probe_{uuid.uuid4().hex[:8]}"
-            probe_path.write_text(probe_content, encoding="utf-8")
-            observed = probe_path.read_text(encoding="utf-8")
-            if observed != probe_content:
+            # Only claim predicates the product's filesystem canary actually checks.
+            # An unrelated scratch write is NOT proof of the candidate's own steps.
+            if set(contract.covered_predicates) != {"exists"}:
                 return None, None
-
-            op_id = f"op_pos_probe_{digest({'id': candidate.id, 'task': task_id})[:8]}"
+            sandbox = _resolve_sandbox_root(task_id, candidate.id)
+            replay = replay_runner_factory(candidate, safe_env_factory(candidate))(
+                steps, time.monotonic() + 10.0,
+            )
+            if not isinstance(replay, dict) or replay.get("passed") is not True:
+                return None, None
+            bindings = (candidate.learning_metadata or {}).get("bindings", [{}])
+            binding = dict(bindings[0]) if bindings else {}
+            targets = {}
+            for step in steps:
+                args = step.get("args")
+                if not isinstance(args, dict):
+                    return None, None
+                resolved = {}
+                for key, val in args.items():
+                    if isinstance(val, str) and val.startswith("$inputs."):
+                        val = binding.get(val[len("$inputs."):])
+                    if val is None or (isinstance(val, str) and val.startswith("$inputs.")):
+                        return None, None
+                    resolved[key] = val
+                rel_path = resolved.get("path")
+                if not isinstance(rel_path, str) or not rel_path or "content" not in resolved:
+                    return None, None
+                target = (sandbox / rel_path).resolve()
+                try:
+                    target.relative_to(sandbox.resolve())
+                except ValueError:
+                    return None, None
+                targets[target] = str(resolved["content"])
+            if not targets:
+                return None, None
+            # Independent post-replay readback of every final target.
+            for target, expected in targets.items():
+                if not target.is_file() or target.read_text(encoding="utf-8") != expected:
+                    return None, None
+            observed_digests = [digest(value) for value in targets.values()]
+            op_id = f"op_pos_probe_{digest({'id': candidate.id, 'version': candidate.version, 'task': task_id, 'run': run_id})[:12]}"
             pos_ref = art.store(
                 task_id,
                 f"verifier_pos_{op_id}.json",
@@ -511,7 +538,11 @@ def create_local_canary_validation_provider(
                     "operation_id": op_id,
                     "task_id": task_id,
                     "run_id": run_id,
-                    "observed": observed,
+                    "candidate_id": candidate.id,
+                    "candidate_version": candidate.version,
+                    "target_count": len(targets),
+                    "observed_digests": observed_digests,
+                    "expected_digests": [digest(value) for value in targets.values()],
                     "contract": contract.fingerprint(),
                 },
                 schema="hermes.positive_validation.v1",
@@ -528,7 +559,7 @@ def create_local_canary_validation_provider(
                 fault_domain_admissible=True,
                 transition_proven=True,
                 reason="isolated positive probe verified",
-                evaluated_at=datetime.now(timezone.utc).isoformat(),
+                evaluated_at=datetime.now(UTC).isoformat(),
             )
 
             pos = {
@@ -539,10 +570,19 @@ def create_local_canary_validation_provider(
                 "verification_result": vr.to_dict(),
             }
 
-            neg_path = sandbox / "probe_absent.txt"
+            # Candidate-bound counterexample: a withheld write and divergent content
+            # cannot satisfy the target's expected persisted state.
+            original_target, expected = next(iter(targets.items()))
+            negative_dir = sandbox / ("negative_" + uuid.uuid4().hex[:12])
+            neg_path = negative_dir / original_target.relative_to(sandbox)
+            neg_path.parent.mkdir(parents=True, exist_ok=True)
             if neg_path.exists():
                 return None, None
-            neg_op_id = f"op_neg_probe_{digest({'id': candidate.id, 'task': task_id})[:8]}"
+            divergent = expected + "__canary_divergence__"
+            neg_path.write_text(divergent, encoding="utf-8")
+            if not neg_path.is_file() or neg_path.read_text(encoding="utf-8") == expected:
+                return None, None
+            neg_op_id = f"op_neg_probe_{digest({'id': candidate.id, 'task': task_id, 'run': run_id})[:12]}"
             neg_ref = art.store(
                 task_id,
                 f"verifier_neg_{neg_op_id}.json",
@@ -550,8 +590,12 @@ def create_local_canary_validation_provider(
                     "operation_id": neg_op_id,
                     "task_id": task_id,
                     "run_id": run_id,
-                    "observed_missing": True,
-                    "discriminative_condition": "mutation_withheld_or_divergent_state",
+                    "candidate_id": candidate.id,
+                    "candidate_version": candidate.version,
+                    "observed_missing": False,
+                    "expected_content_digest": digest(expected),
+                    "divergent_content_digest": digest(neg_path.read_text(encoding="utf-8")),
+                    "discriminative_condition": "candidate_target_content_divergence",
                     "rejected_by": contract.observer,
                 },
                 schema="hermes.negative_control.v1",
@@ -606,7 +650,16 @@ def create_local_canary_validation_provider(
                     else:
                         args[k] = v
 
+                # An unknown or only partially implemented step is never evidence of success.
+                # In particular, read_file/fs_read/fs_write must not be silently skipped.
+                if primitive != "write_file":
+                    return {"passed": False, "failure": "unsupported_primitive"}
+
                 if primitive == "write_file":
+                    if any(isinstance(v, str) and v.startswith("$inputs.") for v in args.values()):
+                        return {"passed": False, "failure": "unresolved_binding"}
+                    if not args.get("path"):
+                        return {"passed": False, "failure": "missing_path"}
                     rel_path = str(args.get("path", ""))
                     target_file = (sandbox / rel_path).resolve()
                     try:
@@ -639,7 +692,7 @@ def create_local_canary_validation_provider(
                 fault_domain_admissible=True,
                 transition_proven=True,
                 reason="controlled replay in isolated sandbox verified",
-                evaluated_at=datetime.now(timezone.utc).isoformat(),
+                evaluated_at=datetime.now(UTC).isoformat(),
             )
 
             return {

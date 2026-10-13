@@ -33,9 +33,10 @@ def local_state(tmp_path, monkeypatch):
     return browser_home
 
 
-def _task():
+def _task(correlation_id="turn-h080b-fixture"):
     bridge = WorkstationKanbanBridge()
     envelope = MessageEnvelope(MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK, SESSION, PROMPT,
+                               correlation_id=correlation_id,
                                metadata={"explicit_force_work": True})
     # Explicit fixture creates canonical work; simple navigation is not auto-promoted.
     task_id = bridge.promote_request_if_multistep(PROMPT, session_id=SESSION, envelope=envelope, force=True)
@@ -246,6 +247,7 @@ def test_run_a_normal_hermes_turn_captures_and_accepts_native_navigation(local_s
     agent._conversation_root_id = lambda: SESSION
     agent._canonical_work_task_id = task_id
     agent._canonical_work_run_id = run_id
+    agent._canonical_work_turn_id = envelope.correlation_id
     agent._message_envelope = envelope
     agent._tool_guardrails = ToolCallGuardrailController(
         ToolCallGuardrailConfig.from_mapping({}, platform="cli"))
@@ -435,6 +437,7 @@ def test_real_browser_readback_validates_and_promotes_compiled_capability(local_
         from hermes_cli import kanban_db
         bridge = WorkstationKanbanBridge()
         envelope = MessageEnvelope(MessageOrigin.HUMAN, IntentAuthority.CREATE_WORK, SESSION, "Abre o Trello.",
+                                   correlation_id="turn-h080b-fixture",
                                    metadata={"explicit_force_work": True})
         monkeypatch.setattr("workstation.integrations.hermes.operational_resolution.maybe_resolve_navigation", lambda _ctx: None)
         future_task = bridge.promote_request_if_multistep(envelope.content, session_id=SESSION,
@@ -497,6 +500,7 @@ def test_real_browser_readback_validates_and_promotes_compiled_capability(local_
     agent._conversation_root_id = lambda: SESSION
     agent._canonical_work_task_id = future_task
     agent._canonical_work_run_id = future_run
+    agent._canonical_work_turn_id = envelope.correlation_id
     agent._message_envelope = envelope
     agent._tool_guardrails = ToolCallGuardrailController(
         ToolCallGuardrailConfig.from_mapping({}, platform="cli"))

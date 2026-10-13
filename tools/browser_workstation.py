@@ -746,13 +746,13 @@ def _dispatch(
     # process-wide env vars that can survive a chat switch. Session-bound
     # callers must supply the exact card/run identifiers at the call site.
     if session_id:
-        card_id = str(kanban_card_id or "").strip() or None
         rid = str(run_id or "").strip() or None
+        card_id = str(kanban_card_id or (task_id if (task_id and rid) else "") or "").strip() or None
     else:
         # Legacy headless callers without a chat identity may still use the
         # existing process context. This is never applied to session calls.
-        card_id = str(kanban_card_id or os.environ.get("HERMES_KANBAN_TASK") or "").strip() or None
         rid = str(run_id or os.environ.get("HERMES_KANBAN_RUN_ID") or "").strip() or None
+        card_id = str(kanban_card_id or (task_id if (task_id and rid) else "") or os.environ.get("HERMES_KANBAN_TASK") or "").strip() or None
 
     if card_id and rid:
         # Explicit canonical work retains the requested BrowserTask identity;

@@ -41,7 +41,7 @@ WORKSTATION_BROWSER_CAPABILITIES = (
 
 
 def dispatch_workstation_browser_authoritative(
-    action: str, args: Dict[str, Any], *, task_id: Optional[str] = None,
+    action: str, args: dict[str, Any], *, task_id: Optional[str] = None,
     session_id: Optional[str] = None, run_id: Optional[str] = None,
     kanban_card_id: Optional[str] = None, operation_id: Optional[str] = None,
 ) -> Any:
@@ -131,14 +131,20 @@ class WorkstationBrowserController:
         task_id = params.get("task_id")
         session_id = params.get("session_id")
         run_id = params.get("run_id")
+        kanban_card_id = params.get("kanban_card_id")
+        dispatch_kwargs = {
+            "task_id": task_id,
+            "session_id": session_id,
+            "run_id": run_id,
+        }
+        if kanban_card_id is not None:
+            dispatch_kwargs["kanban_card_id"] = kanban_card_id
 
         try:
             raw_result = dispatch_workstation_browser_authoritative(
                 action,
                 args,
-                task_id=task_id,
-                session_id=session_id,
-                run_id=run_id,
+                **dispatch_kwargs,
             )
 
             # Process the result based on action type for Workstation-specific domain logic
@@ -156,7 +162,7 @@ class WorkstationBrowserController:
         except Exception as exc:
             self.broker.complete(cmd_id, scope=self.scope, ok=False, result={"error": str(exc)})
 
-    def create(self, task_id: str) -> Dict[str, Any]:
+    def create(self, task_id: str) -> dict[str, Any]:
         """Create a new BrowserTask with one task-owned live page at most."""
         from tools.browser_workstation import workstation_routed_browser_handler
         result = workstation_routed_browser_handler(
@@ -186,7 +192,7 @@ class WorkstationBrowserController:
 
         return parsed_result
 
-    def show(self, task_id: str, host: str, bounds: Dict[str, Any]) -> Dict[str, Any]:
+    def show(self, task_id: str, host: str, bounds: dict[str, Any]) -> dict[str, Any]:
         """Expose the task's existing page and park a previously visible BrowserTask when necessary."""
         from tools.browser_workstation import workstation_routed_browser_handler
         result = workstation_routed_browser_handler(
@@ -224,7 +230,7 @@ class WorkstationBrowserController:
 
         return parsed_result
 
-    def hide(self, task_id: str) -> Dict[str, Any]:
+    def hide(self, task_id: str) -> dict[str, Any]:
         """Remove the page from the visible host but keep page/task alive."""
         from tools.browser_workstation import workstation_routed_browser_handler
         result = workstation_routed_browser_handler(
@@ -256,7 +262,7 @@ class WorkstationBrowserController:
 
         return parsed_result
 
-    def park(self, task_id: str) -> Dict[str, Any]:
+    def park(self, task_id: str) -> dict[str, Any]:
         """Keep the page alive in the background parking strategy and keep page/task state."""
         from tools.browser_workstation import workstation_routed_browser_handler
         result = workstation_routed_browser_handler(
@@ -288,7 +294,7 @@ class WorkstationBrowserController:
 
         return parsed_result
 
-    def destroy(self, task_id: str) -> Dict[str, Any]:
+    def destroy(self, task_id: str) -> dict[str, Any]:
         """Explicit terminal operation: close/remove the owned live page and remove BrowserTask metadata."""
         from tools.browser_workstation import workstation_routed_browser_handler
         result = workstation_routed_browser_handler(
@@ -337,14 +343,14 @@ class WorkstationBrowserController:
         return json.dumps(raw_result, ensure_ascii=False)
 
 
-_CONTROLLERS: Dict[tuple[str, str, str], WorkstationBrowserController] = {}
+_CONTROLLERS: dict[tuple[str, str, str], WorkstationBrowserController] = {}
 
 
 def ensure_workstation_browser_controller(
     *, action: str, session_id: Optional[str] = None, task_id: Optional[str] = None,
     principal_id: Optional[str] = None, transport_family: Optional[str] = None,
     run_id: Optional[str] = None,
-) -> Optional[Dict[str, str]]:
+) -> Optional[dict[str, str]]:
     """Attach the native Workstation controller for one server-owned session lane.
 
     An unbound task may retain the configured legacy fallback. Once a BrowserTask
@@ -385,8 +391,22 @@ def ensure_workstation_browser_controller(
             )
             broker.attach(controller.scope, controller._handle_command, owner=controller)
         _CONTROLLERS[key] = controller
+    resolved_run_id = run_id
+    if not resolved_run_id and task_id:
+        try:
+            from hermes_cli import kanban_db
+            from hermes_cli.kanban_db_connect import connect
+            conn = connect()
+            try:
+                ktask = kanban_db.get_task(conn, task_id)
+                if ktask and ktask.current_run_id and ktask.status == "running" and (not session_id or ktask.session_id == session_id):
+                    resolved_run_id = str(ktask.current_run_id)
+            finally:
+                conn.close()
+        except Exception:
+            pass
     return {
         "session_id": session_id, "task_id": task_id or "",
         "principal_id": principal, "transport_family": transport,
-        "run_id": run_id or "",
+        "run_id": resolved_run_id or "",
     }
