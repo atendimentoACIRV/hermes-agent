@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNativeViewOcclusion } from '@/app/browser/native-view-occlusion'
 import { TaskJournalDrawer } from '@/app/browser/task-journal-drawer'
 import type { WorkstationBrowserBounds, WorkstationBrowserState, WorkstationBrowserTabState } from '@/app/browser/types'
+import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { cn } from '@/lib/utils'
@@ -85,6 +86,15 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
   const [showJournal, setShowJournal] = useState(false)
   const hostRef = useRef<HTMLDivElement | null>(null)
 
+  // A keep-alive tab keeps this pane mounted with a rect identical to the
+  // visible tab's, and the native view is an OS-level child of the window
+  // content view — it paints above the DOM and swallows that tab's clicks.
+  // Gate it on this pane being the visible one, on its box still having area,
+  // and (in `useNativeViewOcclusion`) on no overlay covering it.
+  const paneVisible = usePaneVisible()
+  const [hostRectOk, setHostRectOk] = useState(true)
+  const [viewportRevision, setViewportRevision] = useState(0)
+
   const selectedStoredSessionId = useStore($selectedStoredSessionId)
   const activeSessionId = useStore($activeSessionId)
   const sessions = useStore($sessions)
@@ -121,7 +131,8 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
   )
 
   const backgroundTaskCount = useMemo(() => {
-    if (!state.tasks) return 0
+    if (!state.tasks) {return 0}
+
     return state.tasks.filter(
       task => task.taskId !== preferredTaskId && (task.status === 'parked' || task.status === 'hidden')
     ).length
@@ -152,8 +163,14 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
       const rect = hostRef.current.getBoundingClientRect()
 
       if (rect.width < 1 || rect.height < 1) {
+        // Collapsed box: the view would keep its last bounds — over a rect no
+        // pane occupies any more — and eat clicks for whatever moved in there.
+        setHostRectOk(false)
+
         return
       }
+
+      setHostRectOk(true)
 
       const bounds = rectToBounds(rect)
 
@@ -162,6 +179,10 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
       } else {
         setState(await bridge.setBounds(bounds, 'chat'))
       }
+
+      // `attach()` forces the view back on inside the runtime, so re-assert the
+      // composed decision (visible tab + area + no overlay) right after it.
+      setViewportRevision(revision => revision + 1)
     },
     [bridge, preferredTaskId]
   )
@@ -172,6 +193,7 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
     preferredTaskId: string | null
   } | null>(null)
 
+  // eslint-disable-next-line no-restricted-syntax -- cleanup last attached key on unmount
   useEffect(() => {
     if (!bridge) {
       return
@@ -208,6 +230,7 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
     }
   }, [bridge])
 
+  // eslint-disable-next-line no-restricted-syntax -- cache last attached key to prevent viewport stealing
   useEffect(() => {
     if (!bridge || !hostRef.current || !runtimeDiscovered) {
       return
@@ -220,6 +243,7 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
     }
 
     const last = lastAttachedRef.current
+
     const keyChanged =
       !last ||
       last.host !== currentKey.host ||
@@ -262,7 +286,10 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
     }
   }, [bridge, publishBounds])
 
-  useNativeViewOcclusion(bridge, 'chat')
+  useNativeViewOcclusion(bridge, 'chat', {
+    enabled: paneVisible && hostRectOk,
+    revision: viewportRevision
+  })
 
   const transferToChat = useCallback(async () => {
     if (!bridge || !hostRef.current) {
@@ -356,22 +383,22 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
           {state.controlOwner === 'human' ? (
             <Button
               aria-label="Release Human Control"
+              className="text-sky-400 hover:text-sky-300"
               onClick={() => void run(() => bridge.releaseControl(preferredTaskId ?? undefined))}
               size="icon-xs"
-              variant="ghost"
-              className="text-sky-400 hover:text-sky-300"
               title="Hand control back to agent"
+              variant="ghost"
             >
               <Codicon name="robot" size="0.75rem" />
             </Button>
           ) : (
             <Button
               aria-label="Take Human Control"
+              className="text-(--ui-text-tertiary) hover:text-(--ui-text-primary)"
               onClick={() => void run(() => bridge.takeControl(preferredTaskId ?? undefined, activeSessionKey ?? undefined))}
               size="icon-xs"
-              variant="ghost"
-              className="text-(--ui-text-tertiary) hover:text-(--ui-text-primary)"
               title="Take human control"
+              variant="ghost"
             >
               <Codicon name="person" size="0.75rem" />
             </Button>
@@ -382,8 +409,8 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
               aria-label="Toggle Execution History"
               onClick={() => setShowJournal(prev => !prev)}
               size="icon-xs"
-              variant={showJournal ? 'secondary' : 'ghost'}
               title="Execution history & journal"
+              variant={showJournal ? 'secondary' : 'ghost'}
             >
               <Codicon name="history" size="0.75rem" />
             </Button>
@@ -455,9 +482,9 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
         )}
         {showJournal && preferredTaskId && (
           <TaskJournalDrawer
-            taskId={preferredTaskId}
-            onClose={() => setShowJournal(false)}
             className="absolute inset-y-0 right-0 z-20 w-80 shadow-2xl border-l border-(--ui-stroke-secondary)"
+            onClose={() => setShowJournal(false)}
+            taskId={preferredTaskId}
           />
         )}
       </div>

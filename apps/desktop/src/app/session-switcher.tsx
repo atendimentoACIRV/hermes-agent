@@ -39,6 +39,7 @@ export function SessionSwitcher() {
       {/* Transparent click-catcher: click-away closes, but no dim/blur. */}
       <div
         className="fixed inset-0 z-(--z-switcher-backdrop)"
+        data-native-view-occluder="true"
         onMouseDown={e => {
           e.preventDefault()
           closeSwitcher()
@@ -50,6 +51,7 @@ export function SessionSwitcher() {
           HUD_SURFACE,
           'dt-portal-scrollbar z-(--z-switcher) max-h-[min(22rem,64vh)] w-[min(19rem,calc(100vw-2rem))] select-none overflow-y-auto p-1'
         )}
+        data-native-view-occluder="true"
       >
         {sessions.map((session, i) => {
           const selected = i === index

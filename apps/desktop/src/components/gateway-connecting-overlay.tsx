@@ -94,6 +94,7 @@ function ConnectingOverlayView({ decoding, onExit, phase }: ConnectingOverlayVie
       // glass or the shell shows through. Contract: `[data-glass-opaque]`
       // in styles.css.
       data-glass-opaque=""
+      data-native-view-occluder={overlayHidden ? undefined : 'true'}
       data-testid="gateway-connecting-overlay"
     >
       {onExit ? (

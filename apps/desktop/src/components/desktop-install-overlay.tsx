@@ -445,7 +445,10 @@ export function DesktopInstallOverlay({ enabled = true }: DesktopInstallOverlayP
     const localPres = localCardPresentation(localState)
 
     return (
-      <div className="fixed inset-0 z-(--z-setup) flex items-center justify-center bg-background/90 p-4 backdrop-blur-md">
+      <div
+        className="fixed inset-0 z-(--z-setup) flex items-center justify-center bg-background/90 p-4 backdrop-blur-md"
+        data-native-view-occluder="true"
+      >
         <div className="w-full max-w-2xl rounded-xl border border-(--stroke-nous) bg-card p-8 shadow-nous">
           <div className="flex items-start gap-4">
             <BrandMark className="size-11 shrink-0" />
@@ -529,7 +532,10 @@ export function DesktopInstallOverlay({ enabled = true }: DesktopInstallOverlayP
     const platformLabel = ups.platform === 'darwin' ? 'macOS' : ups.platform === 'linux' ? 'Linux' : ups.platform
 
     return (
-      <div className="fixed inset-0 z-(--z-setup) flex items-center justify-center bg-background/90 backdrop-blur-md">
+      <div
+        className="fixed inset-0 z-(--z-setup) flex items-center justify-center bg-background/90 backdrop-blur-md"
+        data-native-view-occluder="true"
+      >
         <div className="w-full max-w-xl rounded-xl border border-(--stroke-nous) bg-card p-8 shadow-nous">
           <h2 className="text-xl font-semibold tracking-tight">{copy.oneTimeTitle}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{copy.unsupportedDesc(platformLabel)}</p>

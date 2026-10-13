@@ -76,6 +76,7 @@ function BootFailureModal({
             // Masks the whole app on boot failure — must stay filled under window
             // glass. Contract: `[data-glass-opaque]` in styles.css.
             data-glass-opaque=""
+            data-native-view-occluder="true"
           >
             <DialogPortalContainerContext.Provider value={contentNode}>
               {title ? <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title> : null}

@@ -1609,7 +1609,7 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
   return (
     <DialogPrimitive.Portal>
       {/* Transparent overlay: keeps click-away + focus trap, but no dim/blur. */}
-      <DialogPrimitive.Overlay className="fixed inset-0 z-(--z-over-modal)" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-(--z-over-modal)" data-native-view-occluder="true" />
       <DialogPrimitive.Content
         aria-describedby={undefined}
         className={cn(

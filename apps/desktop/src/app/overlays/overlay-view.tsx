@@ -88,6 +88,11 @@ export function OverlayView({
       // the global type-to-focus / soft `/` / Enter down, so keystrokes don't
       // leak into the hidden composer (and the overlay's own bare-key shortcuts,
       // e.g. star map's Space, keep working).
+      // The native browser view is an OS-level child of the window content
+      // view: it paints above this overlay and swallows its clicks. The
+      // marker parks the view, so every card here (command center, settings,
+      // cron, agents, profiles) keeps its controls.
+      data-native-view-occluder="true"
       data-overlay-surface=""
       onClick={event => {
         if (event.target === event.currentTarget) {

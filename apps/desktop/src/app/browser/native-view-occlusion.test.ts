@@ -124,7 +124,9 @@ describe('Native View Occlusion', () => {
 
     expect(setVisible).toHaveBeenCalledWith(true, 'chat')
 
-    // 4. Open dialog again, then unmount hook -> must restore visibility
+    // 4. Overlay opens, then the hook unmounts while the overlay is still up:
+    //    the view must stay parked. Re-showing it here would put the native
+    //    view back on top of the overlay — the exact bug this guards against.
     await act(async () => {
       const menu = document.createElement('div')
       menu.setAttribute('data-slot', 'dropdown-menu-content')
@@ -135,6 +137,62 @@ describe('Native View Occlusion', () => {
 
     setVisible.mockClear()
     unmount()
-    expect(setVisible).toHaveBeenCalledWith(true, 'chat')
+    expect(setVisible).not.toHaveBeenCalledWith(true, 'chat')
+  })
+
+  it('parks the view for an overlay that is already open when the pane mounts', async () => {
+    const setVisible = vi.fn().mockResolvedValue({})
+    const bridge = { setVisible } as unknown as WorkstationBrowserBridge
+
+    const overlay = document.createElement('div')
+    overlay.setAttribute('data-native-view-occluder', 'true')
+    document.body.appendChild(overlay)
+
+    const { renderHook, waitFor } = await import('@testing-library/react')
+    renderHook(() => useNativeViewOcclusion(bridge, 'chat'))
+
+    // No mutation is needed for this one — the mount scan alone must park it.
+    await waitFor(() => expect(setVisible).toHaveBeenCalledWith(false, 'chat'))
+  })
+
+  it('parks the view for a host whose own gate says it is not the visible surface', async () => {
+    const setVisible = vi.fn().mockResolvedValue({})
+    const bridge = { setVisible } as unknown as WorkstationBrowserBridge
+
+    const { renderHook, waitFor } = await import('@testing-library/react')
+
+    const { rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useNativeViewOcclusion(bridge, 'chat', { enabled }),
+      { initialProps: { enabled: false } }
+    )
+
+    await waitFor(() => expect(setVisible).toHaveBeenCalledWith(false, 'chat'))
+
+    rerender({ enabled: true })
+
+    await waitFor(() => expect(setVisible).toHaveBeenCalledWith(true, 'chat'))
+  })
+
+  it('re-asserts on a revision bump so a forced attach cannot leave the view over an overlay', async () => {
+    const setVisible = vi.fn().mockResolvedValue({})
+    const bridge = { setVisible } as unknown as WorkstationBrowserBridge
+
+    const overlay = document.createElement('div')
+    overlay.setAttribute('data-native-view-occluder', 'true')
+    document.body.appendChild(overlay)
+
+    const { renderHook, waitFor } = await import('@testing-library/react')
+
+    const { rerender } = renderHook(
+      ({ revision }: { revision: number }) => useNativeViewOcclusion(bridge, 'chat', { revision }),
+      { initialProps: { revision: 0 } }
+    )
+
+    await waitFor(() => expect(setVisible).toHaveBeenCalledWith(false, 'chat'))
+
+    setVisible.mockClear()
+    rerender({ revision: 1 })
+
+    expect(setVisible).toHaveBeenCalledWith(false, 'chat')
   })
 })

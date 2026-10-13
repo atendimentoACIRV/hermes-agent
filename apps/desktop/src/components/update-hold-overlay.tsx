@@ -88,6 +88,7 @@ export function UpdateHoldOverlay() {
       // Masks the whole app while the boot is blocked — must stay filled under
       // window glass. Contract: `[data-glass-opaque]` in styles.css.
       data-glass-opaque=""
+      data-native-view-occluder="true"
       data-testid="update-hold-overlay"
       role="alertdialog"
     >

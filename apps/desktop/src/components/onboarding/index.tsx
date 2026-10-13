@@ -244,13 +244,13 @@ export function DesktopOnboardingOverlay({
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
     if (reduce) {
-      void confirmOnboardingModel(ctx)
+      confirmOnboardingModel(ctx)
 
       return
     }
 
     setLeaving(true)
-    window.setTimeout(() => void confirmOnboardingModel(ctx), ONBOARDING_EXIT_MS)
+    window.setTimeout(() => confirmOnboardingModel(ctx), ONBOARDING_EXIT_MS)
   }
 
   // The free-tier intro's three doors share one exit: consume the notice, play
@@ -426,6 +426,7 @@ export function DesktopOnboardingOverlay({
       // window glass or the shell shows through. Contract:
       // `[data-glass-opaque]` in styles.css.
       data-glass-opaque=""
+      data-native-view-occluder={leaving ? undefined : 'true'}
       data-testid="desktop-onboarding"
     >
       <div

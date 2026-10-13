@@ -161,6 +161,7 @@ function RootErrorFallback({ error, reset }: ErrorBoundaryFallbackProps) {
       // Masks a crashed app — must stay filled under window glass. Contract:
       // `[data-glass-opaque]` in styles.css.
       data-glass-opaque=""
+      data-native-view-occluder="true"
     >
       <ErrorState
         className="w-full max-w-[28rem]"
