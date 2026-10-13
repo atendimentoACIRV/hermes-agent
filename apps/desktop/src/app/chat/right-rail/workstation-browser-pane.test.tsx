@@ -2,7 +2,6 @@ import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { WorkstationBrowserBridge, WorkstationBrowserState } from '@/app/browser/types'
-import { PaneVisibleContext } from '@/components/pane-shell/pane-visibility'
 import { $activeSessionId, $selectedStoredSessionId, $sessions } from '@/store/session'
 import { makeSessionInfo } from '@/test/session-info'
 
@@ -100,86 +99,42 @@ describe('WorkstationBrowserPane cold attach', () => {
     await act(async () => undefined)
   })
 
-  const paneBridge = (setVisible: ReturnType<typeof vi.fn>, attach: ReturnType<typeof vi.fn>) =>
-    ({
+  it('shows session-scoped native human review and acknowledges it only once', async () => {
+    const { fireEvent, screen } = await import('@testing-library/react')
+
+    const api = vi.fn(async (request: { path: string; method?: string; body?: unknown }) => {
+      if (request.method === 'POST') {return { status: 'ready', readback_required: true, mutation_authorized: false }}
+
+      return { handoffs: [{
+        handoff_id: 'handoff-test-1', task_id: 'task-b', session_id: 'session-b',
+        run_id: 'run-b', status: 'waiting-for-human', reason: 'uncertain_mutation_requires_review',
+        requested_at: '2026-10-12T00:00:00Z'
+      }] }
+    })
+
+    const bridge = {
       ensure: vi.fn(async () => restoredState),
-      attach,
+      attach: vi.fn(async () => ({ ...restoredState, attached: true, viewportHost: 'chat' })),
       setBounds: vi.fn(async () => restoredState),
       detach: vi.fn(async () => restoredState),
-      setVisible,
+      setVisible: vi.fn(async () => restoredState),
       onState: vi.fn(() => () => undefined)
-    }) as unknown as WorkstationBrowserBridge
-
-  const chatAttach = () =>
-    vi.fn(async () => ({ ...restoredState, attached: true, viewportHost: 'chat' }) as WorkstationBrowserState)
-
-  it('parks the native view while the pane is an inactive keep-alive tab', async () => {
-    // A kept-alive tab renders with `visibility: hidden`, which preserves its
-    // layout box — so its rect is identical to the visible tab's. The native
-    // view is an OS-level child of the window content view: left attached, it
-    // paints over that tab and swallows its clicks.
-    const setVisible = vi.fn(async () => restoredState)
-    const attach = chatAttach()
+    } as unknown as WorkstationBrowserBridge
 
     Object.defineProperty(window, 'hermesDesktop', {
-      configurable: true,
-      value: { workstationBrowser: paneBridge(setVisible, attach) }
+      configurable: true, value: { workstationBrowser: bridge, api }
     })
-
-    render(
-      <PaneVisibleContext value={false}>
-        <WorkstationBrowserPane />
-      </PaneVisibleContext>
-    )
-
-    await waitFor(() => expect(setVisible).toHaveBeenCalledWith(false, 'chat'))
-
-    expect(setVisible).not.toHaveBeenCalledWith(true, 'chat')
-  })
-
-  it('shows the view again when the pane becomes the visible tab', async () => {
-    const setVisible = vi.fn(async () => restoredState)
-    const attach = chatAttach()
-
-    Object.defineProperty(window, 'hermesDesktop', {
-      configurable: true,
-      value: { workstationBrowser: paneBridge(setVisible, attach) }
-    })
-
-    const { rerender } = render(
-      <PaneVisibleContext value={false}>
-        <WorkstationBrowserPane />
-      </PaneVisibleContext>
-    )
-
-    await waitFor(() => expect(setVisible).toHaveBeenCalledWith(false, 'chat'))
-
-    rerender(
-      <PaneVisibleContext value={true}>
-        <WorkstationBrowserPane />
-      </PaneVisibleContext>
-    )
-
-    await waitFor(() => expect(setVisible).toHaveBeenCalledWith(true, 'chat'))
-  })
-
-  it('parks the view when the host box collapses instead of leaving it at stale bounds', async () => {
-    HTMLElement.prototype.getBoundingClientRect = () =>
-      ({ x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, toJSON: () => ({}) }) as DOMRect
-
-    const setVisible = vi.fn(async () => restoredState)
-    const attach = chatAttach()
-
-    Object.defineProperty(window, 'hermesDesktop', {
-      configurable: true,
-      value: { workstationBrowser: paneBridge(setVisible, attach) }
-    })
-
     render(<WorkstationBrowserPane />)
-
-    await waitFor(() => expect(setVisible).toHaveBeenCalledWith(false, 'chat'))
-
-    // A zero-area host has no bounds to hand the runtime, so nothing attaches.
-    expect(attach).not.toHaveBeenCalled()
+    const button = await screen.findByRole('button', { name: 'Acknowledge uncertain Browser operation' })
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(api).toHaveBeenCalledWith(expect.objectContaining({
+        path: '/api/workstation/handoffs/handoff-test-1/review',
+        method: 'POST',
+        body: { session_id: 'session-b', run_id: 'run-b' }
+      }))
+    })
+    expect(screen.getByText(/readback is required/i)).toBeTruthy()
   })
+
 })

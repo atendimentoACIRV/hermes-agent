@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "10.10.26.md",
+                "file": "readme.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "10.10.26"
+              "title": "readme"
             }
           }
         ]
@@ -190,6 +190,8 @@
   },
   "active": "2f5444958a503cef",
   "lastOpenFiles": [
+    "13.10.26.md",
+    "11.10.26.md",
     "dados/Páginas de sites/Com chat aberto - WhatsApp.html",
     "dados/Páginas de sites/Não confirmado 569410.crdownload",
     "dados/Páginas de sites/WhatsApp.html",
@@ -200,7 +202,6 @@
     "dados/Páginas de sites/Não confirmado 76364.crdownload",
     "dados/Páginas de sites/página inicial - Instagram.html",
     "dados/Páginas de sites/Não confirmado 134801.crdownload",
-    "dados/Páginas de sites/Notebook novo - Gemini Notebook.html",
     "dados/Contexto Hermes/ChatGPT-Plano Hermes Workstation-20261010-1420.md",
     "dados/Contexto Hermes/ChatGPT-Plano Anthropic Hermes Work-20261009-1447.md",
     "dados/Contexto Hermes/ChatGPT-Mapeamento tecnológico criativo-20261008-1029.md",
@@ -224,7 +225,6 @@
     "Contexto Hermes/ChatGPT-Plano Anthropic Hermes Work-20261009-1447.md",
     "Contexto Hermes/ChatGPT-Mapeamento tecnológico criativo-20261008-1029.md",
     "Contexto Hermes/ChatGPT-Encontrar chat do Hermes Work-20261008-1029.md",
-    "Contexto Hermes/ChatGPT-Diagnóstico E Plano Desbloqueio-20261009-1447.md",
-    "Contexto Hermes/ChatGPT-Consolidar prompts CW-1 ao fim-20261009-1446.md"
+    "Contexto Hermes/ChatGPT-Diagnóstico E Plano Desbloqueio-20261009-1447.md"
   ]
 }

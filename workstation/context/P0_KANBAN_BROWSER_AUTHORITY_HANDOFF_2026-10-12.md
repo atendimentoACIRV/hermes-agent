@@ -167,3 +167,50 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 - Source-built Windows real Electron/Chromium `playwright test workstation-headless-load --grep 'P0:'`: **4 PASS / 0 FAIL / 0 SKIP** in 193.29s, including native lost-ACK and prior takeover, UI click, and cold restart/active human lease scenarios. One pre-fix combined attempt: **3 PASS / 1 FAIL**, stale shared fixture after the deliberate cold restart; reordered tests to keep destructive restart last, then GREEN.
 - Electron/Vitest targeted regressions: **58 PASS / 0 FAIL**. TypeScript E2E `tsc -p tsconfig.e2e.json --noEmit`: exit 0. Scoped Ruff and git whitespace validation: PASS.
 - The linked native UI approval→typed readback→work-item continuation and packaged Windows installer/CI have **NOT** been qualified. No merge or real user data mutation authorized.
+
+
+## 2026-10-12 — KANBAN-04 native human review transport (partial gate)
+
+Previous verified published HEAD: 22498a09db0802c06125f5a5ec4cb5039da9b98f; isolated worktree C:\Github\hermes-agent-kanban-browser-authority-20261012; PR #83 draft; 34 unrelated root-checkout edits preserved.
+
+### Canonical boundary discovered
+
+The agent's `BatchAdmissionAction.HANDOFF` is projected as a tool result via `agent/turn_tool_round.py::run_tool_round` (and `run_agent.py` direct-call path) but there was no React-native review UI/API integrated with `HumanHandoffManager`. It did NOT connect typed `evaluate_verification` readback automatically. Do not represent that tool response as an authorized human approval.
+
+### Implemented, scoped
+
+- `plugins/workstation/dashboard/plugin_api.py`: asynchronous, session-filtered read of *waiting* `HumanHandoffManager` entries using existing canonical JSON owner, bounded to 32; projects IDs/status/reason only, no operation payload. A review acknowledgment performs identity/status/run fences and delegates to `HumanHandoffManager.resume` (atomic one-time transition); output explicitly reports `readback_required=True, mutation_authorized=False`.
+- `hermes_cli/web_server.py`: thin token-protected routes `GET /api/workstation/handoffs?session_id=...` and `POST /api/workstation/handoffs/{handoff_id}/review`; no direct mutation/replay, no second state store.
+- `apps/desktop/src/app/chat/right-rail/workstation-browser-pane.tsx`: polls authenticated *local* backend only when pane/session active, scopes review to current session, shows warning and human acknowledgment button; success removes the request without granting tool permission and displays explicit readback-needed notice.
+- Tests: new `test_p0_native_handoff_review_api.py` intentionally RED 2/2 (API missing), then GREEN with other handoff regressions **12 PASS / 0 FAIL**; `workstation-browser-pane.test.tsx` new UI test RED missing button, then GREEN **2 PASS / 0 FAIL**, verifying real React handler bound to expected session/run and no direct Browser mutation; app and E2E TypeScript check exited 0; scoped Ruff and git diff --check passed.
+- New source-built Electron E2E `P0: native UI acknowledges canonical uncertain Browser handoff without replay` in `apps/desktop/e2e/workstation-headless-load.spec.ts` uses a seed of canonical JSON in disposable `HERMES_HOME`, not actual agent admission. This tests only native UI/transport and read-only Browser continuation; it cannot qualify automatic agent handoff→typed readback→work-item completion. First isolated attempt failed **before entering test body**: fixture onboarding/reconnecting overlay obstructed composer after 120s (`waitForAppReady`). A combined 2-test run starts with already qualified Browser UI takeover first; final verdict must be recorded separately.
+- No real user Kanban, sessions, Browser leases or historical handoffs mutated. No main merge.
+
+### Remaining highest-priority gate
+
+1. Native UI transport E2E green on own-head Electron; investigate fixture failures separately from application logic. If already passes, implement **real agent admission** path (not seeded ledger) emitting HANDOFF to renderer and resume signal to agent, including proof binding.
+2. Trusted provider readback under `workstation/control_plane/verification.py::evaluate_verification`: validated owner contract, independent persistence proof, task/run/operation/resource/effect identity, read-after-write, wrong-run and stale negative controls. Never accept renderer supplied boolean as proof. Never redispatch uncertain external mutation.
+3. Non-mutating work-item checkpoint continuation and restart E2E, isolation across two sessions.
+4. Other KANBAN-01/02/03/05/06/07 gates; KANBAN-06 dry-run only (106 deleted tasks and 55 orphan handoffs), release app packaged + exact-HEAD CI/H-079 + stacked PR dependencies. PR draft no auto merge.
+
+Mandatory: any incomplete agent must return another independently executable resume prompt with exact verified HEAD, branch, worktree, tests and next functions.
+
+
+### Native Browser Hub → Chat preview routing RED→GREEN (2026-10-12)
+
+Native source-built E2E `P0: native UI acknowledges canonical uncertain Browser handoff without replay` initially failed before test body when an isolated first launch was blocked by onboarding/reconnect overlay. A paired run with the Browser UI readiness scenario passed the first test but failed to display the review after transfer.
+
+**Root cause confirmed by source and E2E DOM snapshot:** `apps/desktop/src/app/browser/index.tsx::transferToChat` called `openWorkstationBrowserPreview()` before navigating away from `/browser`; `apps/desktop/src/store/preview.ts::openWorkstationBrowserPreview` intentionally rejected all calls while the Browser Hub route was active. The explicit transfer therefore returned home with the right-rail preview not opened. The E2E had also not explicitly selected the newly persisted chat, leaving `New session` in focus, so session-scoped reviews were not visible.
+
+**Fix:** explicit `openWorkstationBrowserPreview({ fromHub: true })` bypasses the route guard only for the human transfer, while automatic opens still respect the guard; the E2E selects its persisted conversation with `openStoredSessionByTitle`. New `src/store/preview-tabs-restart.test.ts` test reproduces the failed transfer RED, then GREEN after the fix. `workstation-browser-pane.test.tsx` UI button/REST test also GREEN. Joint UI run: **4 passed, 0 failed**; an unrelated initial UI baseline import was slow and timed out with default 15s on overloaded Windows (later 30s rerun GREEN); no production timeout increased. Paired native E2E rerun is underway and must have its actual outcome recorded before declaring qualification.
+
+The UI human action acknowledges uncertainty once; it **never** clears mutation uncertainty, confers Browser lease, marks a Kanban card done, or repeats the external effect. The actual agent execution chain → typed verifier → WorkItem continuation gate remains open.
+
+
+### P0 native UI review continuation — 2026-10-12 13:03 local, uncommitted
+- Verified published remote PR #83 HEAD remains `22498a09db0802c06125f5a5ec4cb5039da9b98f`; draft. Isolated worktree already had 13 uncommitted paths when this continuation began (existing API, UI, Browser Hub routing and tests). Main checkout had 34 unrelated dirty paths, not touched.
+- Inspected existing work-in-progress implementation instead of overwriting it. Python `test_p0_native_handoff_review_api.py` + `test_denied_mutation_handoff_recovery.py`: **8 PASS**, scoped, isolated ledger; React `workstation-browser-pane.test.tsx` + `preview-tabs-restart.test.ts`: **4 PASS**.
+- E2E attempted `playwright test workstation-headless-load --grep 'P0: (Browser UI Take Control|native UI acknowledges canonical)'`: **1 PASS (real Browser UI takeover) / 1 FAIL (native UI review)**, consistently reproduces `getByRole('button', { name: 'Acknowledge uncertain Browser operation' }).toBeVisible()` timed out after 25s, while the E2E previously proved the authenticated API returned seeded canonical review. Source-built Chromium fixture logs confirm selected persisted chat, Browser preview mounted, but review action missing from DOM. E2E thus remains RED; do not claim completion.
+- Scoped attempt in `workstation-browser-pane.tsx`: read only canonical conversation aliases of selected session, deduplicate handoff IDs, use exact review.session_id in POST, tolerate partial failure with `Promise.allSettled`, and use non-passive authenticated local API. These are not yet proven to resolve the E2E. Pending changes are deliberately uncommitted; **do not overwrite existing concurrently authored work or stage/push a failing gate as qualified**.
+- Next exact diagnostic: instrument **only the isolated E2E** to inspect the React pane's actual selectedStoredSessionId, activeSessionId and derived `activeSessionAliases` (without exposing IDs to logs), and check `window.hermesDesktop.api({ path: '/api/workstation/handoffs?session_id=...', connectionId:'local' })` from the same mounted component. Differentiate missing selected-session key, per-alias backend rejection, effect repeatedly reset, and renderer right-rail mount/visibility. Do not increase the 25s assertion timeout as a substitute for fixing the actual cause.
+- Once RED reason is proven and fixed, rerun Python UI API and React unit suites, full native E2E, then typed `evaluate_verification` provenance/WorkItem continuation. No actual agent admission→UI approval→readback→non-mutating TaskRun checkpoint E2E exists; preserve `409 USER_CONTROL_ACTIVE` and uncertainty blocked until trusted independent observation.

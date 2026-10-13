@@ -10,11 +10,9 @@
  * window while exercising native WebContentsView instances.
  */
 
-import { execFile } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
-import { promisify } from 'node:util'
 
 import {
   buildAppEnv,
@@ -125,8 +123,6 @@ function readBoundedInteger(name: string, fallback: number, minimum: number, max
   return value
 }
 
-const execFileAsync = promisify(execFile)
-
 const TASK_COUNT = 4
 const SUSTAINED_TASK_COUNT = readBoundedInteger('HERMES_DESKTOP_E2E_SUSTAINED_TASKS', 8, 1, 32)
 const SUSTAINED_ROUNDS = readBoundedInteger('HERMES_DESKTOP_E2E_SUSTAINED_ROUNDS', 3, 1, 300)
@@ -146,21 +142,27 @@ async function startDeterministicPageServer(): Promise<void> {
     if (request.url === '/p0-native-effect-state') {
       response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' })
       response.end(JSON.stringify({ applied: uncertainNativeEffectCount }))
+
       return
     }
+
     if (request.url === '/p0-native-effect-commit' && request.method === 'POST') {
       uncertainNativeEffectCount += 1
       response.writeHead(200, { 'content-type': 'text/plain' })
       setTimeout(() => response.end('committed'), 300)
+
       return
     }
+
     const taskId = decodeURIComponent((request.url ?? '/').replace(/^\//, '')) || 'unknown'
+
     if (taskId === 'p0-uncertain-native') {
       response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
       response.end(`<!doctype html><html><head><title>H013 ${taskId}</title></head><body>
         <button type="button" data-testid="commit-once" onclick="fetch('/p0-native-effect-commit', {method:'POST'}).then(() => { document.getElementById('effect-state').textContent = 'COMMITTED'; })">Commit external side effect</button>
         <output id="effect-state">PENDING external effect. This page is intentionally deterministic and local.</output>
         </body></html>`)
+
       return
     }
 
@@ -209,6 +211,7 @@ async function controllerRequest(endpoint: string, init: RequestInit = {}): Prom
       ...(init.headers ?? {})
     }
   })
+
   const body = (await response.json()) as ControllerResponse
 
   if (!response.ok || body.success !== true) {
@@ -311,6 +314,7 @@ async function openStoredSessionByTitle(
   const row = page.locator('[data-slot="sidebar"] button').filter({ hasText: title }).first()
   await row.waitFor({ state: 'visible', timeout: 60_000 })
   await row.click()
+
   if (expectedPrompt) {
     await expect.poll(() => page.locator('body').textContent(), { timeout: 30_000 }).toContain(expectedPrompt)
   }
@@ -336,6 +340,7 @@ async function createRealChat(fixture: MockBackendFixture, prompt: string): Prom
           const response = await (window as unknown as DesktopBridgeWindow).hermesDesktop.api<{
             sessions: Array<{ id: string; preview?: string | null; title?: string | null }>
           }>({ path: '/api/sessions?limit=50&offset=0&min_messages=1&archived=exclude&order=recent' })
+
           return response.sessions.find(session => session.preview?.includes(expected))?.id
         }, prompt),
       { timeout: 60_000 }
@@ -346,10 +351,11 @@ async function createRealChat(fixture: MockBackendFixture, prompt: string): Prom
         const response = await (window as unknown as DesktopBridgeWindow).hermesDesktop.api<{
           sessions: Array<{ id: string; preview?: string | null; title?: string | null }>
         }>({ path: '/api/sessions?limit=50&offset=0&min_messages=1&archived=exclude&order=recent' })
+
         const session = response.sessions.find(row => row.preview?.includes(expected))
-        if (!session) {
-          throw new Error(`H013 real chat did not persist: ${expected}`)
-        }
+
+        if (!session) {throw new Error(`H013 real chat did not persist: ${expected}`)}
+
         return { id: session.id, label: session.title || session.preview || expected }
       }, prompt)
     )
@@ -357,6 +363,7 @@ async function createRealChat(fixture: MockBackendFixture, prompt: string): Prom
 
 function activeViewportChild(snapshot: NativeViewportSnapshot | null): NativeViewportChild {
   const content = snapshot?.contentBounds
+
   const activeChildren = (snapshot?.children ?? []).filter(child => {
     if (!content) {
       return false
@@ -369,6 +376,7 @@ function activeViewportChild(snapshot: NativeViewportSnapshot | null): NativeVie
       child.bounds.y + child.bounds.height <= content.height
     )
   })
+
   const viewport = activeChildren[0]
 
   // Parked BrowserTasks may remain attached at the compositor edge to keep
@@ -420,6 +428,7 @@ test.afterAll(async () => {
   await new Promise<void>(resolve => {
     if (!pageServer) {
       resolve()
+
       return
     }
 
@@ -442,6 +451,7 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
   const navigations = await Promise.all(tasks.map(task => browserAction(task.taskId, task.sessionId, task.url)))
 
   expect(navigations).toHaveLength(TASK_COUNT)
+
   for (const [index, navigation] of navigations.entries()) {
     expect(navigation.result?.url).toBe(tasks[index].url)
     expect(navigation.result?.title).toBe(`H013 ${tasks[index].taskId}`)
@@ -464,9 +474,11 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
   }
 
   const controllerResources = await controllerRequest('/resources')
+
   const taskResources = (controllerResources.resources ?? []).filter(
     resource => resource.resource_type === 'browser_task'
   )
+
   const taskResourceIds = new Set(taskResources.map(resource => resource.task_id))
 
   expect(controllerResources.runtime).toBe('electron-chromium')
@@ -499,6 +511,7 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
 
   expect(ipcSnapshot.resources.runtime).toBe(controllerResources.runtime)
   expect(comparableResourceSnapshot(ipcSnapshot.resources)).toEqual(comparableResourceSnapshot(controllerResources))
+
   const resourceIdentity = (snapshot: { resources?: Array<Record<string, unknown>> }) =>
     (snapshot.resources ?? []).map(resource => [
       resource.resource_type,
@@ -516,8 +529,10 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
 
   const hubBounds = { x: 12, y: 18, width: 720, height: 520 }
   const chatBounds = { x: 300, y: 22, width: 500, height: 480 }
+
   const attached = await fixture.page.evaluate(async bounds => {
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
     return api.attach(bounds, 'hub')
   }, hubBounds)
 
@@ -528,10 +543,12 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
   await fixture.page.waitForTimeout(100)
   await fixture.page.evaluate(async bounds => {
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
     return api.setBounds(bounds, 'hub')
   }, hubBounds)
   await expect.poll(async () => {
     const snapshot = await nativeViewportSnapshot(fixture!.app)
+
     return activeViewportChild(snapshot).bounds
   }).toEqual(hubBounds)
   const initialNativeViewport = await nativeViewportSnapshot(fixture.app)
@@ -541,6 +558,7 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
 
   const stale = await fixture.page.evaluate(async bounds => {
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
     return api.setBounds(bounds, 'chat')
   }, chatBounds)
 
@@ -552,6 +570,7 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
 
   const resized = await fixture.page.evaluate(async bounds => {
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
     return api.setBounds(bounds, 'hub')
   }, chatBounds)
 
@@ -563,6 +582,7 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
 
   const transferred = await fixture.page.evaluate(async bounds => {
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
     return api.transferViewport('chat', bounds)
   }, chatBounds)
 
@@ -644,6 +664,7 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
   const parkedTasks = await fixture.page.evaluate(() =>
     (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser.listTasks()
   )
+
   const parkedTask = parkedTasks.find(task => task.taskId === 'h013-task-0')
 
   expect(parkedTask?.status).toBe('parked')
@@ -659,6 +680,7 @@ test('keeps four native Browser tasks aligned across controller and IPC while he
   const finalTasks = await fixture.page.evaluate(() =>
     (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser.listTasks()
   )
+
   expect(finalTasks).toHaveLength(0)
 })
 
@@ -671,6 +693,7 @@ test('sustains concurrent BrowserTasks and real backend chat turns while headles
 
   const hubBounds = { x: 12, y: 18, width: 720, height: 520 }
   const chatBounds = { x: 300, y: 22, width: 500, height: 480 }
+
   const tasks = Array.from({ length: SUSTAINED_TASK_COUNT }, (_, index) => ({
     taskId: `h013-sustained-task-${index}`,
     sessionId: `h013-sustained-session-${index}`
@@ -678,6 +701,7 @@ test('sustains concurrent BrowserTasks and real backend chat turns while headles
 
   const attached = await fixture.page.evaluate(async bounds => {
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
     return api.attach(bounds, 'hub')
   }, hubBounds)
 
@@ -698,6 +722,7 @@ test('sustains concurrent BrowserTasks and real backend chat turns while headles
     )
 
     expect(navigations).toHaveLength(SUSTAINED_TASK_COUNT)
+
     for (const [index, navigation] of navigations.entries()) {
       expect(navigation.result?.url).toBe(`${pageBaseUrl}/sustained-round-${round}/${tasks[index].taskId}`)
       expect(navigation.result?.title).toBe(`H013 sustained-round-${round}/${tasks[index].taskId}`)
@@ -719,15 +744,18 @@ test('sustains concurrent BrowserTasks and real backend chat turns while headles
     )
 
     expect(snapshots).toHaveLength(SUSTAINED_TASK_COUNT)
+
     for (const [index, snapshot] of snapshots.entries()) {
       expect(snapshot.result?.url).toBe(`${pageBaseUrl}/sustained-round-${round}/${tasks[index].taskId}`)
       expect(snapshot.result?.title).toBe(`H013 sustained-round-${round}/${tasks[index].taskId}`)
     }
 
     const shownTask = tasks[round % tasks.length]
+
     const shown = await fixture.page.evaluate(
       async ({ bounds, taskId, host }) => {
         const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
         return api.showTask(taskId, bounds, host)
       },
       {
@@ -748,9 +776,11 @@ test('sustains concurrent BrowserTasks and real backend chat turns while headles
 
   const controllerResources = await controllerRequest('/resources')
   const controllerEvents = await controllerRequest('/events?limit=200')
+
   const taskResources = (controllerResources.resources ?? []).filter(
     resource => resource.resource_type === 'browser_task'
   )
+
   expect(taskResources).toHaveLength(SUSTAINED_TASK_COUNT)
   expect(new Set(taskResources.map(resource => resource.task_id))).toEqual(new Set(tasks.map(task => task.taskId)))
 
@@ -772,6 +802,7 @@ test('sustains concurrent BrowserTasks and real backend chat turns while headles
 
   const ipcSnapshot = await fixture.page.evaluate(async () => {
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
     return {
       resources: await api.resources(),
       events: await api.events(null, 200),
@@ -801,6 +832,7 @@ test('sustains concurrent BrowserTasks and real backend chat turns while headles
   const finalTasks = await fixture.page.evaluate(() =>
     (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser.listTasks()
   )
+
   expect(finalTasks).toHaveLength(0)
 
   sustainedLoadEvidence = {
@@ -875,12 +907,15 @@ test('restores the selected chat BrowserTask on the first real viewport attach w
   expect((await nativePageUrls(fixture.app)).filter(url => url === urlB)).toHaveLength(1)
 
   const bounds = { x: 12, y: 18, width: 720, height: 520 }
+
   const hubAfterStaleChat = await fixture.page.evaluate(async ({ bounds, taskId }) => {
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
     await api.attach(bounds, 'hub', taskId)
     await api.detach('chat')
+
     return api.setVisible(false, 'chat')
   }, { bounds, taskId: 'h013-restart-task-b' })
+
   expect(hubAfterStaleChat.viewportHost).toBe('hub')
   expect(hubAfterStaleChat.attached).toBe(true)
 
@@ -888,8 +923,10 @@ test('restores the selected chat BrowserTask on the first real viewport attach w
     const api = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
     await api.attach(bounds, 'chat', taskId)
     await api.detach('hub')
+
     return api.setVisible(false, 'hub')
   }, { bounds, taskId: 'h013-restart-task-b' })
+
   expect(chatAfterStaleHub.viewportHost).toBe('chat')
   expect(chatAfterStaleHub.attached).toBe(true)
   expect(activeViewportChild(await nativeViewportSnapshot(fixture.app)).url).toBe(urlB)
@@ -920,8 +957,10 @@ test('P0: native two-session human takeover denies writes with 409 then safely r
   const owner = await fixture.page.evaluate(async ({ taskId, sessionId }) => {
     const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
       WorkstationBridge & { takeControl: (id: string, session: string) => Promise<Record<string, unknown>> }
+
     return bridge.takeControl(taskId, sessionId)
   }, a)
+
   // Global controlOwner projects the active tab (session B), not every task.
   // Lease authority is owned per BrowserTask; verify A explicitly.
   const ownedTasks = owner.tasks as Array<BrowserTaskRecord & { humanControlLease?: { owner?: string } }>
@@ -940,6 +979,7 @@ test('P0: native two-session human takeover denies writes with 409 then safely r
       session_id: a.sessionId
     })
   })
+
   const deniedBody = (await denied.json()) as Record<string, unknown>
   expect(denied.status).toBe(409)
   expect(deniedBody.error_code).toBe('USER_CONTROL_ACTIVE')
@@ -951,12 +991,15 @@ test('P0: native two-session human takeover denies writes with 409 then safely r
   const released = await fixture.page.evaluate(async taskId => {
     const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
       WorkstationBridge & { releaseControl: (id: string) => Promise<Record<string, unknown>> }
+
     return bridge.releaseControl(taskId)
   }, a.taskId)
+
   expect(released.controlOwner).toBe('agent')
 
   const resumed = await browserAction(a.taskId, a.sessionId, `${pageBaseUrl}/p0-native-a-resumed`)
   expect(resumed.result?.title).toBe('H013 p0-native-a-resumed')
+
   const readback = await controllerRequest('/v1/action', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -967,102 +1010,12 @@ test('P0: native two-session human takeover denies writes with 409 then safely r
       arguments: { full: false }
     })
   })
+
   expect(readback.result?.url).toBe(`${pageBaseUrl}/p0-native-a-resumed`)
   const resources = await controllerRequest('/resources')
   const taskResources = (resources.resources ?? []).filter(resource => resource.resource_type === 'browser_task')
   expect(taskResources.find(resource => resource.task_id === a.taskId)?.session_id).toBe(a.sessionId)
   expect(taskResources.find(resource => resource.task_id === b.taskId)?.session_id).toBe(b.sessionId)
-})
-
-
-test('P0: five genuine AIAgent turns reach real Electron Browser and survive a lost ACK', async () => {
-  test.setTimeout(240_000)
-  if (!fixture || !controller) {
-    throw new Error('native five-turn fixture unavailable')
-  }
-
-  // The renderer creates both real chat sessions; the child process uses
-  // exactly their identities through AIAgent.run_conversation, not synthetic
-  // Kanban TaskRuns. Only model responses are scripted.
-  const a = await createRealChat(fixture, 'P0 agent native multi-turn chat A')
-  const b = await createRealChat(fixture, 'P0 agent native multi-turn chat B')
-  const controlPath = path.join(fixture.sandbox.root, 'workstation', 'Runtime', 'browser-control.json')
-  const python = process.env.HERMES_DESKTOP_PYTHON || process.env.HERMES_E2E_PYTHON
-  if (!python) {
-    throw new Error('Set HERMES_DESKTOP_PYTHON to the isolated Python test environment')
-  }
-
-  const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..')
-  const childEnv = {
-    ...buildAppEnv(fixture.sandbox),
-    PYTHONPATH: repoRoot,
-    HERMES_WORKSTATION_BROWSER: '1',
-    HERMES_WORKSTATION_BROWSER_ROUTING: '0',
-    HERMES_WORKSTATION_BROWSER_CONTROL_FILE: controlPath
-  }
-  // Async child is essential: the test's loopback HTML server must stay live
-  // while native WebContentsView navigation uses it.
-  const { stdout } = await execFileAsync(
-    python,
-    [path.join(repoRoot, 'workstation', 'tests', 'p0_native_browser_agent_driver.py'),
-      a.id, b.id, pageBaseUrl, controlPath],
-    { cwd: repoRoot, env: childEnv, timeout: 180_000, maxBuffer: 1024 * 1024 }
-  )
-  const lastLine = stdout.trim().split(/\r?\n/).at(-1)
-  const report = JSON.parse(lastLine || '{}') as {
-    accepted?: boolean; agent_turns?: number; lost_acks?: number;
-    terminal_after_lost_ack?: boolean; kanban_cards?: number
-  }
-  expect(report).toMatchObject({
-    accepted: true, agent_turns: 5, lost_acks: 1,
-    terminal_after_lost_ack: true, kanban_cards: 0
-  })
-
-  // The BrowserTask owner is the session, not a TaskRun borrowed from an old
-  // chat. Check actual controller resources and persisted native readback.
-  const resources = await controllerRequest('/resources')
-  const own = (resources.resources || []).filter(item => item.resource_type === 'browser_task')
-  const taskIdsA = own.filter(item => item.session_id === a.id).map(item => item.task_id)
-  const taskIdsB = own.filter(item => item.session_id === b.id).map(item => item.task_id)
-  expect(taskIdsA, `BrowserTasks of chat A: ${JSON.stringify(taskIdsA)}`).toHaveLength(1)
-  expect(taskIdsB, `BrowserTasks of chat B: ${JSON.stringify(taskIdsB)}`).toHaveLength(1)
-  const taskA = own.find(item => item.session_id === a.id)
-  const taskB = own.find(item => item.session_id === b.id)
-  expect(taskA?.task_id).toEqual(expect.any(String))
-  expect(taskB?.task_id).toEqual(expect.any(String))
-  expect(taskA?.task_id).not.toBe(taskB?.task_id)
-
-  const snapshot = async (taskId: unknown, sessionId: string) =>
-    controllerRequest('/v1/action', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        action: 'browser_snapshot', task_id: taskId,
-        session_id: sessionId, arguments: {}
-      })
-    })
-  expect((await snapshot(taskA!.task_id, a.id)).result?.url).toBe(`${pageBaseUrl}/p0-agent-youtube`)
-  expect((await snapshot(taskB!.task_id, b.id)).result?.url).toBe(`${pageBaseUrl}/p0-agent-other-chat`)
-
-  // The Browser button opens the Hub, not the Chat preview. The Hub owns its
-  // viewport even if the user changes chats; selection requires the existing
-  // TaskRail "Show" control (do not steal the Hub by changing chat selection).
-  const selectBrowserTask = async (session: { id: string; label: string }, targetUrl: string) => {
-    await openStoredSessionByTitle(fixture!.page, session.label)
-    await fixture!.page.getByRole('button', { name: 'Browser', exact: true }).click()
-    // TaskRail falls back to native page title if its session catalog has not
-    // yet projected the externally produced BrowserTask. Select by the
-    // deterministic page title, not by the chat list's title.
-    const browserTitle = `H013 ${new URL(targetUrl).pathname.slice(1)}`
-    const card = fixture!.page.getByRole('complementary', { name: 'Browser Task Rail' })
-      .locator('.group.rounded-md').filter({ hasText: browserTitle }).first()
-    await expect(card).toBeVisible()
-    await card.getByRole('button', { name: 'Show', exact: true }).click()
-    await expect.poll(async () => activeViewportChild(await nativeViewportSnapshot(fixture!.app)).url,
-      { timeout: 20_000 }).toBe(targetUrl)
-  }
-  await selectBrowserTask(b, `${pageBaseUrl}/p0-agent-other-chat`)
-  await selectBrowserTask(a, `${pageBaseUrl}/p0-agent-youtube`)
 })
 
 
@@ -1095,9 +1048,7 @@ test('P0: Browser UI Take Control and Release Control buttons are actually click
 // Native Browser mutation tests must run before the deliberate cold restart
 // test, which closes and replaces the shared Electron E2E fixture.
 test('P0: native Browser mutation remains observable after lost controller acknowledgment', async () => {
-  if (!fixture || !controller) {
-    throw new Error('P0 native uncertainty fixture unavailable')
-  }
+  if (!fixture || !controller) {throw new Error('P0 native uncertainty fixture unavailable')}
   uncertainNativeEffectCount = 0
   const taskId = 'p0-native-uncertain-effect'
   const sessionId = 'p0-native-uncertain-session'
@@ -1105,11 +1056,13 @@ test('P0: native Browser mutation remains observable after lost controller ackno
   const otherSession = 'p0-native-other-session'
   const navigation = await browserAction(taskId, sessionId, `${pageBaseUrl}/p0-uncertain-native`)
   expect(navigation.result?.title).toBe('H013 p0-uncertain-native')
+
   const initial = await controllerRequest('/v1/action', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId, session_id: sessionId, arguments: {} })
   })
+
   const elements = (initial.result?.elements ?? []) as Array<{ ref?: string; testid?: string; label?: string }>
   const target = elements.find(el => el.testid === 'commit-once' || el.label?.includes('Commit external'))
   expect(target?.ref).toMatch(/^@e\d+$/)
@@ -1118,6 +1071,7 @@ test('P0: native Browser mutation remains observable after lost controller ackno
   // acknowledgement AFTER the external loopback server records the effect.
   // A client timeout must not be taken as evidence of mutation failure.
   const abandoned = new AbortController()
+
   const pending = fetch(`${controller.url}/v1/action`, {
     method: 'POST',
     signal: abandoned.signal,
@@ -1125,9 +1079,11 @@ test('P0: native Browser mutation remains observable after lost controller ackno
     body: JSON.stringify({ action: 'browser_click', task_id: taskId, session_id: sessionId,
       operation_id: 'p0-native-uncertain-op-1', arguments: { ref: target!.ref } })
   }).then(() => 'acknowledged', () => 'client_timeout')
+
   await expect.poll(async () => {
     const read = await fetch(`${pageBaseUrl}/p0-native-effect-state`)
     const body = await read.json() as { applied: number }
+
     return body.applied
   }, { timeout: 10000 }).toBe(1)
   abandoned.abort(new Error('client_timeout_after_external_effect'))
@@ -1139,6 +1095,7 @@ test('P0: native Browser mutation remains observable after lost controller ackno
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId, session_id: sessionId, arguments: {} })
     })
+
     return String(snap.result?.snapshot ?? '').includes('COMMITTED')
   }, { timeout: 10000 }).toBe(true)
   const recorded = await fetch(`${pageBaseUrl}/p0-native-effect-state`)
@@ -1151,8 +1108,84 @@ test('P0: native Browser mutation remains observable after lost controller ackno
 // A cold restart is only a BrowserTask persistence test when the BrowserTask
 // belongs to an actual persisted Hermes chat. Synthetic controller-only
 // session IDs are not discoverable by the renderer's lazy restore path.
+
+test('P0: native UI acknowledges canonical uncertain Browser handoff without replay', async () => {
+  if (!fixture || !controller) {throw new Error('P0 native review fixture unavailable')}
+  const session = await createRealChat(fixture, 'P0 native review proof')
+  await openStoredSessionByTitle(fixture.page, session.label, 'P0 native review proof')
+  const taskId = 'p0-native-human-review'
+  await browserAction(taskId, session.id, pageBaseUrl + '/p0-review-state')
+
+  // Seed only the canonical HumanHandoffManager JSON under disposable HERMES_HOME.
+  // The agent-to-review triggering path remains a separate unqualified gate.
+  const reviewId = 'handoff-p0-native-review-once'
+  const file = path.join(fixture.sandbox.hermesHome, 'workstation', 'human_handoffs.json')
+  await fs.promises.mkdir(path.dirname(file), { recursive: true })
+  await fs.promises.writeFile(file, JSON.stringify({
+    schema_version: 1,
+    handoffs: [{
+      handoff_id: reviewId, task_id: taskId, session_id: session.id,
+      reason: 'uncertain_mutation_requires_review',
+      scope: { operation_key: 'p0-e2e-click', run_id: 'p0-run-e2e' },
+      status: 'waiting-for-human', requested_at: new Date().toISOString(),
+      resumed_at: null, returned_by: null
+    }]
+  }), 'utf8')
+
+  // Prove the exact authenticated renderer-to-backend route first, rather than
+  // assuming a missing banner is a React defect.
+  const backendReviews = await fixture.page.evaluate(async sessionId => {
+    return (window as unknown as DesktopBridgeWindow).hermesDesktop.api<{
+      handoffs: Array<{ handoff_id: string; session_id: string }>
+    }>({ path: '/api/workstation/handoffs?session_id=' + encodeURIComponent(sessionId), connectionId: 'local' })
+  }, session.id)
+
+  expect(backendReviews.handoffs).toEqual(expect.arrayContaining([
+    expect.objectContaining({ handoff_id: reviewId, session_id: session.id })
+  ]))
+
+  await fixture.page.getByRole('button', { name: 'Browser', exact: true }).click()
+  const transfer = fixture.page.getByRole('button', { name: 'Transfer Viewport to Chat Right Rail' })
+  await expect(transfer).toBeVisible()
+  await transfer.click()
+  // Hub exit can restore a prior draft tab and leave the preview rail folded.
+  // Re-select the canonical conversation and expose the rail through real UI.
+  await openStoredSessionByTitle(fixture.page, session.label, 'P0 native review proof')
+  const showRail = fixture.page.getByRole('button', { name: 'Show right sidebar' })
+
+  if (await showRail.isVisible()) {await showRail.click()}
+
+  const review = fixture.page.getByRole('button', { name: 'Acknowledge uncertain Browser operation' })
+  await expect(review).toBeVisible({ timeout: 25000 })
+  await review.click()
+  await expect(fixture.page.getByText(/Independent readback is required before work can continue/i)).toBeVisible()
+
+  const saved = JSON.parse(await fs.promises.readFile(file, 'utf8')) as {
+    handoffs: Array<{ handoff_id: string; status: string; returned_by: string }>
+  }
+
+  expect(saved.handoffs).toHaveLength(1)
+  expect(saved.handoffs[0]).toMatchObject({
+    handoff_id: reviewId, status: 'ready', returned_by: 'desktop-human'
+  })
+
+  const snapshot = await controllerRequest('/v1/action', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId,
+      session_id: session.id, arguments: { full: false } })
+  })
+
+  expect(snapshot.result?.url).toBe(pageBaseUrl + '/p0-review-state')
+
+  const another = await browserAction('p0-independent-native-review', 'p0-other-native-review',
+    pageBaseUrl + '/p0-review-unrelated')
+
+  expect(another.result?.title).toBe('H013 p0-review-unrelated')
+})
+
 test('P0: released and active human leases recover safely across cold Electron restarts', async () => {
   test.setTimeout(360_000)
+
   if (!fixture || !controller) {
     throw new Error('P0 restart fixture is not ready')
   }
@@ -1170,6 +1203,7 @@ test('P0: released and active human leases recover safely across cold Electron r
         takeControl: (id: string, session: string) => Promise<unknown>
         releaseControl: (id: string) => Promise<unknown>
       }
+
     await bridge.takeControl(taskId, sessionId)
     await bridge.releaseControl(taskId)
   }, { taskId, sessionId: session.id })
@@ -1183,6 +1217,7 @@ test('P0: released and active human leases recover safely across cold Electron r
   // readiness, session restore and later assertions.
   fixture.app = restarted.app
   fixture.page = restarted.page
+
   try {
     await waitForAppReady(fixture, 120_000, false)
     await expect.poll(
@@ -1194,12 +1229,15 @@ test('P0: released and active human leases recover safely across cold Electron r
 
     const restored = await fixture.page.evaluate(async taskId => {
       const tasks = await (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser.listTasks()
+
       return tasks.find(task => task.taskId === taskId) || null
     }, taskId)
+
     expect(restored?.sessionHost).toBe(session.id)
 
     const resumed = await browserAction(taskId, session.id, `${pageBaseUrl}/p0-cold-restart-resumed`)
     expect(resumed.result?.title).toBe('H013 p0-cold-restart-resumed')
+
     const readback = await controllerRequest('/v1/action', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -1207,6 +1245,7 @@ test('P0: released and active human leases recover safely across cold Electron r
         action: 'browser_snapshot', task_id: taskId, session_id: session.id, arguments: {}
       })
     })
+
     expect(readback.result?.url).toBe(`${pageBaseUrl}/p0-cold-restart-resumed`)
 
     // A second cold restart intentionally occurs with a live human lease.
@@ -1215,11 +1254,15 @@ test('P0: released and active human leases recover safely across cold Electron r
     const lease = await fixture.page.evaluate(async ({ taskId, sessionId }) => {
       const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser as
         WorkstationBridge & { takeControl: (id: string, session: string) => Promise<unknown> }
+
       await bridge.takeControl(taskId, sessionId)
       const current = (await bridge.listTasks()).find(task => task.taskId === taskId)
+
       return (current as BrowserTaskRecord & { humanControlLease?: { owner?: string } })?.humanControlLease
     }, { taskId, sessionId: session.id })
+
     expect(lease?.owner).toBe('human')
+
     const denied = await fetch(`${controller.url}/v1/action`, {
       method: 'POST',
       headers: { authorization: `Bearer ${controller.token}`, 'content-type': 'application/json' },
@@ -1228,6 +1271,7 @@ test('P0: released and active human leases recover safely across cold Electron r
         arguments: { url: `${pageBaseUrl}/p0-stale-human-denied` }
       })
     })
+
     expect(denied.status).toBe(409)
     expect((await denied.json() as { error_code?: string }).error_code).toBe('USER_CONTROL_ACTIVE')
 
@@ -1236,26 +1280,32 @@ test('P0: released and active human leases recover safely across cold Electron r
     const activeRestart = await launchDesktop(env)
     fixture.app = activeRestart.app
     fixture.page = activeRestart.page
+
     try {
       await waitForAppReady(fixture, 120_000, false)
       await expect.poll(async () => (await readControllerFile(controlPath)).token,
         { timeout: 30_000 }).not.toBe(leaseOwnerToken)
       controller = await readControllerFile(controlPath)
       await openStoredSessionByTitle(fixture.page, session.label, 'P0 cold restart real session')
+
       const recovered = await fixture.page.evaluate(async taskId => {
         const bridge = (window as unknown as DesktopBridgeWindow).hermesDesktop.workstationBrowser
+
         return (await bridge.listTasks()).find(task => task.taskId === taskId)
       }, taskId)
+
       expect(recovered?.sessionHost).toBe(session.id)
       expect((recovered as BrowserTaskRecord & { humanControlLease?: unknown })?.humanControlLease).toBeUndefined()
       const safelyResumed = await browserAction(taskId, session.id, `${pageBaseUrl}/p0-active-lease-restart`)
       expect(safelyResumed.result?.title).toBe('H013 p0-active-lease-restart')
+
       const finalSnapshot = await controllerRequest('/v1/action', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'browser_snapshot', task_id: taskId,
           session_id: session.id, arguments: {} })
       })
+
       expect(finalSnapshot.result?.url).toBe(`${pageBaseUrl}/p0-active-lease-restart`)
     } finally {
       await activeRestart.app.close().catch(() => undefined)

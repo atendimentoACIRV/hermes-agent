@@ -1,57 +1,5 @@
 # CURRENT — Workstation Engineering Journal
 
-## 2026-10-12 — Hermes Browser Automation V1, BAV04 crash-window experiment (PR #85)
-
-**Status: TEST-ONLY GREEN / PRODUCT RELEASE HOLD.** Worktree `feat/hermes-browser-automation-v1-20261012`, code checkpoint `5448f889fe94af43c0534b26a0243364be1a078e`. Production Browser runtime unchanged; existing BAV01/BAV03/BAV05 experiments preserved.
-
-- Hypothesis: an effectful Browser click followed by worker process loss before recording independent proof must not silently replay. Test RED: missing recovery contract; native Electron contract initially emitted only legacy BAV03 success marker; independent baseline-bound proof initially failed TypeError.
-- Experimental adaptation: canonical `ExecutionJournal` append/fsync pending intent *before* effect, `ArtifactStore` safe checkpoint only after independent fixture server readback, and existing `DeterministicRoutineRunner.resume_ref` to skip already verified mutation. No new engine, database or Browser owner.
-- GREEN: real disposable Electron `WebContentsView`/singleton with bearer-auth control. Alpha seed (server effects=1); Beta click (effects=2); Python worker `os._exit(37)` after external result but before persisting proof. Fresh Python process reconciles from journal + native snapshot + separate server counter, resumes without duplicate; effects remain 2. Node BAV04 E2E 1 passed; paired BAV04/BAV05 Electron 2 passed. Python recovery test suite 11 passed; Python targeted BAV04+routines 13 passed; additional memory/journal/artifacts 16 passed. Ruff F/UP, Node syntax, py_compile, git diff check and pre-commit lint passed.
-- Critical LIMITS: worker crash **not** Electron main crash; same already-admitted BrowserTask throughout; admission dict test-only synthetic and NOT authenticated lease, no real cross-TaskRun reuse; local test effect counter and zero model calls do not prove productive savings. H-079 Stage A remains blocked: live observed upstream main `9f63a6fe5cfe39adc7a8f1936fbdcffffbec1d74`; downstream origin/main `a2b56db1bc9e0b5acf48d94fa86a9844a1005842`; exact-head CI not demonstrated. No `main` merge.
-- Next RED: instantiate truly new authorized BrowserTask/TaskRun and prove fail-closed revoked lease / wrong owner / restart / uncertain click with authenticated source. First qualify H-079 Stage A in separate lane; only then consider downstream runtime changes. See `workstation/context/browser-automation-v1/NEXT_PROMPT.md` for recursive handoff.
-
-## 2026-10-12 — RED→GREEN P0-02 + P0-03, exact code HEAD b9addc487a
-`1c46a508d3`: two-process crash A effect/lost receipt, new B ID RED accepted → GREEN RECONCILIATION_REQUIRED with one effect; direct ACK forgery blocked; matching persisted owner receipt acknowledged without promoting VERIFIED. `3793c46a15`: canonical ExecutionJournal projection with private-content canary, 5 unittest PASS and 7 existing telemetry PASS; Ruff strict 19 baseline preexisting errors independently proven via git show; LEFTHOOK=0 for this one Python commit and gate OPEN. `b9addc487a`: CDP partial pointer errors and human takeover RED→GREEN 3 tests, no blind press retry, best-effort cleanup marks UNCERTAIN. Full Browser Vitest 174 PASS; Electron native E2Es PASS. Global tsc only known simple-git TS2349. No main changes/push/merge; Stage A authorized pending, NOT_RELEASE_QUALIFIED. [Checkpoint](../../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
-
-## 2026-10-12 — P0-02 RED→GREEN: interprocess exclusivity and lazy recovery
-
-`20acf1d2e9`: CRASH-03 fixture proved two processes both admitted same operation before lock (RED), then one admitted / one refused after exclusive create-only lock; new stale-owner session save test proved ledger erasure (RED), fixed shared lock across saves plus admission reconciliation. `da3ca49569`: native two-process crash/replay test exposed duplicated HTTP GET via lazy URL restoration even when explicit operation replay was fenced (RED 2 vs 1); fixed early replay check and pending navigation restoration as about:blank, with Chromium initial blank load to avoid stuck snapshot. Existing recovery test RED exposed randomly different receipt ID for generated admission; fixed same ID and new CRASH-ID assertion. Final **19/168 Vitest PASS** and native crash/replay + ordinary Electron PASS; typecheck only known simple-git TS2349 failure. All work local, no main/UI changes, no push. Stage A authorized pending, NOT_RELEASE_QUALIFIED. [Evidence](../../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
-
-## 2026-10-12 — P0-01/P0-02 partial RED→GREEN: persistent admission fence
-
-In isolated worktree, commit `81a16ed00b` extends existing BrowserSessionStateFilePersistence with fail-closed pre-effect mutation admission. Tests RED: missing admission API, A→B→A replay, Windows fsync EPERM on read-only handle, legacy replay-contract assertions. GREEN with `r+` flush: 164/164 Vitest in 19 files and offline real Windows Electron E2E. Found test isolation defect: tests set HERMES_HOME but Workstation on Windows uses LOCALAPPDATA without HERMES_WORKSTATION_HOME. Added per-test isolated state path to runner, no user data deleted. Typecheck still reports `electron/git-review-ops.test.ts(124,5)` TS2349 simple-git, outside this patch. Remaining P0-01 cross-process fault injection, P0-02 Python journal + terminal receipt and inter-process locking, P0-03/04, P1/QUAL. Stage A skipped with maintainer authorization for local only; NOT_RELEASE_QUALIFIED, no merge/push. [Checkpoint](../../research/playwright-code-to-code-2026-10-12/10-IMPLEMENTATION-CONTINUITY.md).
-
-## 2026-10-12 — Playwright C2C: E2E Electron real e correções locais
-
-Em branch isolada `feat/playwright-c2c-kits-20261012`, commits `1997d1cbf4` harness Native Electron, `9f8b4740d8` actionability/ref/lease/document checks, `93186e4b44` cache SPA MutationObserver e `e152603402` renderer PID/RAM com privacy whitelist. **RED→GREEN reais**: overlay interceptando clique, takeover após target await, texto SPA alterado sem childElementCount variar e métrica renderer ausente. Testes: 18 arquivos/159 Vitest PASS, 7 Python isolated PASS, harness Windows Electron real PASS. **Partial** I01 (restart cross-process pendente), I02 (rAF stable e semântica plena), I04 (iframe/OOPIF), I05 (provider costs/traces); **I06 durable journal NOT STARTED**. Typecheck Electron full encontrou erro fora do diff em `electron/git-review-ops.test.ts(124,5)` (`simple-git` não-callable). Stage A H-079 com exceção somente local, **não** release. [Report](../../research/playwright-code-to-code-2026-10-12/09-MAINTAINER-EXCEPTION-IMPLEMENTATION-2026-10-12.md).
-
-## 2026-10-12 — Autorização mantenedor para diferir Stage A Playwright C2C
-
-**PASS_WITH_AUTHORIZATION / NOT_RELEASE_QUALIFIED.** O mantenedor expressamente mandou marcar como pendência a sincronização upstream, seleção do pin e reconciliação de seams; permitiu avançar com testes e patches técnicos em worktree separado sem sincronizar. Isto substitui **apenas o bloqueio de entrada para implementação local**, não transforma baseline antiga em qualificada e não autoriza merge/push/release nem suprime CI/E2E. Estado anterior: `main@a2b56db1`, upstream local `835c3dd0` com 245 commits à frente do pin ancestral `66605471`. Retomar Stage A antes de promoção, conforme [remediação](../../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md).
-
-## 2026-10-12 — Playwright C2C Stage A gate: BLOCKED (sem runtime edits)
-
-Preflight em worktree isolado `audit/playwright-c2c-20261012`: `main@a2b56db1`, `upstream/main@835c3dd0` local, merge-base `66605471`, 963 ahead/245 behind. `tools/browser_tool.py` mudou upstream, registry contém Browser legacy seam REMOVE sem comprovação de remoção/paridade, e exact-head CI required não estava comprovado (API combined statuses `[]`, PR-triggered runs `[]`, não é afirmação de red CI). Tentativa de ref remoto `ls-remote` bloqueada pela ferramenta; ausência de pin fresco/Stage A e qualificação exige **BLOCKED** por H-079.2. O prompt proíbe implementar I01..I06 nessas condições. Checkout principal e UI de outros agentes preservados. [Provas do gate](../../research/playwright-code-to-code-2026-10-12/07-GATE-0-BLOCKED-2026-10-12.md) · [Plano Stage A](../../research/playwright-code-to-code-2026-10-12/08-REMEDIACAO-STAGE-A.md).
-
-## 2026-10-12 — PLAYWRIGHT-C2C-01: leitura código-a-código e decisões de reuso
-
-**Estado: auditoria documental concluída, NOT_RELEASE_QUALIFIED.** Playwright local `1.65.0-next`/Apache-2.0, hash por arquivo (sem `.git` local), 16 oportunidades comparadas com Hermes no worktree isolado `audit/playwright-c2c-20261012`. Evidências concretas: `dom.ts::_retryPointerAction` e injected `checkElementStates` rAF/hit target, `frames.ts`/`progress.ts` cancelamento e lifecycle, `snapshotterInjected.ts` MutationObserver/cache, `tests/electron/electron-webcontentsview.spec.ts` WebContentsView real. Classificado COPY somente como candidato de fixtures pequenas com notices, ADAPT behavior sob Hermes owner e REJECT browser paralelo/AR/HAR crus. 5 patch-kits e prompt. Nenhum runtime alterado, nenhuma medição nova de velocidade e nenhum E2E nativo executado. [Inventário e matriz](../../research/playwright-code-to-code-2026-10-12/02-MATRIZ-SIMBOLO-A-SIMBOLO.md).
-
-## 2026-10-12 — BROW-TEL: telemetria real inspecionada, nova captura preparada
-
-**Estado: patch local testado, NOT_RELEASE_QUALIFIED.** SQLite existente: 5.108 eventos, quick_check ok, 31 sessões/91 tarefas/24 runs, 3.189 provider calls todos sem runId, zero verification e mutation dispatch; 84 ferramentas browser sem comprovação de rota nativa, p50 49,55 ms e p95 8065,15 ms (mistura de backends e tool observer). Instrumentação separa REQUEST_ATTEMPTED, ACK, LOCAL_VERIFIED e UNCERTAIN, captura medidas estruturais CDP/snapshot/CPU-main/RSS-main/cache/latência, nunca texto/form/segredos. Fix closes SQLite reads and writes (reproduziu bloqueio Windows), modelo não recebe `__telemetry`. Novos testes RED/GREEN e suite Browser/Electron 156/156; testes Python isolados 7/7; sem full Python/Windows native E2E, exact-head CI ou rollout na instalação ativa. [Relatório](../../research/hermes-native-browser-telemetry-2026-10-12.md) · [Prompt Playwright code-to-code](../../research/playwright-code-to-code-prompt-2026-10-12.md).
-
-## 2026-10-12 — BROW-NATIVE-NEXT: readback do batch, fencing AXTree e cache schema (branch-only)
-
-**Estado: 3 COMMITS LOCAIS / TESTES GREEN / NOT_RELEASE_QUALIFIED.** Base `dbf51de048` em `audit/browser-native-evidence-20261012`. Commits: `44de4faa37` batch receipt ≠ VERIFIED, pós-condições DOM, takeover/document checks, bloqueio de replay; `2673fedc6d` rejeita AXTree se o documento mudou; `7767410643` evita colisão de cache entre schemas e redige segredos em arrays de objetos. RED reproduziu falso VERIFIED, replay que reexecutava mutação, snapshot misto de documentos, cache incompatível e vazamento em arrays; GREEN **155/155** em **17 arquivos Browser/Electron**, testes de helper TypeScript passaram com `--types node`. Nenhum E2E nativo, CI exact-head nem p50/p95/custo foi executado; typecheck completo Electron bloqueado por dependência `electron` ausente. Provas locais não fecham H-079/release, efeito DOM não prova persistência remota, a guarda de replay não substitui journal durable e fingerprint da extração segue fraco para mutação dinâmica. Checkout principal com alterações UX não commitadas preservado. [Relatório detalhado](../../research/browser-native-next-2026-10-12.md).
-
-## 2026-10-12 — Browser Native AXTree: CDP lifetime + SPA reference identity (branch-only)
-
-**Estado: PATCH LOCAL TESTADO / NOT_RELEASE_QUALIFIED.** Branch isolada `audit/browser-native-evidence-20261012`, base `main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. `workstation-browser-snapshot.ts`: objetos CDP liberados por `objectGroup` em `finally`; refs `@e` novas usam contador persistente da página, evitando colisão após mudança da lista em SPA. RED: 2 falhas de resource lifetime + 1 falha A→B→A; GREEN: 139/139 testes em 16 arquivos Browser/Electron. Typecheck bloqueado pelo pacote `electron` ausente no ambiente reutilizado; sem native E2E nem exact-head CI do `main` atual, e sem afirmação de ganho quantitativo. Próximo P0: investigar `browser_batch_actions::verifyAfter` que equipara receipt a `verified` sem readback independente. Nenhum merge ou push executado, nem alterações no checkout ativo de outra trilha.
-
-[Relatório e evidências](../../research/browser-native-followup-2026-10-12.md) · [Prompt implementador](../../research/browser-native-followup-2026-10-12-implementer-prompt.md).
-
-
 ## 2026-10-11 — Hermes Work: Aceleração Operacional, Redução de Redundâncias e Custo (D-043 / P0–P2)
 
 **Classificação: IMPLEMENTAÇÃO COMPLETA, TESTES E QUALIFICAÇÃO INTEGRADOS.**
@@ -134,7 +82,7 @@ Base/Pin Upstream: `66605471e9f0b0832abbefaf625ce08e948ca540` verificado como an
 7. **UX (Melhorias inspiradas no BrowserOS):**
    - Painel `workstation-browser-pane.tsx` atualizado com banner de transição segura para controle humano, barra de progresso para carregamento/execução, identificador de tarefas em segundo plano e acesso integrado ao `TaskJournalDrawer`.
 8. **OPT-05 (Importação de Sessões Chrome - HOLD):**
-   - Mantido estritamente em HOLD por motivos de privacidade e conformidade com `2 do `SECURITY.md`.
+   - Mantido estritamente em HOLD por motivos de privacidade e conformidade com §2 do `SECURITY.md`.
    - Documento de análise de risco e requisitos mandatórios registrado em `workstation/context/OPT_05_CHROME_IMPORT_SECURITY_EVALUATION.md`.
 9. **OPT-07 / OPT-11 (Drift & Backends Python — DIAGNOSED, sem mudança de runtime):**
    - 32 arquivos `tools/browser*.py` + `workstation/browser*.py` classificados por responsabilidade em `workstation/context/OPT_07_11_DRIFT_BACKEND_CLASSIFICATION_2026-10-11.md`: 2 runtimes sempre presentes (agent-browser local; Electron Workstation), demais = drivers opcionais sob demanda, roteadores, fachadas, guardas de política e suporte. Nada removível com segurança.
@@ -5922,219 +5870,49 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 - Electron/Vitest targeted regressions: **58 PASS / 0 FAIL**. TypeScript E2E `tsc -p tsconfig.e2e.json --noEmit`: exit 0. Scoped Ruff and git whitespace validation: PASS.
 - The linked native UI approval→typed readback→work-item continuation and packaged Windows installer/CI have **NOT** been qualified. No merge or real user data mutation authorized.
 
-## 2026-10-12 — Document-only strategic freeze of Kanban / Browser authority work
 
-**Authorization and intent:** maintainer is changing effort direction; preserve knowledge and resume point, do not continue implementation. Created an isolated documentation branch from `main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. No runtime, PR merge, Kanban DB or human-handoff real mutation; main checkout's uncommitted work remains untouched.
+## 2026-10-12 — KANBAN-04 native human review transport (partial gate)
 
-**Provenance:** 4,458-line exported 11–12/10 history (SHA-256 `f429972fb70f97af5131bb81df274edbfb9614a89d050f077224ea5aa4f0251b`); cross-checked actual GitHub PR metadata for #70–#77/#79–#83 and specific P0 docs in PR #83. Note: older historical summaries and linked private sessions are not substitutes for direct independent reading of each original run.
+Previous verified published HEAD: 22498a09db0802c06125f5a5ec4cb5039da9b98f; isolated worktree C:\Github\hermes-agent-kanban-browser-authority-20261012; PR #83 draft; 34 unrelated root-checkout edits preserved.
 
-**Key findings preserved:** D-045 admission (conversation/point_action/durable_task); effect taxonomy BOA-001 and Rails 2/3; fail-closed authority/fence, one TaskRun per claim and per review; Kanban-04 handoff JSON concurrency and lost-ACK native proof; 106 historical deleted cards + 55 orphaned handoffs remain dry-run-only; Creative #77/#81, One-Click #70, Experience #82 and Browser benchmark gaps. Exact gates KANBAN-01..07 are documented in dossiê and Known Issues.
+### Canonical boundary discovered
 
-**Last implementation checkpoint observed:** #83 OPEN/DRAFT, HEAD `22498a09db`, base #80 (stack #79→#76). Historical execution reports 34 Python PASS, 58 Vitest PASS and 4 native E2E PASS; no exact-head CI statuses or workflow runs returned. **Not done:** real HANDOFF to Desktop UI approval + typed external readback + safe continuation with no mutating replay, nor packaged release. Next code seam if and only if resumed: `workstation/integrations/hermes/tool_batch_admission.py::workstation_tool_batch_admission()` through `agent/turn_tool_round.py` / `run_agent.py` to IPC/UI, `VerificationContract/evaluate_verification()`.
+The agent's `BatchAdmissionAction.HANDOFF` is projected as a tool result via `agent/turn_tool_round.py::run_tool_round` (and `run_agent.py` direct-call path) but there was no React-native review UI/API integrated with `HumanHandoffManager`. It did NOT connect typed `evaluate_verification` readback automatically. Do not represent that tool response as an authorized human approval.
 
-**Artifacts:** `HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md`, `HERMES_WORK_P0_ISSUES_DETAIL_2026-10-12.md`, `HERMES_WORK_PR_RECONCILIATION_2026-10-12.md`, `HERMES_WORK_SOURCE_EVIDENCE_MANIFEST_2026-10-12.md`, `HERMES_WORK_DECISION_RATIONALE_2026-10-12.md`, and `HERMES_WORK_RESUME_PROMPT_2026-10-12.md`. Canonical KI-028..KI-043 registered with technical status and independent PAUSED_BY_STRATEGY execution flag. Resume only by explicit future decision, preserving release/authority gates.
-## 2026-10-12 — Experience Compiler activation continuation (PR #82; not release-qualified)
-- Feature branch on isolated worktree: EC-01 fixed deterministic native command formal intent mismatch to promoted Browser capability, not a policy bypass; H-080B [True] and [False] passed, adjacent four-file regression 42 passed. Commit 38dc4b52a1.
-- EC-03 RED to GREEN: cached run-local owner without _bound_task_run wrongly reused; explicit identity required; owner factory 5/5 PASS.
-- EC-07 RED to GREEN: EvidenceRef telemetry refs caused SQLite JSON serialization failure; URI-only projection avoids metadata leakage; telemetry + native intent suite 13/13 PASS. System1 telemetry suite still red due to unavailable laya module.
-- EC-02 prior patch e81d23a812 not yet product qualified. H-079/H-081/H-082 exact-HEAD CI, Electron, real Laya DIRECT, lease/restart E2E and performance baseline remain HOLD. Main untouched; no merge authorized.
+### Implemented, scoped
 
-## 2026-10-12 — Experience Compiler RED-GREEN authority and verified evidence, PR #82 DRAFT
-- EC-03: browser_navigate read-only classification and wrong-host bypass reproduced by 2 RED tests; fixed with HTTPS scoped CALL and required readback; 3 browser tests PASS. Stale cached owner dispatch/readback RED and production TaskRun binding check GREEN, 7 owner tests PASS.
-- EC-03: revoked lease after snapshot but before durable item start RED (2 unauthorized calls); runtime now rechecks authority/lease/uncertain effects at item start and immediately before every step. Two cancellation window regressions plus happy path PASS.
-- EC-04: fabricated progressive VERIFIED_SUCCESS via missing/stale/bad evidence RED; now requires E2+ persistent matched owner proof and canonical verifier linkage; 10 focused progressive/browser tests PASS. Kernel provides operation-bound canonical verification receipt.
-- H080B paired regression after changes 2 PASS. Prior full safety suite 49 PASS; final full regression for last race fix see activation EVIDENCE.md.
-- EC-05 vendored Laya 0.3.23 matches lock SHA 4aa6761be8173de4ce6d92c31b3e40b6eaf59a7c; 2 System-1 telemetry tests PASS. Real DIRECT/H-081/H-082/CI release gates remain HOLD. No main merge.
+- `plugins/workstation/dashboard/plugin_api.py`: asynchronous, session-filtered read of *waiting* `HumanHandoffManager` entries using existing canonical JSON owner, bounded to 32; projects IDs/status/reason only, no operation payload. A review acknowledgment performs identity/status/run fences and delegates to `HumanHandoffManager.resume` (atomic one-time transition); output explicitly reports `readback_required=True, mutation_authorized=False`.
+- `hermes_cli/web_server.py`: thin token-protected routes `GET /api/workstation/handoffs?session_id=...` and `POST /api/workstation/handoffs/{handoff_id}/review`; no direct mutation/replay, no second state store.
+- `apps/desktop/src/app/chat/right-rail/workstation-browser-pane.tsx`: polls authenticated *local* backend only when pane/session active, scopes review to current session, shows warning and human acknowledgment button; success removes the request without granting tool permission and displays explicit readback-needed notice.
+- Tests: new `test_p0_native_handoff_review_api.py` intentionally RED 2/2 (API missing), then GREEN with other handoff regressions **12 PASS / 0 FAIL**; `workstation-browser-pane.test.tsx` new UI test RED missing button, then GREEN **2 PASS / 0 FAIL**, verifying real React handler bound to expected session/run and no direct Browser mutation; app and E2E TypeScript check exited 0; scoped Ruff and git diff --check passed.
+- New source-built Electron E2E `P0: native UI acknowledges canonical uncertain Browser handoff without replay` in `apps/desktop/e2e/workstation-headless-load.spec.ts` uses a seed of canonical JSON in disposable `HERMES_HOME`, not actual agent admission. This tests only native UI/transport and read-only Browser continuation; it cannot qualify automatic agent handoff→typed readback→work-item completion. First isolated attempt failed **before entering test body**: fixture onboarding/reconnecting overlay obstructed composer after 120s (`waitForAppReady`). A combined 2-test run starts with already qualified Browser UI takeover first; final verdict must be recorded separately.
+- No real user Kanban, sessions, Browser leases or historical handoffs mutated. No main merge.
 
-## 2026-10-12 — EC-03 formal CALL + EC-04 intermediate provenance
-- RED->GREEN: named Trello navigation intent previously budgeted only SET goals while runtime adoption requires CALL external effect; add exact-host CALL, wrong-host/read-only tests; focused 10 PASS, native H080B pair 2 PASS, local commit 40f8f82a66 with Lefthook PASS.
-- RED->GREEN: verified progressive experience discarded operation/target families and did not store before/after delta. Kernel now forwards formal contract labels and only owner-known fields; refuses arbitrary replay parameters.
-- RED->GREEN: unattested caller-supplied prestate could invent causal deltas. Require independently persisted pre-readback proof with task/run/operation match and state agreement or leave delta empty. Proof schema currently has no qualified in-production producer. Negative wrong-run/wrong-value/before-false tests PASS.
-- Laya vendored 0.3.23 focused vendor+contract+routing: 10 PASS 1 SKIPPED. EC-04 full end-to-end, EC-05 live DIRECT, H-079/H-081/H-082, CI exact-head and merge remain HOLD.
+### Remaining highest-priority gate
 
-## 2026-10-12 — Latest EC-03/04 evidence and publication
-- Exact code commits on isolated PR #82 branch: 40f8f82a663152bcbade0fea809352973edd1dc7 and c3f87a84860615f2086f17191921605068c6932c, Lefthook native lint PASS.
-- Full regression after conservative witnessed-prestate gate: **56 PASS in 221.83s**. H080B native pair 2 PASS; owner 7 PASS, Laya focused 10 PASS /1 SKIPPED. Release authority and CI exact-head remain HOLD, no main merge.
+1. Native UI transport E2E green on own-head Electron; investigate fixture failures separately from application logic. If already passes, implement **real agent admission** path (not seeded ledger) emitting HANDOFF to renderer and resume signal to agent, including proof binding.
+2. Trusted provider readback under `workstation/control_plane/verification.py::evaluate_verification`: validated owner contract, independent persistence proof, task/run/operation/resource/effect identity, read-after-write, wrong-run and stale negative controls. Never accept renderer supplied boolean as proof. Never redispatch uncertain external mutation.
+3. Non-mutating work-item checkpoint continuation and restart E2E, isolation across two sessions.
+4. Other KANBAN-01/02/03/05/06/07 gates; KANBAN-06 dry-run only (106 deleted tasks and 55 orphan handoffs), release app packaged + exact-HEAD CI/H-079 + stacked PR dependencies. PR draft no auto merge.
 
-## 2026-10-12 — EC-04 real scoped prestate, hash readback and intermediate corpus
-- Production owner RED→GREEN: wrong filesystem observed from process CWD instead of step.base_dir; independent prestate missing before dispatch. Fixed within existing OperationalKernel (no parallel execution owner).
-- Scope/lease negatives: missing admission, cancelled plan, foreign RunId, scope escape, restart after dispatch marker, revocation between prestate and dispatch. Scoped single fs_write only; no broad authority grant.
-- Real fs_hash verifier RED: VERIFIED result but no VERIFIED_SUCCESS experience due lack of persisted readback ref. GREEN: hash-only canonical receipt; positive unfinished TaskRun sample in corpus, second item PENDING. Cross-resource proof laundering RED→GREEN, rejected.
-- Local focused 35 PASS after proof; larger exact-HEAD regression and H080B to be confirmed; Laya direct/checkpoint and release qualification still HOLD.
-
-## 2026-10-12 — BAV-00..05 native automation V1 test-only checkpoint
-- Isolated worktree browser-automation-v1-20261012 created from origin/main; parallel main 34-file dirty state and Playwright C2C/Experience Compiler worktrees left untouched.
-- Real Electron + WebContentsView + Playwright-core CDP on disposable profile: BAV01_CDP_SPIKE_PASS, independent loopback server effects=1. Runtime debugger observed detached immediately after snapshot; no unsupported constant-attachment assumption. No production CDP bypass.
-- BAV03 RED from test harness constructing separate BrowserRuntime: type/click owner ACK but site untouched, 0 effects. GREEN by reusing getWorkstationBrowserRuntime singleton and bearer-auth controller, two parameterized native runs with independent page/server confirmation: BAV03_CONTROLLER_PROCEDURE_PASS, effects=2, controller calls=12, model calls in harness=0.
-- BAV05 RED stale @e refs without a valid semantic anchor; GREEN after testid binding, same fixture performs second run using nonexistent @e refs and exact known anchors. WebProcedure.from_dict fixture parsed lifecycle DISCOVERED; not promoted nor persisted into ProceduralMemory.
-- Python routines 2 passed. JS syntax node --check clean. Full Vitest standard config unavailable due missing @rolldown/plugin-babel in existing deps; NOT CI green. Stage A H079 not qualified for release; no modifications to production runtime.
+Mandatory: any incomplete agent must return another independently executable resume prompt with exact verified HEAD, branch, worktree, tests and next functions.
 
 
-### 2026-10-12 — BAV05 experimental persistent replay
-- Baseline: feat/hermes-browser-automation-v1-20261012 from origin/main a2b56db1bc; isolated test-only files and documentation, production runtime untouched.
-- New RED contract initially failed on absence of canonical persistence. Native authority rejected invented new run_id with 400 CAPABILITY_MISSING. Corrected harness to respect canonical fixture task binding.
-- GREEN test (node --test workstation-browser-bav1-persistence.contract.test.cjs): 1 passed, 0 failed, two fresh Python replays of promoted fixture-scoped procedure, three independently counted local-server effects total; no LLM calls in harness.
-- Gate: H-079 Stage A/CI exact-head unresolved; test evidence is not release certification. No main merge, no second BrowserRuntime, no production Laya validation. Further work: full distinct TaskRun admission, uncertainty/restart fail-closed, Browser integrated UI + dogfood under authority after qualification.
+### Native Browser Hub → Chat preview routing RED→GREEN (2026-10-12)
 
-## 2026-10-11 — Renderer-first creative MVP isolated draft
-- Baseline `origin/main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`; upstream pin `66605471` retained; H-079 exception authorizes isolated code only.
-- Critical UI defect: `CreativeWorkspacePage` read `useCreativeWorkspace()` without any mounted provider; added explicit provider around existing page. Previously blank-project route showed a static welcome with no create/open action, and toolbar/Inspector/Graph buttons logged or did nothing.
-- Implemented limited editable vector sandbox in existing renderer context: typed edits, bounded undo, keyframe interpolation, human controls, explicit JSON import/export, SVG frame, fail-closed script/media input validation. This is **not** the shared canonical creative project owner. Full details: `creative-workstation/MVP_EDITOR_DELIVERY_2026-10-11.md`.
-- Focused Vitest model+context 7 passed; page 3 passed on rerun; renderer TypeScript `tsc -p . --noEmit` succeeded. Full Electron typecheck from unintegrated main showed the known simple-git mismatch; PR #70 provides independent lock repair. No native packaged UI/AI parity proof, video export, GLB or exact SHA CI; draft only.
+Native source-built E2E `P0: native UI acknowledges canonical uncertain Browser handoff without replay` initially failed before test body when an isolated first launch was blocked by onboarding/reconnect overlay. A paired run with the Browser UI readiness scenario passed the first test but failed to display the review after transfer.
 
-### HCW-HYBRID-01 — 2026-10-11 — isolated implementation evidence
+**Root cause confirmed by source and E2E DOM snapshot:** `apps/desktop/src/app/browser/index.tsx::transferToChat` called `openWorkstationBrowserPreview()` before navigating away from `/browser`; `apps/desktop/src/store/preview.ts::openWorkstationBrowserPreview` intentionally rejected all calls while the Browser Hub route was active. The explicit transfer therefore returned home with the right-rail preview not opened. The E2E had also not explicitly selected the newly persisted chat, leaving `New session` in focus, so session-scoped reviews were not visible.
 
-- Worktree `C:\Github\hermes-agent\.worktrees\hcw-hybrid-01`; branch `feat/hcw-hybrid-01-20261011`; baseline `origin/main@a2b56db1bc9e0b5acf48d94fa86a9844a1005842`. Main checkout dirty (34 entries) left untouched.
-- H-079 upstream pinned ancestor `66605471...`; fresh fetch upstream/main `835c3dd038d903182a66ecc45e34bf5e0de65f00`, baseline divergence 963 downstream / 245 upstream. No Stage A merge or exact-head baseline qualification. **DEVELOPMENT_ONLY**, not ready to merge.
-- EffectCraft CLI `cargo build --offline --locked -p effectcraft-cli` exit 1, missing pinned FilmCraft Git dependency. No real HyperFrames+EffectCraft media render evidence; H-C1 BLOCKED.
-- Test-first functionality: `save_hybrid_project_revision` and canonical `save_creative_document(..., native_files=...)` preserve hashed EffectCraft/HyperFrames source bytes under a single revision, with negative source/path/ETag tests; `HybridTimeMapping` uses exact rational clocks; `creative_export` fails closed on no source and undecodable frame (previous pseudo-hash and black fallback).
-- Regression and exact verification results: see `../creative-workstation/evidence/HCW-HYBRID-01.md` and PR test report. No Electron E2E or release claim.
+**Fix:** explicit `openWorkstationBrowserPreview({ fromHub: true })` bypasses the route guard only for the human transfer, while automatic opens still respect the guard; the E2E selects its persisted conversation with `openStoredSessionByTitle`. New `src/store/preview-tabs-restart.test.ts` test reproduces the failed transfer RED, then GREEN after the fix. `workstation-browser-pane.test.tsx` UI button/REST test also GREEN. Joint UI run: **4 passed, 0 failed**; an unrelated initial UI baseline import was slow and timed out with default 15s on overloaded Windows (later 30s rerun GREEN); no production timeout increased. Paired native E2E rerun is underway and must have its actual outcome recorded before declaring qualification.
+
+The UI human action acknowledges uncertainty once; it **never** clears mutation uncertainty, confers Browser lease, marks a Kanban card done, or repeats the external effect. The actual agent execution chain → typed verifier → WorkItem continuation gate remains open.
 
 
-### HCW-HYBRID-01 follow-up — transparent source and dependency contracts
-
-Pinned HF source `6ae1af7470133db72de6d9bbceeaf80e85695c68` cloned to isolated temporary location and Bun `--frozen-lockfile --ignore-scripts` dependencies installed (1,457 packages). Pinned EC Git FilmCraft dep fetched; Cargo build progressing. A direct attempt to execute the source HyperFrames CLI was refused by connector security, and was not bypassed. No engine E2E result/PNG/MP4 claimed. Added test-first RGBA footage validator, graph topology and declared-binding checks enforced on hybrid revision, and content-addressed render fingerprints. These are bounded source-only components, not a production render/cache/agent/editor integration. Preserve H-079 NO PROMOTION. See `../creative-workstation/evidence/HCW-HYBRID-01.md`.
-
-
-- Updated partial hybrid source regression (26 files, 21 legacy excluding yaml environment issue + 5 new): **121 passed, 1 Windows symlink skip**, exit 0, 100.62s. Native EffectCraft/HyperFrames E2E remains unexecuted and H-079 promotion still blocked.
-
-
-### 2026-10-12 — HCW-HYBRID-FINAL native build and import verification
-
-- Reused isolated PR #81 worktree; root checkout 34 dirty changes preserved.
-- Native EffectCraft CLI executable at C:\Temp\hcw-hybrid01-effectcraft-target\debug\effectcraft-cli.exe passed --help and actual --demo frame PNG render. Newly added opt-in real-engine pytest creates/saves/reopens .ecproj, uses native file.import with RGBA sequence and verifies different decoded pixels across time; avoids claiming Pillow frames came from HyperFrames.
-- Added strict effectcraft_import_invocation returning pinned CreativeInvocation for existing start_creative_process; confirmed RED missing function then native GREEN, pathname/output/binary fingerprint negatives.
-- HyperFrames SHA 6ae1af7470133db72de6d9bbceeaf80e85695c68: core/parsers/lint/studio-server/producer built from source with exit 0; CLI --version 0.8.143 exit 0. Full CLI build-copy needed studio dist; studio build in progress. Strict render of first 2s fixture refused missing_gsap_script; no HF output qualified. Remote HTML edit was denied by security settings and not bypassed.
-- Persistent checkpoint: creative-workstation/HCW_HYBRID_EXECUTION_STATE.md. H-079 NO PROMOTION. CI/native HF->EC E2E still pending.
-
-
-### 2026-10-12 — HCW-HYBRID-FINAL continuation, real dual-engine moving native proof
-
-Confirmed clean worktree feat/hcw-hybrid-01-20261011 at starting fe8d5a7c5f, root
-checkout preserved with 34 uncommitted changes. Pinned HyperFrames official
-animated transparent fixture rendered 60 frames 640x360 30fps, 7 distinct hashes,
-CLI exit 0; EffectCraft imported true frames with typed native invocation,
-reopened .ecproj, generated title layer and a Gaussian Blur effect set to 20.
-Rendering produced changes independently proven by decoded pixel comparisons.
-Actual scoped ProcessRegistry launch with real approvals passed, and actual
-canonical CreativeDocument revisions preserved both real source engines with
-stale ETag rejected. Export of hybrid native source produced 60-frame
-640x360 H264 MP4; FFprobe/FFmpeg independently verified 2.0s, 30fps,
-codec, frame count, and different decoded frames. No fake fallback.
-28-file scoped regression 128 PASSED / 1 SKIPPED; separate pinned source
-producer->EffectCraft opt-in test PASSED in 49.03s. Full CI, H-079, independent
-native HF authored edit, Electron human/AI shared editing and 1920x1080 10s
-demo remain blocked. Draft PR #81, no main merge. Details/evidence in
-creative-workstation/HCW_HYBRID_EXECUTION_STATE.md.
-
-
-Final validation receipt: 28-file Creative scope, pinned native engines fully
-opted in, 130 passed / 1 skipped / 0 failures in 128.07s,
-FINAL_SCOPED_EXIT=0. Not full CI, no merge/main modification.
-
-
-### 2026-10-12 — HCW hybrid parameter edits, CAS backend and TaskRun CLI
-
-Resumed clean baseline PR #81 SHA 5638aeee66 in linked worktree;
-root at 9fffa7f3ff with 34 unrelated dirty changes untouched.
-Official HF variables-prod source rendered two 1920x1080, strict-mode,
-declared-parameter variants; independent PNG SHA changed. Native EC
-import pixels changed and a separate EC text-layer edit changed pixels.
-Persisted all native dependencies (.ecproj, HTML, JSON, silence.wav)
-through three immutable CreativeDocument revisions, stale ETag rejected.
-New opt-in durable HEAD CAS, OS interprocess lock, command batch
-atomic clone and receipt-based idempotency; concurrent human/agent
-one-winner test, failed batch third command no head movement.
-Added admitted TaskRun backend/CLI for canonical-create/open/apply-batch
-with session, active run, policy, artifact/journal receipt, and carry-
-forward of unchanged hashed native assets. TDD RED/GREEN observed,
-existing main and legacy writers not changed. No Electron UI verified;
-no distributed engine-native transaction, identity proof, H-079 or
-global CI. Ledger and evidence in creative-workstation. Full 32-file
-regression PID 19584 pending final receipt at writing time.
-
-Final tests: 32 scoped files with native opt-in engines configured,
-151 passed / 1 skipped / 0 failed in 175.02 s, FINAL_SCOPE_EXIT=0.
-Targeted Ruff and Python compileall checks passed. H-079, full CI,
-Electron UI and verified human identity not established.
-
-Historical idempotency defect found RED: replaying an already applied
-human command after an agent revision failed to return original
-receipt. Added verified per-operation on-disk index with ancestry
-check, strict digest and parent match; 8 CAS tests green.
-Global scoped native pytest launched PID 75136; read final status
-before release. No merge or root checkout changes.
-
-Final independent regression after history-index CAS fix:
-32 Creative modules, 152 passed / 1 skipped / 0 failed, 158.95s,
-CAS_FINAL_TEST_EXIT=0; Ruff/compileall targeted passed. Continue to
-React/Electron canonical handoff, full CI and H-079; no main merge.
-
-
-### 2026-10-12 — Frontend H-C2 read-model and /creative route continuation
-
-PR #81 baseline SHA 62dc14f66f at beginning; isolated worktree used,
-root checkout still 34 unrelated dirty entries preserved.
-Found missing CreativeWorkspaceProvider on /creative route and independent
-React useState/$creativeProject authority; fixed route and converted
-UI project state to a validated canonical HEAD read-model only.
-Added TS projection tests RED/GREEN for schema, revision/ETag,
-rational CanonicalTime and actual backend-generated ETag format
-(quoted 16hex-16hex, NOT hex SHA256). Node actual-backend adapter tests
-4 passed; focused React UI Vitest 9 passed.
-Missing IPC/preload/main and gateway Creative route remain a real
-blocker for human/agent E2E; no false claim of UI editing. npm
-isolated --legacy-peer-deps install for tests; no lockfile/main changes.
-Next: secure main-process TaskRun-bound IPC, then UI command and refresh.
-
-Frontend verification final: 9 Vitest passed (2 files), 4 Node
-projection tests passed against real Python-generated HEAD;
-TypeScript renderer typecheck exit 0 (118.34s); scoped ESLint exit 0.
-No new Electron IPC or full E2E claims.
-
-### 2026-10-12 — Electron H-C2 typed UI readback seam
-
-Clean starting PR #81 SHA 4af6c117, main 34 dirty unchanged.
-Added strict IPC command adapter, preload surface and React methods
-which wait for backend readback. Main TaskRun owner resolver is
-intentionally null pending authentication, thus no real edit yet.
-Four targeted Vitest files 11 passed. Renderer TypeScript passed;
-global Electron TypeScript preexisting simple-git failure.
-Still needs real server route and trusted TaskRun ownership.
-No main merge or release qualification.
-
-Final H-C2 IPC and React tests: 4 Vitest files, 11 passed,
-0 failed, exit 0. Targeted ESLint exit 0, renderer TypeScript
-prior run exit 0; Electron global tsc has prior simple-git error.
-No real Electron manual edit, TaskRun binding or CI qualification.
-
-
-### 2026-10-12 — H-C2 sender-attestation + readback hardening
-
-Started with local clean worktree head 2c58391db5 (remote 4af6c1177b)
-and preserved dirty main checkout. Implemented IPC owner keyed to
-specific Electron sender and rechecked across async boundaries.
-Commit receipt revision must match independently reopened canonical
-head before UI acknowledgement; session/window navigation revokes
-acknowledgement. RED->GREEN observed. Vitest IPC/preload 11 passed,
-ESLint targeted exit 0; TypeScript global blocker in unrelated
-git-review-ops.test.ts:124. main.ts remains fail-closed null resolver;
-not an authorized live UI/TaskRun E2E. See revised plan review and
-HCW ledger. No H-079 promotion or merge.
-
-### 2026-10-12 — HCW P0A attestation groundwork
-
-PR #81 starting a3527baa7a, clean isolated worktree. TDD RED/GREEN delivered main-side creative-taskrun-attestation.ts verifier, 14 new negative/positive cases; 25 focused tests passed. Backend attestor, trusted main sender-scope registry and actual live Electron UI/CAS remain missing. main.ts null owner remains deny-all; do not promote H-C2. Preserve D-043, H-079 and protected checkout; see HCW ledger.
-
-
-### 2026-10-12 — HCW P0A continued after acb518e5ba
-
-Implemented a test-first backend TaskRun admission helper (`workstation/creative_taskrun_attestation.py`) and `gateway.session_context.get_bound_session_env` to forbid environment/approval-key impersonation outside a gateway ContextVar. Admission uses a verified actor matching canonical SessionDB identity, existing Kanban claim + CreativeRunContext policy and a trusted lease predicate; its proof TTL is capped at the shortest claim expiry. Three RED cases observed (missing module, unbound ambient identity accepted, proof overlong); 25 focused Python backend/CAS tests passed. This is NOT an authenticated production HTTP endpoint and NOT P0A complete. Production Electron main IPC remains deny-all; prioritize principal/session binding and main window mapping, then real E2E. No H-079 promotion.
-
-### HCW: verified HTTP principal/readiness lookup
-
-2026-10-12 continuation after 85b0448fa: Added workstation/creative_http_identity.py and GET /api/workstation/creative/owner-readiness in hermes_cli/web_server.py. Read-only authenticated interactive-principal → canonical SessionDB (user_id/session_key) → unique live Kanban TaskRun lookup with workspace, profile, expiry, lock and supersession fences. OAuth/native-session request.state.session is required; loopback token and service token are not considered interactive actor authentication. TDD RED module absent (exit 1), route not registered (1 failed exit 1), GREEN 38 passed, 0 failed in 47.06s, 1 Starlette/httpx deprecation warning, command python -m pytest workstation/tests/test_hcw_http_principal_owner.py workstation/tests/test_hcw_taskrun_backend_attestation.py workstation/tests/test_hcw_hybrid_taskrun_command.py workstation/tests/test_hcw_hybrid_revision_cas.py -q. No sessionKey or claimLock returned; authorityGranted=false. Not an authenticated mutation RPC or live gateway authority proof. main.ts remains resolveTrustedOwner: () => null; P0A PARTIAL, P0B BLOCKED; H-C2 no promotion, H-079 and exact-head CI unverified.
-
-### HCW-P0A Electron selector registry (2026-10-12): new apps/desktop/el
-
-HCW-P0A Electron selector registry (2026-10-12): new apps/desktop/electron/creative-main-sender-scope.ts and .test.ts implement a MAIN-process-only in-memory sender object+mainFrame-verified registry with monotonic navigation epoch, explicit rehome/revoke, concurrent-session fencing, destruction check and defensive snapshots. TDD RED: missing module, Vitest exit 1. GREEN: 31/31 Electron focused tests across registry, existing attestation, canonical IPC, preload, exit 0. ESLint --max-warnings 0 exit 0 after targeted fixes. Global tsc still exit 1 ONLY known electron/git-review-ops.test.ts:124 TS2349. Registry deliberately NOT WIRED to main.ts: session/connection obtained from renderer messages/URL are selectors not authenticated authority. main.ts remains DENY-ALL. No P0A or H-C2 promotion. Backend HTTP readiness previously qualified 38/38 tests, no mutation grant.
+### P0 native UI review continuation — 2026-10-12 13:03 local, uncommitted
+- Verified published remote PR #83 HEAD remains `22498a09db0802c06125f5a5ec4cb5039da9b98f`; draft. Isolated worktree already had 13 uncommitted paths when this continuation began (existing API, UI, Browser Hub routing and tests). Main checkout had 34 unrelated dirty paths, not touched.
+- Inspected existing work-in-progress implementation instead of overwriting it. Python `test_p0_native_handoff_review_api.py` + `test_denied_mutation_handoff_recovery.py`: **8 PASS**, scoped, isolated ledger; React `workstation-browser-pane.test.tsx` + `preview-tabs-restart.test.ts`: **4 PASS**.
+- E2E attempted `playwright test workstation-headless-load --grep 'P0: (Browser UI Take Control|native UI acknowledges canonical)'`: **1 PASS (real Browser UI takeover) / 1 FAIL (native UI review)**, consistently reproduces `getByRole('button', { name: 'Acknowledge uncertain Browser operation' }).toBeVisible()` timed out after 25s, while the E2E previously proved the authenticated API returned seeded canonical review. Source-built Chromium fixture logs confirm selected persisted chat, Browser preview mounted, but review action missing from DOM. E2E thus remains RED; do not claim completion.
+- Scoped attempt in `workstation-browser-pane.tsx`: read only canonical conversation aliases of selected session, deduplicate handoff IDs, use exact review.session_id in POST, tolerate partial failure with `Promise.allSettled`, and use non-passive authenticated local API. These are not yet proven to resolve the E2E. Pending changes are deliberately uncommitted; **do not overwrite existing concurrently authored work or stage/push a failing gate as qualified**.
+- Next exact diagnostic: instrument **only the isolated E2E** to inspect the React pane's actual selectedStoredSessionId, activeSessionId and derived `activeSessionAliases` (without exposing IDs to logs), and check `window.hermesDesktop.api({ path: '/api/workstation/handoffs?session_id=...', connectionId:'local' })` from the same mounted component. Differentiate missing selected-session key, per-alias backend rejection, effect repeatedly reset, and renderer right-rail mount/visibility. Do not increase the 25s assertion timeout as a substitute for fixing the actual cause.
+- Once RED reason is proven and fixed, rerun Python UI API and React unit suites, full native E2E, then typed `evaluate_verification` provenance/WorkItem continuation. No actual agent admission→UI approval→readback→non-mutating TaskRun checkpoint E2E exists; preserve `409 USER_CONTROL_ACTIVE` and uncertainty blocked until trusted independent observation.

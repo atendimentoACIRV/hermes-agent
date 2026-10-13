@@ -4,11 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNativeViewOcclusion } from '@/app/browser/native-view-occlusion'
 import { TaskJournalDrawer } from '@/app/browser/task-journal-drawer'
 import type { WorkstationBrowserBounds, WorkstationBrowserState, WorkstationBrowserTabState } from '@/app/browser/types'
-import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { cn } from '@/lib/utils'
 import { $activeSessionId, $selectedStoredSessionId, $sessions, conversationAliases } from '@/store/session'
+
+interface NativeHumanReview {
+  handoff_id: string
+  task_id: string
+  session_id: string
+  run_id: string
+  status: string
+  reason: string
+  requested_at: string
+}
 
 export interface WorkstationBrowserPaneProps {
   onPopOut?: () => void
@@ -84,16 +93,11 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
   const [runtimeDiscovered, setRuntimeDiscovered] = useState(false)
   const [busy, setBusy] = useState(false)
   const [showJournal, setShowJournal] = useState(false)
-  const hostRef = useRef<HTMLDivElement | null>(null)
+  const [nativeReviews, setNativeReviews] = useState<NativeHumanReview[]>([])
+  const [reviewBusy, setReviewBusy] = useState(false)
+  const [reviewNotice, setReviewNotice] = useState('')
 
-  // A keep-alive tab keeps this pane mounted with a rect identical to the
-  // visible tab's, and the native view is an OS-level child of the window
-  // content view — it paints above the DOM and swallows that tab's clicks.
-  // Gate it on this pane being the visible one, on its box still having area,
-  // and (in `useNativeViewOcclusion`) on no overlay covering it.
-  const paneVisible = usePaneVisible()
-  const [hostRectOk, setHostRectOk] = useState(true)
-  const [viewportRevision, setViewportRevision] = useState(0)
+  const hostRef = useRef<HTMLDivElement | null>(null)
 
   const selectedStoredSessionId = useStore($selectedStoredSessionId)
   const activeSessionId = useStore($activeSessionId)
@@ -108,6 +112,82 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
 
     return conversationAliases(activeSessionKey, sessions)
   }, [activeSessionKey, sessions])
+
+  // Only the authenticated LOCAL backend may expose the canonical reviews of
+  // the selected session. Never mix gateway/connection reviews with this native Browser.
+  useEffect(() => {
+    const api = window.hermesDesktop?.api
+
+    if (!bridge || !api || activeSessionAliases.length === 0) {
+      setNativeReviews([])
+
+      return
+    }
+
+    let disposed = false
+    setNativeReviews([])
+    setReviewNotice('')
+
+    const refresh = async () => {
+      try {
+        // Stored chat IDs and canonical conversation/root IDs can differ.
+        // Query only aliases of the actively selected conversation, never all sessions.
+        const results = await Promise.allSettled(activeSessionAliases.map(sessionId =>
+          api<{ handoffs: NativeHumanReview[] }>({
+            path: `/api/workstation/handoffs?session_id=${encodeURIComponent(sessionId)}`,
+            connectionId: 'local'
+          })
+        ))
+
+        if (!disposed) {
+          const seen = new Set<string>()
+          const reviews = results.flatMap(result => result.status === 'fulfilled' ? (result.value?.handoffs ?? []) : [])
+          setNativeReviews(reviews.filter(review => {
+            if (!activeSessionAliases.includes(review.session_id) || review.status !== 'waiting-for-human' || seen.has(review.handoff_id)) {return false}
+            seen.add(review.handoff_id)
+
+            return true
+          }))
+        }
+      } catch {
+        if (!disposed) {setNativeReviews([])}
+      }
+    }
+
+    void refresh()
+    const poll = window.setInterval(() => void refresh(), 5000)
+
+    return () => {
+      disposed = true
+      window.clearInterval(poll)
+    }
+  }, [bridge, activeSessionAliases])
+
+  const acknowledgeNativeReview = useCallback(async (review: NativeHumanReview) => {
+    if (reviewBusy || !activeSessionAliases.includes(review.session_id)) {return}
+    setReviewBusy(true)
+    setReviewNotice('')
+
+    try {
+      const result = await window.hermesDesktop.api<{ status: string; readback_required: boolean }>({
+        path: `/api/workstation/handoffs/${encodeURIComponent(review.handoff_id)}/review`,
+        method: 'POST',
+        body: { session_id: review.session_id, run_id: review.run_id },
+        connectionId: 'local'
+      })
+
+      if (result.status !== 'ready' || result.readback_required !== true) {
+        throw new Error('Review was not accepted')
+      }
+
+      setNativeReviews(current => current.filter(item => item.handoff_id !== review.handoff_id))
+      setReviewNotice('Review acknowledged. Independent readback is required before work can continue.')
+    } catch {
+      setReviewNotice('Review could not be accepted. Recheck session and TaskRun authority.')
+    } finally {
+      setReviewBusy(false)
+    }
+  }, [activeSessionAliases, reviewBusy])
 
   const preferredTaskId = useMemo(() => {
     if (activeSessionAliases.length === 0 || !state.tasks || state.tasks.length === 0) {
@@ -163,14 +243,8 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
       const rect = hostRef.current.getBoundingClientRect()
 
       if (rect.width < 1 || rect.height < 1) {
-        // Collapsed box: the view would keep its last bounds — over a rect no
-        // pane occupies any more — and eat clicks for whatever moved in there.
-        setHostRectOk(false)
-
         return
       }
-
-      setHostRectOk(true)
 
       const bounds = rectToBounds(rect)
 
@@ -179,10 +253,6 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
       } else {
         setState(await bridge.setBounds(bounds, 'chat'))
       }
-
-      // `attach()` forces the view back on inside the runtime, so re-assert the
-      // composed decision (visible tab + area + no overlay) right after it.
-      setViewportRevision(revision => revision + 1)
     },
     [bridge, preferredTaskId]
   )
@@ -286,10 +356,7 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
     }
   }, [bridge, publishBounds])
 
-  useNativeViewOcclusion(bridge, 'chat', {
-    enabled: paneVisible && hostRectOk,
-    revision: viewportRevision
-  })
+  useNativeViewOcclusion(bridge, 'chat')
 
   const transferToChat = useCallback(async () => {
     if (!bridge || !hostRef.current) {
@@ -445,6 +512,26 @@ export function WorkstationBrowserPane({ onPopOut, className }: WorkstationBrows
           >
             Release to Agent
           </Button>
+        </div>
+      )}
+
+      {nativeReviews.map(review => (
+        <div className="flex items-center justify-between gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200" key={review.handoff_id}>
+          <span>Uncertain Browser operation for this session. Review the effect; approval never retries the mutation.</span>
+          <Button
+            aria-label="Acknowledge uncertain Browser operation"
+            disabled={reviewBusy}
+            onClick={() => void acknowledgeNativeReview(review)}
+            size="xs"
+            variant="secondary"
+          >
+            I reviewed ? require readback
+          </Button>
+        </div>
+      ))}
+      {reviewNotice && (
+        <div className="border-b border-amber-500/20 px-3 py-1 text-xs text-amber-200" role="status">
+          {reviewNotice}
         </div>
       )}
 
