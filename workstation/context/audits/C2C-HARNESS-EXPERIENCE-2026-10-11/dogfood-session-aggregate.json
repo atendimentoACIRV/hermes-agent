@@ -1,0 +1,1235 @@
+{
+  "totals": {
+    "sessions": 55,
+    "messages": 14688,
+    "tool_events": 8064
+  },
+  "sessions": [
+    {
+      "file": "abra-example.com-hermes-smoke-1-usando-as-2-20260903.json",
+      "messages": 8,
+      "roles": {
+        "user": 1,
+        "assistant": 4,
+        "tool": 3
+      },
+      "tool_events": 3,
+      "tool_families": {
+        "browser_snapshot": 2,
+        "browser_navigate": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 3
+      }
+    },
+    {
+      "file": "abra-example.com-hermes-smoke-1-usando-as-20260903.json",
+      "messages": 5,
+      "roles": {
+        "user": 1,
+        "assistant": 2,
+        "tool": 2
+      },
+      "tool_events": 2,
+      "tool_families": {
+        "browser_navigate": 1,
+        "browser_snapshot": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 2
+      }
+    },
+    {
+      "file": "abrir-chatgpt-20261011.json",
+      "messages": 430,
+      "roles": {
+        "user": 15,
+        "assistant": 152,
+        "tool": 263
+      },
+      "tool_events": 263,
+      "tool_families": {
+        "terminal": 96,
+        "read_file": 53,
+        "browser_console": 31,
+        "search_files": 23,
+        "patch": 10,
+        "browser_type": 10,
+        "browser_press": 10,
+        "browser_snapshot": 6,
+        "write_file": 6,
+        "skill_view": 4,
+        "process_manage": 4,
+        "skill_manage": 4,
+        "browser_navigate": 2,
+        "memory": 2,
+        "skills_list": 1,
+        "execute_code": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 198,
+        "text_mentions_replay": 9,
+        "text_mentions_canary": 1,
+        "text_mentions_compilability": 4,
+        "text_mentions_experience_compiler": 1
+      }
+    },
+    {
+      "file": "abrir-chatgpt-no-browser-nativo-20260922.json",
+      "messages": 235,
+      "roles": {
+        "user": 16,
+        "assistant": 76,
+        "tool": 143
+      },
+      "tool_events": 143,
+      "tool_families": {
+        "search_files": 61,
+        "read_file": 33,
+        "browser_snapshot": 10,
+        "terminal": 8,
+        "skill_view": 5,
+        "tool_describe": 4,
+        "browser_type": 4,
+        "browser_navigate": 3,
+        "vision_analyze": 3,
+        "browser_console": 3,
+        "execute_code": 2,
+        "desktop_preview": 2,
+        "browser_vision": 1,
+        "browser_click": 1,
+        "drive_preview": 1,
+        "unknown": 1,
+        "kanban_list": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 110,
+        "text_mentions_experience_compiler": 21,
+        "text_mentions_replay": 10,
+        "text_mentions_canary": 1
+      }
+    },
+    {
+      "file": "abrir-creative-workstation-20261011.json",
+      "messages": 46,
+      "roles": {
+        "user": 8,
+        "assistant": 21,
+        "tool": 17
+      },
+      "tool_events": 17,
+      "tool_families": {
+        "tool_search": 4,
+        "search_files": 4,
+        "read_file": 4,
+        "skill_view": 2,
+        "desktop_project": 1,
+        "apply_layout": 1,
+        "desktop_preview": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 16
+      }
+    },
+    {
+      "file": "abrir-hyperframe-20261009.json",
+      "messages": 301,
+      "roles": {
+        "user": 6,
+        "assistant": 104,
+        "tool": 191
+      },
+      "tool_events": 191,
+      "tool_families": {
+        "terminal": 62,
+        "read_file": 39,
+        "skill_view": 28,
+        "patch": 27,
+        "search_files": 10,
+        "write_file": 9,
+        "vision_analyze": 6,
+        "tool_describe": 3,
+        "desktop_preview": 2,
+        "skill_manage": 2,
+        "process_manage": 2,
+        "clarify": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 146,
+        "text_mentions_experience_compiler": 1,
+        "text_mentions_replay": 2
+      }
+    },
+    {
+      "file": "abrir-o-browser-2-20260922.json",
+      "messages": 71,
+      "roles": {
+        "user": 6,
+        "assistant": 30,
+        "tool": 35
+      },
+      "tool_events": 35,
+      "tool_families": {
+        "read_file": 8,
+        "search_files": 7,
+        "browser_navigate": 5,
+        "skill_view": 4,
+        "terminal": 4,
+        "browser_snapshot": 3,
+        "tool_call": 2,
+        "browser_console": 1,
+        "kanban_list": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 32,
+        "text_mentions_replay": 1
+      }
+    },
+    {
+      "file": "abrir-o-browser-20260921.json",
+      "messages": 55,
+      "roles": {
+        "user": 4,
+        "assistant": 19,
+        "tool": 32
+      },
+      "tool_events": 32,
+      "tool_families": {
+        "read_file": 8,
+        "search_files": 7,
+        "skill_view": 6,
+        "browser_navigate": 4,
+        "terminal": 2,
+        "vision_analyze": 2,
+        "tool_search": 1,
+        "browser_vision": 1,
+        "browser_snapshot": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 25
+      }
+    },
+    {
+      "file": "abrir-trello-na-internet-2-20260903.json",
+      "messages": 4,
+      "roles": {
+        "user": 1,
+        "assistant": 2,
+        "tool": 1
+      },
+      "tool_events": 1,
+      "tool_families": {
+        "browser_navigate": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 1
+      }
+    },
+    {
+      "file": "abrir-trello-na-internet-3-20260903.json",
+      "messages": 5,
+      "roles": {
+        "user": 2,
+        "assistant": 2,
+        "tool": 1
+      },
+      "tool_events": 1,
+      "tool_families": {
+        "browser_navigate": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 1
+      }
+    },
+    {
+      "file": "abrir-trello-na-internet-4-20260903.json",
+      "messages": 132,
+      "roles": {
+        "user": 10,
+        "assistant": 47,
+        "tool": 75
+      },
+      "tool_events": 75,
+      "tool_families": {
+        "browser_console": 16,
+        "browser_navigate": 15,
+        "tool_describe": 8,
+        "mcp__trello__trelloReadCard": 6,
+        "browser_snapshot": 4,
+        "mcp__trello__trelloReadMember": 4,
+        "execute_code": 4,
+        "browser_vision": 4,
+        "vision_analyze": 4,
+        "skill_view": 2,
+        "terminal": 2,
+        "setup_mcp": 2,
+        "mcp__trello__trelloReadBoard": 2,
+        "computer_use": 2
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 46
+      }
+    },
+    {
+      "file": "abrir-whatsapp-no-browser-nativo-20260924.json",
+      "messages": 135,
+      "roles": {
+        "user": 7,
+        "assistant": 54,
+        "tool": 74
+      },
+      "tool_events": 74,
+      "tool_families": {
+        "search_files": 19,
+        "terminal": 11,
+        "browser_console": 11,
+        "skill_view": 8,
+        "browser_snapshot": 5,
+        "browser_click": 4,
+        "read_file": 4,
+        "vision_analyze": 3,
+        "browser_navigate": 2,
+        "browser_vision": 2,
+        "kanban_list": 1,
+        "write_file": 1,
+        "execute_code": 1,
+        "kanban_show": 1,
+        "delegate_task": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 62,
+        "text_mentions_replay": 1
+      }
+    },
+    {
+      "file": "acessar-chat-do-chatgpt-20261011.json",
+      "messages": 163,
+      "roles": {
+        "user": 9,
+        "assistant": 56,
+        "tool": 98
+      },
+      "tool_events": 98,
+      "tool_families": {
+        "search_files": 45,
+        "read_file": 24,
+        "kanban_show": 6,
+        "browser_snapshot": 5,
+        "skill_view": 4,
+        "kanban_list": 3,
+        "terminal": 3,
+        "browser_navigate": 1,
+        "kanban_unblock": 1,
+        "execute_code": 1,
+        "kanban_comment": 1,
+        "skill_manage": 1,
+        "browser_console": 1,
+        "browser_type": 1,
+        "browser_exec": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 75,
+        "text_mentions_replay": 4,
+        "text_mentions_experience_compiler": 2
+      }
+    },
+    {
+      "file": "apagar-todos-quadros-kanban-e-cart-es-20261011.json",
+      "messages": 65,
+      "roles": {
+        "user": 1,
+        "assistant": 23,
+        "tool": 41
+      },
+      "tool_events": 41,
+      "tool_families": {
+        "terminal": 26,
+        "read_file": 6,
+        "skill_view": 4,
+        "kanban_list": 2,
+        "write_file": 2,
+        "search_files": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 33,
+        "text_mentions_experience_compiler": 1,
+        "text_mentions_compilability": 1
+      }
+    },
+    {
+      "file": "atender-pedido-de-raphael-valongo-no-whatsapp-20260924.json",
+      "messages": 585,
+      "roles": {
+        "user": 11,
+        "assistant": 275,
+        "tool": 299
+      },
+      "tool_events": 299,
+      "tool_families": {
+        "terminal": 83,
+        "browser_console": 83,
+        "vision_analyze": 54,
+        "write_file": 15,
+        "browser_navigate": 14,
+        "skill_view": 14,
+        "browser_vision": 10,
+        "browser_press": 8,
+        "browser_click": 4,
+        "browser_type": 4,
+        "patch": 3,
+        "read_file": 3,
+        "skill_manage": 2,
+        "skills_list": 1,
+        "browser_snapshot": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 287,
+        "text_mentions_replay": 1
+      }
+    },
+    {
+      "file": "buscar-monitores-27-polegadas-144hz-20260914.json",
+      "messages": 24,
+      "roles": {
+        "user": 1,
+        "assistant": 9,
+        "tool": 14
+      },
+      "tool_events": 14,
+      "tool_families": {
+        "skill_view": 4,
+        "browser_navigate": 3,
+        "web_extract": 3,
+        "browser_console": 2,
+        "terminal": 1,
+        "web_search": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 11,
+        "text_mentions_replay": 1
+      }
+    },
+    {
+      "file": "capturar-dados-setembro-instagram-acirv-20261002.json",
+      "messages": 184,
+      "roles": {
+        "user": 6,
+        "assistant": 56,
+        "tool": 122
+      },
+      "tool_events": 122,
+      "tool_families": {
+        "terminal": 56,
+        "read_file": 31,
+        "search_files": 18,
+        "skill_view": 4,
+        "browser_console": 4,
+        "delegate_task": 3,
+        "session_search": 2,
+        "browser_navigate": 2,
+        "execute_code": 1,
+        "write_file": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 96
+      }
+    },
+    {
+      "file": "coletar-m-tricas-instagram-acirvoficial-agosto-2-20260904.json",
+      "messages": 13,
+      "roles": {
+        "user": 1,
+        "assistant": 6,
+        "tool": 6
+      },
+      "tool_events": 6,
+      "tool_families": {
+        "terminal": 4,
+        "search_files": 1,
+        "execute_code": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 6
+      }
+    },
+    {
+      "file": "continuar-coleta-insights-acirvoficial-agosto-20260904.json",
+      "messages": 838,
+      "roles": {
+        "user": 35,
+        "assistant": 358,
+        "tool": 445
+      },
+      "tool_events": 445,
+      "tool_families": {
+        "browser_console": 174,
+        "terminal": 75,
+        "browser_navigate": 48,
+        "browser_click": 41,
+        "write_file": 37,
+        "read_file": 25,
+        "browser_snapshot": 21,
+        "skill_view": 10,
+        "patch": 4,
+        "search_files": 3,
+        "todo": 3,
+        "execute_code": 2,
+        "browser_vision": 1,
+        "vision_analyze": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 380
+      }
+    },
+    {
+      "file": "continuar-coleta-instagram-acirv-setembro-2026-20261002.json",
+      "messages": 3840,
+      "roles": {
+        "user": 58,
+        "assistant": 1768,
+        "tool": 2014
+      },
+      "tool_events": 2014,
+      "tool_families": {
+        "execute_code": 472,
+        "browser_console": 445,
+        "terminal": 379,
+        "read_file": 168,
+        "write_file": 156,
+        "patch": 154,
+        "browser_navigate": 67,
+        "vision_analyze": 48,
+        "search_files": 43,
+        "skill_view": 32,
+        "browser_click": 14,
+        "skill_manage": 8,
+        "browser_snapshot": 6,
+        "session_search": 6,
+        "delegate_task": 4,
+        "tool_describe": 3,
+        "memory": 3,
+        "browser_scroll": 2,
+        "browser_back": 2,
+        "clarify": 1,
+        "browser_vision": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 2008,
+        "text_mentions_replay": 41,
+        "text_mentions_experience_compiler": 16
+      }
+    },
+    {
+      "file": "continuare-conversazione-precedente-20260914.json",
+      "messages": 928,
+      "roles": {
+        "user": 30,
+        "assistant": 288,
+        "tool": 610
+      },
+      "tool_events": 610,
+      "tool_families": {
+        "read_preview": 151,
+        "terminal": 133,
+        "open_preview": 98,
+        "write_file": 66,
+        "browser_console": 52,
+        "read_file": 45,
+        "search_files": 32,
+        "browser_navigate": 11,
+        "skill_view": 8,
+        "patch": 6,
+        "process": 3,
+        "skill_manage": 3,
+        "clarify": 1,
+        "close_preview": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 592
+      }
+    },
+    {
+      "file": "corrigir-persist-ncia-e-cliques-no-painel-do-bro-20261011.json",
+      "messages": 583,
+      "roles": {
+        "user": 14,
+        "assistant": 210,
+        "tool": 359
+      },
+      "tool_events": 359,
+      "tool_families": {
+        "search_files": 135,
+        "read_file": 125,
+        "terminal": 42,
+        "patch": 26,
+        "execute_code": 7,
+        "browser_navigate": 6,
+        "skill_view": 4,
+        "tool_describe": 3,
+        "browser_snapshot": 2,
+        "tool_call": 2,
+        "unknown": 2,
+        "process_manage": 1,
+        "browser_console": 1,
+        "write_file": 1,
+        "kanban_show": 1,
+        "kanban_list": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 242,
+        "text_mentions_experience_compiler": 6,
+        "text_mentions_compilability": 4,
+        "text_mentions_replay": 6,
+        "text_mentions_canary": 1
+      }
+    },
+    {
+      "file": "create-20260828.json",
+      "messages": 45,
+      "roles": {
+        "user": 2,
+        "assistant": 16,
+        "tool": 27
+      },
+      "tool_events": 27,
+      "tool_families": {
+        "read_file": 19,
+        "terminal": 6,
+        "search_files": 2
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 18
+      }
+    },
+    {
+      "file": "criando-a-panilha-do-ano-todo-20260903.json",
+      "messages": 604,
+      "roles": {
+        "user": 62,
+        "assistant": 219,
+        "tool": 323
+      },
+      "tool_events": 323,
+      "tool_families": {
+        "browser_console": 147,
+        "skill_view": 32,
+        "browser_navigate": 32,
+        "browser_scroll": 20,
+        "terminal": 18,
+        "todo": 16,
+        "browser_click": 14,
+        "browser_snapshot": 11,
+        "read_file": 6,
+        "browser_press": 4,
+        "write_file": 4,
+        "search_files": 4,
+        "browser_vision": 3,
+        "process": 3,
+        "skill_manage": 3,
+        "browser_type": 2,
+        "vision_analyze": 1,
+        "read_window_below": 1,
+        "annotate_preview": 1,
+        "skills_list": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 236,
+        "text_mentions_replay": 1
+      }
+    },
+    {
+      "file": "describe-attached-image-20260903.json",
+      "messages": 1,
+      "roles": {
+        "user": 1
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "eai-consegue-usar-o-browser-20260903.json",
+      "messages": 12,
+      "roles": {
+        "user": 2,
+        "assistant": 6,
+        "tool": 4
+      },
+      "tool_events": 4,
+      "tool_families": {
+        "read_preview": 3,
+        "open_preview": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 4
+      }
+    },
+    {
+      "file": "entrar-no-chatgpt-pelo-browser-nativo-20260917.json",
+      "messages": 66,
+      "roles": {
+        "user": 4,
+        "assistant": 28,
+        "tool": 34
+      },
+      "tool_events": 34,
+      "tool_families": {
+        "browser_snapshot": 8,
+        "work_execute": 5,
+        "skill_view": 4,
+        "clarify": 4,
+        "browser_console": 3,
+        "terminal": 3,
+        "browser_click": 2,
+        "browser_extract_items": 2,
+        "browser_navigate": 1,
+        "tool_describe": 1,
+        "memory": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 25,
+        "text_mentions_canary": 8,
+        "text_mentions_replay": 4
+      }
+    },
+    {
+      "file": "entrar-no-whatsapp-web-20260903.json",
+      "messages": 21,
+      "roles": {
+        "user": 1,
+        "assistant": 9,
+        "tool": 11
+      },
+      "tool_events": 11,
+      "tool_families": {
+        "computer_use": 8,
+        "skill_view": 2,
+        "browser_navigate": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 9
+      }
+    },
+    {
+      "file": "entre-no-instagram-da-acirv-e-colete-todas-as-2-20260914.json",
+      "messages": 1,
+      "roles": {
+        "user": 1
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "entre-no-instagram-da-acirv-e-colete-todas-as-20260914.json",
+      "messages": 3,
+      "roles": {
+        "user": 3
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "excluir-kanban-teste-20260914.json",
+      "messages": 168,
+      "roles": {
+        "user": 6,
+        "assistant": 70,
+        "tool": 92
+      },
+      "tool_events": 92,
+      "tool_families": {
+        "terminal": 53,
+        "read_file": 11,
+        "search_files": 11,
+        "computer_use": 10,
+        "write_file": 4,
+        "skill_view": 3
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 68
+      }
+    },
+    {
+      "file": "executar-planejamento-social-media-acirv-4t2026-20260916.json",
+      "messages": 1463,
+      "roles": {
+        "user": 80,
+        "assistant": 530,
+        "tool": 853
+      },
+      "tool_events": 853,
+      "tool_families": {
+        "read_file": 222,
+        "browser_console": 162,
+        "terminal": 135,
+        "search_files": 81,
+        "work_execute": 50,
+        "browser_navigate": 44,
+        "write_file": 25,
+        "skill_view": 23,
+        "tool_describe": 16,
+        "browser_snapshot": 11,
+        "clarify": 10,
+        "skill_manage": 9,
+        "patch": 8,
+        "unknown": 8,
+        "browser_click": 7,
+        "browser_type": 6,
+        "mcp__trello__trelloSearch": 5,
+        "vision_analyze": 5,
+        "todo": 4,
+        "tool_search": 3,
+        "session_search": 3,
+        "read_preview": 3,
+        "mcp__trello__trelloReadBoard": 2,
+        "mcp__trello__trelloReadMember": 2,
+        "tool_call": 2
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 677,
+        "text_mentions_replay": 45,
+        "text_mentions_canary": 41
+      }
+    },
+    {
+      "file": "fazer-pesquisa-no-browser-20260825.json",
+      "messages": 99,
+      "roles": {
+        "user": 17,
+        "assistant": 46,
+        "tool": 36
+      },
+      "tool_events": 36,
+      "tool_families": {
+        "drive_preview": 24,
+        "open_preview": 7,
+        "web_search": 2,
+        "computer_use": 2,
+        "read_preview": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 35
+      }
+    },
+    {
+      "file": "importar-cart-es-trello-para-kanban-hermes-20260914.json",
+      "messages": 269,
+      "roles": {
+        "user": 6,
+        "assistant": 114,
+        "tool": 149
+      },
+      "tool_events": 149,
+      "tool_families": {
+        "terminal": 60,
+        "read_file": 23,
+        "search_files": 22,
+        "execute_code": 10,
+        "patch": 8,
+        "tool_describe": 6,
+        "write_file": 5,
+        "skill_manage": 4,
+        "web_extract": 3,
+        "skill_view": 2,
+        "mcp__trello__trelloReadCard": 2,
+        "mcp__trello__trelloReadMember": 1,
+        "mcp__trello__trelloReadBoard": 1,
+        "memory": 1,
+        "clarify": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 136,
+        "text_mentions_replay": 1
+      }
+    },
+    {
+      "file": "listar-3-issues-good-first-issue-fastapi-20260914.json",
+      "messages": 21,
+      "roles": {
+        "user": 1,
+        "assistant": 10,
+        "tool": 10
+      },
+      "tool_events": 10,
+      "tool_families": {
+        "browser_navigate": 4,
+        "browser_click": 4,
+        "browser_snapshot": 2
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 9
+      }
+    },
+    {
+      "file": "navegar-internet-e-abrir-trello-20260903.json",
+      "messages": 4,
+      "roles": {
+        "user": 1,
+        "assistant": 2,
+        "tool": 1
+      },
+      "tool_events": 1,
+      "tool_families": {
+        "browser_navigate": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 1
+      }
+    },
+    {
+      "file": "navigate-example.com-and-capture-snapshot-20260828.json",
+      "messages": 2,
+      "roles": {
+        "user": 1,
+        "assistant": 1
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "open-trello-20261009.json",
+      "messages": 837,
+      "roles": {
+        "user": 24,
+        "assistant": 343,
+        "tool": 470
+      },
+      "tool_events": 470,
+      "tool_families": {
+        "browser_console": 180,
+        "read_file": 97,
+        "terminal": 93,
+        "browser_navigate": 35,
+        "search_files": 24,
+        "write_file": 14,
+        "skill_view": 8,
+        "patch": 7,
+        "browser_snapshot": 4,
+        "unknown": 2,
+        "execute_code": 2,
+        "browser_back": 1,
+        "skill_manage": 1,
+        "tool_describe": 1,
+        "process_manage": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 386
+      }
+    },
+    {
+      "file": "planilha-de-m-tricas-dos-posts-de-agosto-20260903.json",
+      "messages": 492,
+      "roles": {
+        "user": 35,
+        "assistant": 175,
+        "tool": 282
+      },
+      "tool_events": 282,
+      "tool_families": {
+        "browser_console": 130,
+        "browser_navigate": 42,
+        "skill_view": 30,
+        "browser_click": 24,
+        "browser_scroll": 19,
+        "browser_snapshot": 8,
+        "browser_vision": 4,
+        "vision_analyze": 4,
+        "write_file": 4,
+        "tool_search": 3,
+        "terminal": 3,
+        "todo": 3,
+        "execute_code": 3,
+        "computer_use": 2,
+        "web_search": 2,
+        "drive_preview": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 182
+      }
+    },
+    {
+      "file": "sincronizar-descri-es-lote-piloto-acirv-no-trell-20260919.json",
+      "messages": 599,
+      "roles": {
+        "user": 14,
+        "assistant": 287,
+        "tool": 298
+      },
+      "tool_events": 298,
+      "tool_families": {
+        "browser_console": 143,
+        "browser_navigate": 44,
+        "execute_code": 39,
+        "terminal": 22,
+        "read_file": 18,
+        "write_file": 11,
+        "browser_press": 4,
+        "browser_click": 4,
+        "skill_view": 3,
+        "patch": 3,
+        "clarify": 3,
+        "process": 2,
+        "browser_type": 2
+      },
+      "text_markers_unverified": {
+        "text_mentions_canary": 5,
+        "assistant_tool_intents": 291
+      }
+    },
+    {
+      "file": "teste-2-20261011.json",
+      "messages": 80,
+      "roles": {
+        "user": 12,
+        "assistant": 36,
+        "tool": 32
+      },
+      "tool_events": 32,
+      "tool_families": {
+        "browser_navigate": 19,
+        "browser_snapshot": 4,
+        "browser_console": 3,
+        "tool_describe": 2,
+        "unknown": 2,
+        "browser_exec": 1,
+        "tool_call": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 28
+      }
+    },
+    {
+      "file": "teste-20260903.json",
+      "messages": 10,
+      "roles": {
+        "user": 4,
+        "assistant": 4,
+        "tool": 2
+      },
+      "tool_events": 2,
+      "tool_families": {
+        "tool_search": 1,
+        "open_preview": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 2
+      }
+    },
+    {
+      "file": "teste-de-funcionamento-20260904.json",
+      "messages": 4,
+      "roles": {
+        "user": 2,
+        "assistant": 2
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "the-user-is-asking-in-portuguese-voc-tem-websear-20260824.json",
+      "messages": 2,
+      "roles": {
+        "user": 1,
+        "assistant": 1
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "the-user-wants-a-python-script-with-auto-install-20260824.json",
+      "messages": 14,
+      "roles": {
+        "user": 3,
+        "assistant": 7,
+        "tool": 4
+      },
+      "tool_events": 4,
+      "tool_families": {
+        "terminal": 3,
+        "write_file": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 4
+      }
+    },
+    {
+      "file": "use-exclusivamente-o-workstation-browser-20260828.json",
+      "messages": 6,
+      "roles": {
+        "user": 1,
+        "assistant": 3,
+        "tool": 2
+      },
+      "tool_events": 2,
+      "tool_families": {
+        "open_preview": 1,
+        "read_preview": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 2
+      }
+    },
+    {
+      "file": "use-obrigatoriamente-as-ferramentas-nativas-2-20260903.json",
+      "messages": 60,
+      "roles": {
+        "user": 2,
+        "assistant": 27,
+        "tool": 31
+      },
+      "tool_events": 31,
+      "tool_families": {
+        "read_file": 13,
+        "search_files": 10,
+        "terminal": 6,
+        "skill_view": 2
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 25,
+        "text_mentions_replay": 1
+      }
+    },
+    {
+      "file": "use-obrigatoriamente-as-ferramentas-nativas-20260828.json",
+      "messages": 8,
+      "roles": {
+        "user": 1,
+        "assistant": 4,
+        "tool": 3
+      },
+      "tool_events": 3,
+      "tool_families": {
+        "tool_search": 3
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 3
+      }
+    },
+    {
+      "file": "verificar-ltima-vers-o-est-vel-em-python.org-20260914.json",
+      "messages": 153,
+      "roles": {
+        "user": 9,
+        "assistant": 72,
+        "tool": 72
+      },
+      "tool_events": 72,
+      "tool_families": {
+        "browser_navigate": 27,
+        "browser_console": 27,
+        "web_extract": 5,
+        "browser_click": 4,
+        "terminal": 4,
+        "browser_type": 3,
+        "skill_view": 2
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 71
+      }
+    },
+    {
+      "file": "verificar-se-trabalho-est-finalizado-20260904.json",
+      "messages": 641,
+      "roles": {
+        "user": 38,
+        "assistant": 274,
+        "tool": 329
+      },
+      "tool_events": 329,
+      "tool_families": {
+        "browser_console": 132,
+        "execute_code": 50,
+        "browser_navigate": 37,
+        "terminal": 33,
+        "read_file": 22,
+        "write_file": 21,
+        "patch": 11,
+        "skill_view": 10,
+        "todo": 5,
+        "search_files": 4,
+        "browser_click": 3,
+        "skill_manage": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 294
+      }
+    },
+    {
+      "file": "voc-um-agente-de-automa-o-respons-vel-por-2-20260904.json",
+      "messages": 1,
+      "roles": {
+        "user": 1
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "voc-um-agente-de-automa-o-respons-vel-por-20260904.json",
+      "messages": 5,
+      "roles": {
+        "user": 1,
+        "assistant": 2,
+        "tool": 2
+      },
+      "tool_events": 2,
+      "tool_families": {
+        "read_file": 1,
+        "browser_navigate": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 2
+      }
+    },
+    {
+      "file": "voc-um-agente-de-automa-o-respons-vel-por-3-20260904.json",
+      "messages": 3,
+      "roles": {
+        "user": 3
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "voc-um-agente-de-automa-o-respons-vel-por-4-20260904.json",
+      "messages": 3,
+      "roles": {
+        "user": 3
+      },
+      "tool_events": 0,
+      "tool_families": {},
+      "text_markers_unverified": {}
+    },
+    {
+      "file": "voc-um-agente-de-automa-o-respons-vel-por-5-20260904.json",
+      "messages": 341,
+      "roles": {
+        "user": 11,
+        "assistant": 178,
+        "tool": 152
+      },
+      "tool_events": 152,
+      "tool_families": {
+        "browser_console": 66,
+        "browser_navigate": 41,
+        "write_file": 29,
+        "skill_view": 5,
+        "todo": 3,
+        "terminal": 2,
+        "search_files": 2,
+        "read_file": 2,
+        "browser_snapshot": 1,
+        "browser_click": 1
+      },
+      "text_markers_unverified": {
+        "assistant_tool_intents": 182
+      }
+    }
+  ]
+}
