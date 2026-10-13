@@ -1,17 +1,42 @@
+import { useCallback, useMemo, useState } from 'react'
+
 import { useCreativeWorkspace } from './CreativeWorkspaceContext'
-import { useMemo, useCallback, useState } from 'react'
-import type { CreativeLayer, CreativeKeyframe } from './types'
+import type { CreativeKeyframe, CreativeLayer } from './types'
 
 export function CreativeGraphEditor() {
-  const { project, selection, workspaceMode } = useCreativeWorkspace()
+  const { project, selection, applyEdit } = useCreativeWorkspace()
   const composition = project?.compositions[0]
+
   const selectedLayer = useMemo(() => {
-    if (selection.selectedLayerIds.size === 0) return null
+    if (selection.selectedLayerIds.size === 0) {return null}
     const layerId = selection.selectedLayerIds.values().next().value
+
     return composition?.layers.find((l: CreativeLayer) => l.layerId === layerId) ?? null
   }, [selection.selectedLayerIds, composition])
 
   const [graphType, setGraphType] = useState<'value' | 'velocity'>('value')
+
+  const propertiesWithKeyframes = useMemo(() => {
+    const propMap = new Map<string, CreativeKeyframe[]>()
+
+    for (const kf of selectedLayer?.keyframes ?? []) {
+      if (!propMap.has(kf.propertyPath)) {propMap.set(kf.propertyPath, [])}
+      propMap.get(kf.propertyPath)!.push(kf)
+    }
+
+    return Array.from(propMap.entries()).map(([propertyPath, keyframes]) => ({
+      propertyPath,
+      keyframes: keyframes.slice().sort((a: CreativeKeyframe, b: CreativeKeyframe) => a.time - b.time),
+    }))
+  }, [selectedLayer])
+
+  const handleKeyframeDrag = useCallback((keyframeId: string, newTime: number, newValue: number) => {
+    applyEdit({ type: 'editKeyframe', keyframeId, time: newTime, value: newValue })
+  }, [applyEdit])
+
+  const handleEasingChange = useCallback((keyframeId: string, easing: string) => {
+    applyEdit({ type: 'editKeyframe', keyframeId, easing })
+  }, [applyEdit])
 
   if (!selectedLayer || selectedLayer.keyframes.length === 0) {
     return (
@@ -22,48 +47,28 @@ export function CreativeGraphEditor() {
     )
   }
 
-  const propertiesWithKeyframes = useMemo(() => {
-    const propMap = new Map<string, typeof selectedLayer.keyframes>()
-    for (const kf of selectedLayer.keyframes) {
-      if (!propMap.has(kf.propertyPath)) propMap.set(kf.propertyPath, [])
-      propMap.get(kf.propertyPath)!.push(kf)
-    }
-    return Array.from(propMap.entries()).map(([propertyPath, keyframes]) => ({
-      propertyPath,
-      keyframes: keyframes.sort((a: CreativeKeyframe, b: CreativeKeyframe) => a.time - b.time),
-    }))
-  }, [selectedLayer.keyframes])
-
-  const handleKeyframeDrag = useCallback((keyframeId: string, newTime: number, newValue: number) => {
-    console.log('Drag keyframe:', keyframeId, newTime, newValue)
-  }, [])
-
-  const handleEasingChange = useCallback((keyframeId: string, easing: string) => {
-    console.log('Change easing:', keyframeId, easing)
-  }, [])
-
   return (
-    <div className="creative-graph-editor" role="region" aria-label="Graph Editor">
+    <div aria-label="Graph Editor" className="creative-graph-editor" role="region">
       <div className="creative-graph-editor-header">
         <h3>Graph Editor</h3>
         <div className="creative-graph-editor-controls">
           <label>
             <input
-              type="radio"
-              name="graph-type"
-              value="value"
               checked={graphType === 'value'}
+              name="graph-type"
               onChange={() => setGraphType('value')}
+              type="radio"
+              value="value"
             />
             Value
           </label>
           <label>
             <input
-              type="radio"
-              name="graph-type"
-              value="velocity"
               checked={graphType === 'velocity'}
+              name="graph-type"
               onChange={() => setGraphType('velocity')}
+              type="radio"
+              value="velocity"
             />
             Velocity
           </label>
@@ -72,13 +77,13 @@ export function CreativeGraphEditor() {
 
       <div className="creative-graph-editor-properties">
         {propertiesWithKeyframes.map(({ propertyPath, keyframes }) => (
-          <div key={propertyPath} className="creative-graph-editor-property">
+          <div className="creative-graph-editor-property" key={propertyPath}>
             <div className="creative-graph-editor-property-label">{propertyPath}</div>
             <CreativeGraphCurve
-              keyframes={keyframes}
               graphType={graphType}
-              onKeyframeDrag={handleKeyframeDrag}
+              keyframes={keyframes}
               onEasingChange={handleEasingChange}
+              onKeyframeDrag={handleKeyframeDrag}
             />
           </div>
         ))}
@@ -122,35 +127,37 @@ function CreativeGraphCurve({
   const xScale = (time: number) => padding + ((time - minTime) / timeRange) * (width - 2 * padding)
   const yScale = (value: number) => height - padding - ((value - minValue) / valueRange) * (height - 2 * padding)
 
-  const pathData = keyframes
-    .sort((a, b) => a.time - b.time)
+  const ordered = keyframes.slice().sort((a, b) => a.time - b.time)
+
+  const pathData = ordered
     .map((kf, i) => {
       const x = xScale(kf.time)
       const y = yScale(Number(kf.value))
+
       return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`
     })
     .join(' ')
 
   return (
     <div className="creative-graph-curve">
-      <svg width={width} height={height} className="creative-graph-svg">
+      <svg className="creative-graph-svg" height={height} width={width}>
         <defs>
-          <linearGradient id="graph-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <linearGradient id="graph-gradient" x1="0%" x2="0%" y1="0%" y2="100%">
             <stop offset="0%" stopColor="#00ff88" stopOpacity="0.3" />
             <stop offset="100%" stopColor="#00ff88" stopOpacity="0" />
           </linearGradient>
         </defs>
 
-        <rect x={0} y={0} width={width} height={height} fill="#1a1a1a" />
-        <rect x={padding} y={padding} width={width - 2 * padding} height={height - 2 * padding} fill="none" stroke="#333" />
+        <rect fill="#1a1a1a" height={height} width={width} x={0} y={0} />
+        <rect fill="none" height={height - 2 * padding} stroke="#333" width={width - 2 * padding} x={padding} y={padding} />
 
         <path
           d={pathData}
           fill="none"
           stroke="#00ff88"
-          strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
+          strokeWidth={2}
         />
 
         <path
@@ -159,21 +166,21 @@ function CreativeGraphCurve({
         />
 
         {keyframes.map((kf: CreativeKeyframe) => (
-          <g key={kf.keyframeId} className="creative-graph-keyframe">
+          <g className="creative-graph-keyframe" key={kf.keyframeId}>
             <circle
               cx={xScale(kf.time)}
               cy={yScale(Number(kf.value))}
-              r={6}
               fill="#00ff88"
+              r={6}
               stroke="#fff"
               strokeWidth={2}
             />
             <text
-              x={xScale(kf.time)}
-              y={yScale(Number(kf.value)) - 10}
-              textAnchor="middle"
               fill="#fff"
               fontSize={10}
+              textAnchor="middle"
+              x={xScale(kf.time)}
+              y={yScale(Number(kf.value)) - 10}
             >
               {kf.easing}
             </text>
@@ -183,17 +190,17 @@ function CreativeGraphCurve({
 
       <div className="creative-graph-keyframe-list">
         {keyframes.map((kf: CreativeKeyframe) => (
-          <div key={kf.keyframeId} className="creative-graph-keyframe-item">
+          <div className="creative-graph-keyframe-item" key={kf.keyframeId}>
             <span>@{kf.time.toFixed(3)}s</span>
             <input
-              type="number"
-              step="0.001"
-              value={String(kf.value)}
               onChange={e => onKeyframeDrag(kf.keyframeId, kf.time, Number(e.target.value))}
+              step="0.001"
+              type="number"
+              value={String(kf.value)}
             />
             <select
-              value={kf.easing}
               onChange={e => onEasingChange(kf.keyframeId, e.target.value)}
+              value={kf.easing}
             >
               <option value="linear">Linear</option>
               <option value="ease_in">Ease In</option>

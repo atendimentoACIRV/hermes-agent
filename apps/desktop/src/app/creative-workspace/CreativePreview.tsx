@@ -1,29 +1,24 @@
+import { useCallback } from 'react'
+
+import { sampledTransform } from './creative-mvp-model'
 import { useCreativeWorkspace } from './CreativeWorkspaceContext'
 import type { CreativeComposition } from './types'
 
 export function CreativePreview() {
-  const { project, playheadTime, isPlaying } = useCreativeWorkspace()
+  const { project, playheadTime, isPlaying, setIsPlaying } = useCreativeWorkspace()
   const composition = project?.compositions[0]
 
-  const handlePlayPause = () => {
-    // Would dispatch to backend to toggle playback
-    console.log('Play/pause toggled')
-  }
-
-  const handleSeek = (time: number) => {
-    // Would dispatch to backend to seek
-    console.log('Seek to:', time)
-  }
+  const handlePlayPause = () => setIsPlaying(!isPlaying)
 
   return (
-    <div className="creative-preview" role="region" aria-label="Preview">
+    <div aria-label="Preview" className="creative-preview" role="region">
       <div className="creative-preview-header">
         <h3>Preview</h3>
         <div className="creative-preview-controls">
           <button
+            aria-label={isPlaying ? 'Pause' : 'Play'}
             className="creative-preview-btn"
             onClick={handlePlayPause}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? '⏸' : '▶'}
           </button>
@@ -35,9 +30,9 @@ export function CreativePreview() {
         {composition ? (
           <CreativePreviewRenderer
             composition={composition}
+            height={project?.height ?? 1080}
             playheadTime={playheadTime}
             width={project?.width ?? 1920}
-            height={project?.height ?? 1080}
           />
         ) : (
           <div className="creative-preview-placeholder">
@@ -62,6 +57,8 @@ function CreativePreviewRenderer({
   width,
   height,
 }: CreativePreviewRendererProps) {
+  const { selectLayer } = useCreativeWorkspace()
+  const onSelect = useCallback((id: string) => selectLayer(id), [selectLayer])
   const aspectRatio = width / height
   const containerWidth = Math.min(800, window.innerWidth * 0.8)
   const containerHeight = containerWidth / aspectRatio
@@ -78,36 +75,44 @@ function CreativePreviewRenderer({
       }}
     >
       <svg
-        width={containerWidth}
         height={containerHeight}
-        viewBox={`0 0 ${width} ${height}`}
         style={{ position: 'absolute', top: 0, left: 0 }}
+        viewBox={`0 0 ${width} ${height}`}
+        width={containerWidth}
       >
-        <rect width={width} height={height} fill="#000000" />
+        <rect fill="#000000" height={height} width={width} />
 
         {composition.layers
-          .filter(layer => layer.kind === 'vector_svg')
+          .filter(layer => ['vector_svg', 'text', 'shape'].includes(layer.kind))
           .map(layer => {
-            const opacity = layer.transform.opacity
-            const x = layer.transform.x
-            const y = layer.transform.y
+            const { opacity, x, y } = sampledTransform(layer, playheadTime)
             const params = layer.declaredParameters
 
             if (params.text) {
               return (
                 <text
+                  fill={params.color as string ?? '#ffffff'}
+                  fontFamily="sans-serif"
+                  fontSize={params.font_size as number ?? 32}
                   key={layer.layerId}
+                  onClick={() => onSelect(layer.layerId)}
+                  opacity={opacity}
+                  style={{ cursor: 'pointer' }}
                   x={x}
                   y={y}
-                  fill={params.color as string ?? '#ffffff'}
-                  fontSize={params.font_size as number ?? 32}
-                  opacity={opacity}
-                  fontFamily="sans-serif"
                 >
                   {String(params.text)}
                 </text>
               )
             }
+
+            if (layer.kind === 'shape') {return (
+              <rect fill={String(params.color ?? '#ffffff')} height={Number(params.height ?? 160)} key={layer.layerId}
+                onClick={() => onSelect(layer.layerId)} opacity={opacity}
+                style={{ cursor: 'pointer' }} width={Number(params.width ?? 240)}
+                x={x} y={y} />
+            )}
+
             return null
           })}
 
@@ -117,13 +122,13 @@ function CreativePreviewRenderer({
           .filter(clip => clip.timelineRange.start <= playheadTime && playheadTime < clip.timelineRange.end)
           .map(clip => (
             <rect
+              fill="#333"
+              height={height}
               key={clip.clipId}
+              opacity={0.5}
+              width={width}
               x={0}
               y={0}
-              width={width}
-              height={height}
-              fill="#333"
-              opacity={0.5}
             />
           ))}
       </svg>

@@ -3099,3 +3099,6 @@ Isolated native scenario: **1 PASS, 0 FAIL**, about 1.9 minutes on worktree-buil
 
 <!-- BAV04 2026-10-12 experiment, PR85 Draft -->
 - BAV-04 experimental crash-window test: using canonical ExecutionJournal + ArtifactStore + existing DeterministicRoutineRunner.resume_ref, a disposable Electron WebContentsView/authorized native controller fixture recovered after Python worker os._exit(37), independently reconciled server effect and avoided duplicate mutation (2 effects total). 11/11 Python guard tests, 2/2 paired Electron, 13/13 targeted Python + 16/16 memory/journal regression. **Test-only**, not production authority/restart/CI; H-079 baseline & exact-head release remain HOLD. Next: authentic new BrowserTask/TaskRun admission, real lease fencing and Electron main crash safety after Stage A qualified.
+
+## 2026-10-11 — CWN renderer-first vector MVP (development only)
+See `creative-workstation/MVP_EDITOR_DELIVERY_2026-10-11.md`. Renderer route provider, explicit vector project open/create, text/rectangle edit, keyframe interpolation, functional Inspector/Graph controls, undo/redo, JSON source save and current SVG frame export. **HOLD production promotion:** no shared Python creative commands/CAS persistence, no packaged Electron E2E, no true MP4 or 3D, no exact-head CI. Implement CWN-02 typed native command bridge before engine expansion.

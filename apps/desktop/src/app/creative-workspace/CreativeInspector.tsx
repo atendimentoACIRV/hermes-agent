@@ -1,40 +1,49 @@
-import { useCreativeWorkspace } from './CreativeWorkspaceContext'
 import { useMemo } from 'react'
-import type { CreativeTrack, CreativeClip, CreativeLayer, CreativeKeyframe } from './types'
+
+import { useCreativeWorkspace } from './CreativeWorkspaceContext'
+import type { CreativeClip, CreativeKeyframe, CreativeLayer, CreativeTrack } from './types'
 
 export function CreativeInspector() {
-  const { project, selection } = useCreativeWorkspace()
+  const { project, selection, applyEdit } = useCreativeWorkspace()
   const composition = project?.compositions[0]
 
   const selectedClip = useMemo(() => {
-    if (selection.selectedClipIds.size === 0) return null
+    if (selection.selectedClipIds.size === 0) {return null}
     const clipId = selection.selectedClipIds.values().next().value
+
     for (const track of composition?.tracks ?? []) {
       const clip = track.clips.find((c: CreativeClip) => c.clipId === clipId)
-      if (clip) return { clip, track }
+
+      if (clip) {return { clip, track }}
     }
+
     return null
   }, [selection.selectedClipIds, composition])
 
   const selectedTrack = useMemo(() => {
-    if (selection.selectedTrackIds.size === 0) return null
+    if (selection.selectedTrackIds.size === 0) {return null}
     const trackId = selection.selectedTrackIds.values().next().value
+
     return composition?.tracks.find((t: CreativeTrack) => t.trackId === trackId) ?? null
   }, [selection.selectedTrackIds, composition])
 
   const selectedLayer = useMemo(() => {
-    if (selection.selectedLayerIds.size === 0) return null
+    if (selection.selectedLayerIds.size === 0) {return null}
     const layerId = selection.selectedLayerIds.values().next().value
+
     return composition?.layers.find((l: CreativeLayer) => l.layerId === layerId) ?? null
   }, [selection.selectedLayerIds, composition])
 
   const selectedKeyframe = useMemo(() => {
-    if (selection.selectedKeyframeIds.size === 0) return null
+    if (selection.selectedKeyframeIds.size === 0) {return null}
     const keyframeId = selection.selectedKeyframeIds.values().next().value
+
     for (const layer of composition?.layers ?? []) {
       const kf = layer.keyframes.find((k: CreativeKeyframe) => k.keyframeId === keyframeId)
-      if (kf) return { keyframe: kf, layer }
+
+      if (kf) {return { keyframe: kf, layer }}
     }
+
     return null
   }, [selection.selectedKeyframeIds, composition])
 
@@ -48,7 +57,7 @@ export function CreativeInspector() {
   }
 
   return (
-    <div className="creative-inspector" role="region" aria-label="Inspector">
+    <div aria-label="Inspector" className="creative-inspector" role="region">
       <h3>Inspector</h3>
 
       {selectedClip && (
@@ -81,26 +90,26 @@ export function CreativeInspector() {
           <div className="creative-inspector-field">
             <label>Speed</label>
             <input
-              type="number"
-              step="0.01"
-              value={selectedClip.clip.speed}
               onChange={e => console.log('Speed change:', e.target.value)}
+              step="0.01"
+              type="number"
+              value={selectedClip.clip.speed}
             />
           </div>
           <div className="creative-inspector-field">
             <label>Reverse</label>
             <input
-              type="checkbox"
               checked={selectedClip.clip.reverse}
               onChange={e => console.log('Reverse change:', e.target.checked)}
+              type="checkbox"
             />
           </div>
           <div className="creative-inspector-field">
             <label>Freeze Frame</label>
             <input
-              type="checkbox"
               checked={selectedClip.clip.freeze}
               onChange={e => console.log('Freeze change:', e.target.checked)}
+              type="checkbox"
             />
           </div>
           {selectedClip.clip.linkedClipIds.length > 0 && (
@@ -132,25 +141,25 @@ export function CreativeInspector() {
           <div className="creative-inspector-field">
             <label>Locked</label>
             <input
-              type="checkbox"
               checked={selectedTrack.locked}
               onChange={e => console.log('Track lock change:', e.target.checked)}
+              type="checkbox"
             />
           </div>
           <div className="creative-inspector-field">
             <label>Muted</label>
             <input
-              type="checkbox"
               checked={selectedTrack.muted}
               onChange={e => console.log('Track mute change:', e.target.checked)}
+              type="checkbox"
             />
           </div>
           <div className="creative-inspector-field">
             <label>Solo</label>
             <input
-              type="checkbox"
               checked={selectedTrack.solo}
               onChange={e => console.log('Track solo change:', e.target.checked)}
+              type="checkbox"
             />
           </div>
           <div className="creative-inspector-field">
@@ -174,33 +183,60 @@ export function CreativeInspector() {
           <div className="creative-inspector-field">
             <label>Opacity</label>
             <input
-              type="range"
-              min="0"
               max="1"
+              min="0"
+              onChange={e => applyEdit({ type: 'setTransform', id: selectedLayer.layerId, property: 'opacity', value: Number(e.target.value) })}
               step="0.01"
+              type="range"
               value={selectedLayer.transform.opacity}
-              onChange={e => console.log('Opacity change:', e.target.value)}
             />
           </div>
           <div className="creative-inspector-field">
             <label>Position X</label>
             <input
-              type="number"
+              onChange={e => applyEdit({ type: 'setTransform', id: selectedLayer.layerId, property: 'x', value: Number(e.target.value) })}
               step="1"
+              type="number"
               value={selectedLayer.transform.x}
-              onChange={e => console.log('X change:', e.target.value)}
             />
           </div>
           <div className="creative-inspector-field">
             <label>Position Y</label>
             <input
-              type="number"
+              onChange={e => applyEdit({ type: 'setTransform', id: selectedLayer.layerId, property: 'y', value: Number(e.target.value) })}
               step="1"
+              type="number"
               value={selectedLayer.transform.y}
-              onChange={e => console.log('Y change:', e.target.value)}
             />
           </div>
 
+          {selectedLayer.kind === 'text' && (
+            <div className="creative-inspector-field">
+              <label htmlFor="creative-text-value">Text</label>
+              <input id="creative-text-value" onChange={e => applyEdit({ type: 'setParameter', id: selectedLayer.layerId,
+                  property: 'text', value: e.target.value })}
+                type="text"
+                value={String(selectedLayer.declaredParameters.text ?? '')} />
+            </div>
+          )}
+          {(selectedLayer.kind === 'text' || selectedLayer.kind === 'shape') && (
+            <div className="creative-inspector-field">
+              <label htmlFor="creative-color-value">Color</label>
+              <input id="creative-color-value" onChange={e => applyEdit({ type: 'setParameter', id: selectedLayer.layerId,
+                  property: 'color', value: e.target.value })}
+                type="color"
+                value={String(selectedLayer.declaredParameters.color ?? '#ffffff')} />
+            </div>
+          )}
+          {selectedLayer.kind === 'shape' && (['width', 'height'] as const).map(property => (
+            <div className="creative-inspector-field" key={property}>
+              <label htmlFor={'creative-' + property}>{property}</label>
+              <input id={'creative-' + property} max={8192} min={0} onChange={e => applyEdit({ type: 'setParameter', id: selectedLayer.layerId,
+                  property, value: Number(e.target.value) })}
+                type="number"
+                value={Number(selectedLayer.declaredParameters[property] ?? 0)} />
+            </div>
+          ))}
           {Object.keys(selectedLayer.declaredParameters).length > 0 && (
             <div className="creative-inspector-field">
               <label>Declared Parameters</label>
@@ -255,25 +291,25 @@ export function CreativeInspector() {
           <div className="creative-inspector-field">
             <label>Time</label>
             <input
-              type="number"
+              onChange={e => applyEdit({ type: 'editKeyframe', keyframeId: selectedKeyframe.keyframe.keyframeId, time: Number(e.target.value) })}
               step="0.001"
+              type="number"
               value={selectedKeyframe.keyframe.time}
-              onChange={e => console.log('Keyframe time change:', e.target.value)}
             />
           </div>
           <div className="creative-inspector-field">
             <label>Value</label>
             <input
+              onChange={e => applyEdit({ type: 'editKeyframe', keyframeId: selectedKeyframe.keyframe.keyframeId, value: Number(e.target.value) })}
               type="text"
               value={String(selectedKeyframe.keyframe.value)}
-              onChange={e => console.log('Keyframe value change:', e.target.value)}
             />
           </div>
           <div className="creative-inspector-field">
             <label>Easing</label>
             <select
+              onChange={e => applyEdit({ type: 'editKeyframe', keyframeId: selectedKeyframe.keyframe.keyframeId, easing: e.target.value })}
               value={selectedKeyframe.keyframe.easing}
-              onChange={e => console.log('Easing change:', e.target.value)}
             >
               <option value="linear">Linear</option>
               <option value="ease_in">Ease In</option>

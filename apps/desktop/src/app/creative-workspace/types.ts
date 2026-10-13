@@ -1,3 +1,5 @@
+import type { CreativeEdit } from './creative-mvp-model'
+
 export type WorkspaceMode = 'montage' | 'motion' | 'design' | '3d' | 'transcript'
 
 export interface CreativeProject {
@@ -79,6 +81,12 @@ export interface SelectionState {
 }
 
 export interface CreativeWorkspaceContextValue {
+  applyEdit: (edit: CreativeEdit) => void
+  undo: () => void
+  redo: () => void
+  canUndo: boolean
+  canRedo: boolean
+
   project: CreativeProject | null
   selection: SelectionState
   workspaceMode: WorkspaceMode
