@@ -1,13 +1,17 @@
 # Architectural Decisions
 
-## D-045 — Smart Kanban admission: Session ≠ Task ≠ TaskRun (2026-10-11, P0)
-**Status: isolated code + RED/GREEN development; native product qualification OPEN.**
+## D-045 — Smart Kanban admission: Session ≠ Task ≠ TaskRun (2026-10-11, P0; pausa estratégica 2026-10-12)
+**Status: isolated code + RED/GREEN development; native product qualification OPEN; pausa estratégica 2026-10-12.**
+
+**Problema e Alternativas:** promoção de perguntas e ações pontuais a Kanban `running` contaminava autoridade de sessão, bloqueios e `SUPERSEDED`. Alternativas avaliadas: A desligar autocriação (reduz risco e autonomia); B criar tudo em triagem (muito ruído); C admissão semântica progressiva e triage sem run (escolhida, com contenção inicial B); D manter auto-promoção ampla (descartada).
+
+**Regras arquiteturais canônicas:**
 1. A trusted human question and an exact one-shot GUI/navigation command do not create a Kanban responsibility by topic keyword; they remain Session-level interactions, with existing prefabs/Router and consent gates. The SessionDB is still the conversation owner.
 2. Explicit multistep/repetitive/structured durable work may automatically create a **canonical Kanban Task in triage**; task admission does not claim a TaskRun. A claimed Run begins only at existing Workstation mutation or TaskCompiler execution owner, atomically fenced by the canonical Kanban claim, not by a new scheduler.
 3. Blocked/running/uncertain tasks remain durable but cannot lend their old run to new turns. Ordinary conversation clears stale run binding; an existing unfinished identical task is reused by read projection, never cloned to escape review. The current task/run remains the only execution authority and cannot be inferred from Session alone.
 4. A never-started Task cannot be marked completed or blocked by absence of evidence: its completion candidate is typed `queued_unstarted`. Actual dispatched effects remain subject to canonical verifier/readback, authority, CAS and uncertainty checks. No blanket advisory-bypass or unconditional auto-unblock.
 5. No parallel Task store, authorization system, receipt registry or BrowserTask. Explicit test fixture Task creation may use trusted `force=True`, while automatic turn admission never does. Existing completed tasks can be started again by a new explicit turn.
-6. Exact-head CI, real native Hermes UI/tool handoff, old-task reconciliation and PR dependencies (#71–74) are required before release. H-079 `PASS_WITH_AUTHORIZATION` permits development, not promotion.
+6. Exact-head CI, real native Hermes UI/tool handoff, old-task reconciliation and PR dependencies (#71–74) are required before release. H-079 `PASS_WITH_AUTHORIZATION` permits development, not promotion. KANBAN-04 UI handoff + readback tipado permanece pendente de qualificação. [Fundamentos e alternativas](HERMES_WORK_DECISION_RATIONALE_2026-10-12.md), [handoff](HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md).
 
 
 <!-- creative-D043-overlay -->

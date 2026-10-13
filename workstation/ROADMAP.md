@@ -1,5 +1,21 @@
 # Workstation roadmap
 
+## 2026-10-12 — Strategic freeze: Kanban/Browser Authority P0 (PAUSED_BY_STRATEGY)
+
+**Não é fechamento técnico, nem nova prioridade de implementação.** O trabalho testado em PRs draft #70–#83 não foi promovido a `main`. Estado verificado no [handoff](context/HERMES_WORK_STRATEGIC_HANDOFF_2026-10-12.md), [PR snapshot](context/HERMES_WORK_PR_RECONCILIATION_2026-10-12.md), [issues KI-028–KI-043](context/KNOWN_ISSUES.md) e [evidence manifest](context/HERMES_WORK_SOURCE_EVIDENCE_MANIFEST_2026-10-12.md).
+
+| Gate | Estado de engenharia | Próxima condição de aceite (quando retomado) |
+|---|---|---|
+| KANBAN-01 | PARTIALLY_FIXED / QA PENDING | Corpus real intent/FP/FN |
+| KANBAN-02 | PARTIALLY_FIXED / QA PENDING | packaged worker restart/supersession e claim concorrente |
+| KANBAN-03 | PARTIALLY_FIXED | contracts tipados e readback end-to-end |
+| KANBAN-04 | **PARTIALLY_FIXED — P0 central** | HANDOFF UI real → single consume → evaluate_verification → resume sem replay |
+| KANBAN-05 | PARTIALLY_FIXED | sessões bloqueadas/órfãos não contaminam |
+| KANBAN-06 | BLOCKED (read-only dry-run completo) | decisão explícita para qualquer restauração |
+| KANBAN-07 | QUALIFICATION_PENDING | Windows packaged, One-Click, CI SHA exato, H-079, stacked chain |
+
+**O que passou em branch:** #83 relata 34 Python, 58 Vitest e 4 Electron/Chromium E2E; cliques UI/409, cold restart, loss of ACK e readback isolados. **O que não passou ainda:** UI approval + tipagem + retomada em um único fluxo, instalador/CI. H-079 PASS_WITH_AUTHORIZATION não é release. Reaproveitar D-043 Creative e Prefabs/Experience sem criar segundos owners. **Mudar estratégia não significa descartar esta inteligência**. [Prompt arquivado](context/HERMES_WORK_RESUME_PROMPT_2026-10-12.md).
+
 ## 2026-10-11 — P0 Smart Task Admission / D-045 (isolated PR; release gate open)
 **Order:** S-0 classify a human turn as conversation / point action / durable work → S-1 auto-create only durable responsibility as canonical `triage`, no speculative Run → S-2 claim by existing Kanban CAS at actual Workstation effect/TaskCompiler execution → S-3 preserve unstarted outcome as `queued_unstarted` and refuse unverifiable completion → S-4 detach blocked/superseded runs from subsequent chat turns, deduplicate unfinished identical tasks → S-5 replay Windows native multi-turn Browser/TaskRun/Controller + CI exact SHA. The previous generic `browser/site/pesquisa` keyword promotion is not authority. Related independent PRs: #71–74 (effect taxonomies, uncertainty/handoff, supersession); do not silently merge or assume their behavior is present in this branch.
 
