@@ -751,6 +751,29 @@
         }
       ],
       "current_direct_imports": 0
+    },
+    {
+      "id": "FPS-WEB-EC-001",
+      "path": "hermes_cli/web_routers/experience_compiler.py",
+      "disposition": "PRESERVE_FIRST_PARTY",
+      "target": "workstation/experience_compiler",
+      "rationale": "Hermes Workstation Experience Compiler API routes provide compilation monitor, capability studio, and hierarchical execution state to the Web/Desktop interface.",
+      "concerns": [
+        {
+          "id": "SEAM-WEB-ROUTER-EC",
+          "symbol_or_concern": "Experience Compiler API endpoints",
+          "semantic_owner": "workstation.experience_compiler",
+          "current_behavior": "Exposes /api/workstation/experience-compiler endpoints in the web server.",
+          "required_ordering": "Mounted with workstation web routers.",
+          "disposition": "PRESERVE_FIRST_PARTY",
+          "replacement": "Retain as first-party workstation router until upstream provides generic experience compiler interfaces.",
+          "parity_tests": [
+            "workstation/tests/test_h080b_experience_compiler_closure.py"
+          ],
+          "sunset_condition": "Upstream supplies equivalent compiler routing surface"
+        }
+      ],
+      "current_direct_imports": 12
     }
   ],
   "operating_policy": {
