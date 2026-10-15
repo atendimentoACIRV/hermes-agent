@@ -92,7 +92,9 @@ function Enter-UpstreamEnvironment {
       }
     }
     $env:HERMES_PYTHON = $python
-    $pyCheck = & $python -I -c "import hermes_cli; print('ok')" 2>$null
+    # -I would discard the composed PYTHONPATH and falsely reject healthy PM
+    # generations. Probe real pinned runtime dependencies, not just sources.
+    $pyCheck = & $python -c "import hermes_cli, httpx, pydantic; from importlib.metadata import version; version('hermes-agent'); print('ok')" 2>$null
     if ($LASTEXITCODE -ne 0 -or ($pyCheck | Select-Object -Last 1) -ne "ok") { return $false }
     if (-not (Get-Command node -ErrorAction SilentlyContinue) -or
         -not (Get-Command npm -ErrorAction SilentlyContinue) -or
@@ -117,7 +119,9 @@ function Invoke-Step {
   param([string]$Name, [string]$Script, [string[]]$Arguments = @())
   Write-Host ""
   Write-Host $Name -ForegroundColor Cyan
-  & $Script @Arguments
+  # Child PowerShell isolates exit/terminating errors and forwards the exact
+  # exit status without losing the parent's PM-composed process environment.
+  & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Script @Arguments
   if ($LASTEXITCODE -ne 0) { throw "$Name failed (exit code $LASTEXITCODE)." }
 }
 
@@ -128,13 +132,18 @@ try {
     Write-Host " HERMES WORK - ONE-CLICK BOOTSTRAP"
     Write-Host "============================================================"
     $fingerprint = Get-UpstreamFingerprint
-    $stampMatches = (Test-Path -LiteralPath $UpstreamStamp -PathType Leaf) -and
-      ([IO.File]::ReadAllText($UpstreamStamp).Trim() -eq $fingerprint)
+    $stampMatches = $false
+    if (Test-Path -LiteralPath $UpstreamStamp -PathType Leaf) {
+      try { $stampMatches = ([IO.File]::ReadAllText($UpstreamStamp).Trim() -eq $fingerprint) }
+      catch { Write-Host "[bootstrap] Previous install record unreadable; repairing." -ForegroundColor Yellow }
+    }
     if (-not $stampMatches -or -not (Enter-UpstreamEnvironment)) {
       Write-Host "[0/4] Installing or repairing pinned upstream tools and Python dependencies..." -ForegroundColor Cyan
       Write-Host "      First run requires internet to fetch SHA256-verified archives."
       # Official upstream package-management path, including optional defaults.
-      & $SetupScript -RuntimeOnly
+      # setup-hermes.ps1 explicitly calls exit 0 under -RuntimeOnly. Running
+      # it in-process would terminate THIS launcher before Electron starts.
+      & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $SetupScript -RuntimeOnly
       if ($LASTEXITCODE -ne 0) { throw "Upstream package manager failed (exit code $LASTEXITCODE)." }
       if (-not (Enter-UpstreamEnvironment)) {
         throw "Upstream setup returned without a usable Python 3.14 / Node / npm / Git environment."
