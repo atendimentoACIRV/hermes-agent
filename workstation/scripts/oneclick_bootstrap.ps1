@@ -78,35 +78,107 @@ function Find-PmPython {
   return $null
 }
 
-function Enter-UpstreamEnvironment {
-  $python = Find-PmPython
-  if (-not $python) { return $false }
+function Import-PmEnvironment {
+  param([string]$Python)
+  # Do not hide the underlying error when the PM environment cannot be loaded.
+  $output = & $Python -m pm.environments 2>&1
+  $exitCode = $LASTEXITCODE
+  if ($exitCode -ne 0 -or -not $output) {
+    Write-Host "[bootstrap] PM environment export failed (exit $exitCode)." -ForegroundColor Yellow
+    foreach ($line in @($output | Select-Object -Last 6)) {
+      Write-Host "  $line" -ForegroundColor Yellow
+    }
+    return $false
+  }
   try {
-    # Use upstream's own PATH composer; do not write global PATH or registry.
-    $json = & $python -m pm.environments 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $json) { return $false }
-    $composed = ($json -join [char]10) | ConvertFrom-Json
+    $composed = ($output -join [char]10) | ConvertFrom-Json
     foreach ($property in $composed.PSObject.Properties) {
       if ($null -ne $property.Value) {
         [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, "Process")
       }
     }
+  } catch {
+    Write-Host "[bootstrap] Invalid PM environment export: $($_.Exception.Message)" -ForegroundColor Yellow
+    return $false
+  }
+  return $true
+}
+
+function Enter-UpstreamEnvironment {
+  $python = Find-PmPython
+  if (-not $python) {
+    Write-Host "[bootstrap] Pinned Python 3.14 could not be located after setup." -ForegroundColor Yellow
+    return $false
+  }
+  try {
+    # Use upstream's own PATH composer; do not write global PATH or registry.
+    if (-not (Import-PmEnvironment -Python $python)) { return $false }
     $env:HERMES_PYTHON = $python
     # -I would discard the composed PYTHONPATH and falsely reject healthy PM
     # generations. Probe real pinned runtime dependencies, not just sources.
-    $pyCheck = & $python -c "import hermes_cli, httpx, pydantic; from importlib.metadata import version; version('hermes-agent'); print('ok')" 2>$null
-    if ($LASTEXITCODE -ne 0 -or ($pyCheck | Select-Object -Last 1) -ne "ok") { return $false }
-    if (-not (Get-Command node -ErrorAction SilentlyContinue) -or
-        -not (Get-Command npm -ErrorAction SilentlyContinue) -or
-        -not (Get-Command git -ErrorAction SilentlyContinue)) { return $false }
+    $pyCheck = & $python -c "import hermes_cli, httpx, pydantic; from importlib.metadata import version; version('hermes-agent'); print('ok')" 2>&1
+    $pyExitCode = $LASTEXITCODE
+    if ($pyExitCode -ne 0 -or ($pyCheck | Select-Object -Last 1) -ne "ok") {
+      Write-Host "[bootstrap] PM Python runtime import check failed (exit $pyExitCode)." -ForegroundColor Yellow
+      foreach ($line in @($pyCheck | Select-Object -Last 6)) {
+        Write-Host "  $line" -ForegroundColor Yellow
+      }
+      return $false
+    }
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+      Write-Host "[bootstrap] Node.js is missing from the PM PATH." -ForegroundColor Yellow
+      return $false
+    }
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+      Write-Host "[bootstrap] npm is missing from the PM PATH." -ForegroundColor Yellow
+      return $false
+    }
     $nodeOut = & node -p "process.versions.node" 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $nodeOut) { return $false }
+    $nodeExitCode = $LASTEXITCODE
+    if ($nodeExitCode -ne 0 -or -not $nodeOut) {
+      Write-Host "[bootstrap] Node.js version check failed (exit $nodeExitCode)." -ForegroundColor Yellow
+      return $false
+    }
     $nodeVersion = [version]([string]($nodeOut | Select-Object -Last 1))
-    if ($nodeVersion -lt [version]"22.22.0") { return $false }
+    if ($nodeVersion -lt [version]"22.22.0") {
+      Write-Host "[bootstrap] Node $nodeVersion is older than required 22.22.0." -ForegroundColor Yellow
+      return $false
+    }
     $npmOut = & cmd.exe /d /c "npm --version 2>NUL"
-    if ($LASTEXITCODE -ne 0 -or -not $npmOut) { return $false }
+    $npmExitCode = $LASTEXITCODE
+    if ($npmExitCode -ne 0 -or -not $npmOut) {
+      Write-Host "[bootstrap] npm version check failed (exit $npmExitCode)." -ForegroundColor Yellow
+      return $false
+    }
+
+    # Upstream deliberately treats Git as optional: a default PM install does
+    # not provision it. On a fresh Windows machine GitHub Desktop's embedded
+    # Git is usually not on PATH, while Workstation's strict doctor requires it.
+    $gitCommand = Get-Command git -ErrorAction SilentlyContinue
+    if (-not $gitCommand) {
+      Write-Host "[bootstrap] Git is missing; installing the pinned PortableGit via Hermes PM..." -ForegroundColor Cyan
+      & $python -m pm.cli install git
+      $gitInstallExitCode = $LASTEXITCODE
+      if ($gitInstallExitCode -ne 0) {
+        Write-Host "[bootstrap] Pinned Git installation failed (exit $gitInstallExitCode)." -ForegroundColor Yellow
+        return $false
+      }
+      # Newly installed tool directories are not inherited by the parent
+      # PowerShell automatically. Re-compose PATH from PM's recorded facts.
+      if (-not (Import-PmEnvironment -Python $python)) { return $false }
+      $gitCommand = Get-Command git -ErrorAction SilentlyContinue
+    }
+    if (-not $gitCommand) {
+      Write-Host "[bootstrap] Git remains unavailable after PM activation." -ForegroundColor Yellow
+      return $false
+    }
     $gitOut = & git --version 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $gitOut) { return $false }
+    $gitExitCode = $LASTEXITCODE
+    if ($gitExitCode -ne 0 -or -not $gitOut) {
+      Write-Host "[bootstrap] Git version check failed (exit $gitExitCode)." -ForegroundColor Yellow
+      return $false
+    }
+
     Write-Host "[bootstrap] Python 3.14, Node $nodeVersion, npm and Git ready." -ForegroundColor Green
     return $true
   } catch {
