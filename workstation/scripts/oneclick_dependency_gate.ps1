@@ -88,6 +88,13 @@ try {
   # when its editable distribution or transitive libraries are not installed.
   & $VenvPython -c "import sys, hermes_cli, httpx, pydantic; from importlib.metadata import version; assert sys.version_info[:2] == (3,14); version('hermes-agent')" 2>$null
   if ($LASTEXITCODE -ne 0) { Write-Host "[deps] Workstation Python environment needs repair."; exit 1 }
+  if (Get-Command uv -ErrorAction SilentlyContinue) {
+    & uv pip check --python $VenvPython 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "[deps] Python dependency graph is incomplete or incompatible; repairing."
+      exit 1
+    }
+  }
   if ($Action -eq "Record") {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $StampFile) | Out-Null
     [System.IO.File]::WriteAllText($StampFile, $fingerprint)
