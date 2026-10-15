@@ -38,10 +38,16 @@ function Get-InstallFingerprint {
       -not (Get-Command npm -ErrorAction SilentlyContinue)) {
     return $null
   }
-  $nodeVersion = (& node --version 2>$null | Select-Object -Last 1)
-  if ($LASTEXITCODE -ne 0) { return $null }
-  $npmVersion = (& cmd.exe /d /c "npm --version 2>NUL" | Select-Object -Last 1)
-  if ($LASTEXITCODE -ne 0) { return $null }
+  # Capture native exit statuses before any PowerShell pipeline; Windows
+  # PowerShell 5.1 can report -1 after piping a successful native command.
+  $nodeOutput = & node --version 2>$null
+  $nodeExit = $LASTEXITCODE
+  if ($nodeExit -ne 0 -or -not $nodeOutput) { return $null }
+  $nodeVersion = $nodeOutput | Select-Object -Last 1
+  $npmOutput = & cmd.exe /d /c "npm --version 2>NUL"
+  $npmExit = $LASTEXITCODE
+  if ($npmExit -ne 0 -or -not $npmOutput) { return $null }
+  $npmVersion = $npmOutput | Select-Object -Last 1
   $parts.Add("node=$nodeVersion")
   $parts.Add("npm=$npmVersion")
   $text = $parts -join "`n"
@@ -58,17 +64,43 @@ try {
     $VenvPython,
     (Join-Path $Root "node_modules\.bin\vite.cmd"),
     (Join-Path $Root "node_modules\.bin\tsc.cmd"),
-    (Join-Path $Root "apps\desktop\node_modules\.bin\electron.cmd"),
     (Join-Path $Root "node_modules\.bin\concurrently.cmd")
   )
   foreach ($path in $requiredPaths) {
-    if (-not (Test-Path -LiteralPath $path)) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
       Write-Host "[deps] Missing: $path"
       exit 1
     }
   }
-  & $VenvPython -c "import hermes_cli" 2>$null
-  if ($LASTEXITCODE -ne 0) { Write-Host "[deps] Python environment needs repair."; exit 1 }
+  # npm workspaces may hoist Electron to root or keep it locally. Either
+  # layout is valid, but the actual downloaded Windows executable is needed.
+  $electronRoots = @(
+    (Join-Path $Root "node_modules\electron"),
+    (Join-Path $Root "apps\desktop\node_modules\electron")
+  )
+  $electronReady = $false
+  foreach ($electronRoot in $electronRoots) {
+    $binary = Join-Path $electronRoot "dist\electron.exe"
+    if (Test-Path -LiteralPath $binary -PathType Leaf) {
+      $electronReady = $true
+      break
+    }
+  }
+  if (-not $electronReady) {
+    Write-Host "[deps] Electron executable is missing; npm workspace install needs repair."
+    exit 1
+  }
+  # Importing hermes_cli from the checkout is insufficient: it succeeds even
+  # when its editable distribution or transitive libraries are not installed.
+  & $VenvPython -c "import sys, hermes_cli, httpx, pydantic; from importlib.metadata import version; assert sys.version_info[:2] == (3,14); version('hermes-agent')" 2>$null
+  if ($LASTEXITCODE -ne 0) { Write-Host "[deps] Workstation Python environment needs repair."; exit 1 }
+  if (Get-Command uv -ErrorAction SilentlyContinue) {
+    & uv pip check --python $VenvPython 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "[deps] Python dependency graph is incomplete or incompatible; repairing."
+      exit 1
+    }
+  }
   if ($Action -eq "Record") {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $StampFile) | Out-Null
     [System.IO.File]::WriteAllText($StampFile, $fingerprint)

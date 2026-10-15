@@ -84,8 +84,12 @@ function Invoke-HermesPython {
 
 function Ensure-WorkstationVenv {
   if (Test-Path $VenvPython) {
-    $probe = & $VenvPython -c "import sys; print('HERMES_VENV_OK' if (3, 14) <= sys.version_info[:2] < (3, 15) else 'HERMES_VENV_UNSUPPORTED')" | Select-Object -Last 1
-    if ($LASTEXITCODE -ne 0 -or $probe -ne "HERMES_VENV_OK") {
+    # Capture the native exit code before piping; Windows PowerShell 5.1
+    # can report -1 after a successful external command in a pipeline.
+    $probeRaw = & $VenvPython -c "import sys; print('HERMES_VENV_OK' if (3, 14) <= sys.version_info[:2] < (3, 15) else 'HERMES_VENV_UNSUPPORTED')"
+    $probeExit = $LASTEXITCODE
+    $probe = $probeRaw | Select-Object -Last 1
+    if ($probeExit -ne 0 -or $probe -ne "HERMES_VENV_OK") {
       throw "Existing Workstation venv is invalid or unsupported: $VenvRoot. Preserve it and prepare a Python 3.14 environment in a separate checkout."
     }
     Write-Host "Using existing isolated Python environment: $VenvRoot" -ForegroundColor Green
@@ -142,8 +146,10 @@ function Install-HermesEditable {
 
 function Get-CheckoutStatus {
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $null }
-  $inside = (& git -C $Root rev-parse --is-inside-work-tree 2>$null | Select-Object -Last 1)
-  if ($LASTEXITCODE -ne 0 -or $inside -ne "true") { return $null }
+  $insideRaw = & git -C $Root rev-parse --is-inside-work-tree 2>$null
+  $gitExit = $LASTEXITCODE
+  $inside = $insideRaw | Select-Object -Last 1
+  if ($gitExit -ne 0 -or $inside -ne "true") { return $null }
   $status = & git -C $Root status --porcelain=v1 --untracked-files=all 2>$null
   if ($LASTEXITCODE -ne 0) { throw "Could not read Git checkout status." }
   return @($status) -join "`n"

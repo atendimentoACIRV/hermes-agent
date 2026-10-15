@@ -1,62 +1,15 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
-title Hermes Work - Dogfood Launcher
+title Hermes Work - One-Click Launcher
 
-echo ============================================================
-echo   HERMES WORK - ONE-CLICK DOGFOOD
-echo ============================================================
-echo.
-echo [1/3] Validating installation and dependency fingerprint...
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0workstation\scripts\oneclick_dependency_gate.ps1" -Action Check
-if errorlevel 1 (
-  echo [deps] Missing or changed dependencies - running installer...
-  call "%~dp0workstation\install.cmd"
-  if errorlevel 1 goto :install_failed
-  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0workstation\scripts\oneclick_dependency_gate.ps1" -Action Record
-  if errorlevel 1 goto :install_failed
-) else (
-  call "%~dp0workstation\install.cmd" -SkipDependencies
-  if errorlevel 1 goto :install_failed
-)
-
-echo.
-echo [2/3] Running Hermes Work Doctor...
-call "%~dp0workstation\doctor.cmd" -Strict
-if errorlevel 1 goto :doctor_failed
-
-echo.
-echo [3/3] Starting Hermes Work...
-findstr /c:"[switch]$SkipInstall" "%~dp0workstation\start.ps1" >nul 2>&1
-if errorlevel 1 (
-  rem Backwards-compatible fallback for a checkout older than the one-click launcher support.
-  call "%~dp0workstation\start.cmd"
-) else (
-  call "%~dp0workstation\start.cmd" -SkipInstall
-)
+rem Keep PM's per-process PATH and Python selection active through Electron startup.
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0workstation\scripts\oneclick_bootstrap.ps1"
 set "HERMES_EXIT=%ERRORLEVEL%"
-if not "%HERMES_EXIT%"=="0" goto :start_failed
-exit /b 0
+if "%HERMES_EXIT%"=="0" exit /b 0
 
-:install_failed
-set "HERMES_EXIT=%ERRORLEVEL%"
 echo.
-echo [FAIL] Installation/validation failed with exit code %HERMES_EXIT%.
-echo Fix the error shown above and double-click this file again.
-pause
-exit /b %HERMES_EXIT%
-
-:doctor_failed
-set "HERMES_EXIT=%ERRORLEVEL%"
-echo.
-echo [FAIL] Doctor failed with exit code %HERMES_EXIT%.
-echo Fix the error shown above and double-click this file again.
-pause
-exit /b %HERMES_EXIT%
-
-:start_failed
-echo.
-echo [FAIL] Hermes Work exited with code %HERMES_EXIT%.
-echo Review the output above, then double-click this file to retry.
+echo [FAIL] Hermes Work could not finish startup (exit %HERMES_EXIT%).
+echo Check the message above. First-run installation requires internet.
 pause
 exit /b %HERMES_EXIT%
