@@ -157,7 +157,7 @@ try {
 
     Write-Host ""
     Write-Host "[1/4] Checking Workstation dependency fingerprint..." -ForegroundColor Cyan
-    & $DependencyGate -Action Check
+    & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $DependencyGate -Action Check
     $needsInstall = ($LASTEXITCODE -ne 0)
     if ($needsInstall) {
       Invoke-Step -Name "[2/4] Installing missing/changed Workstation dependencies..." -Script $InstallScript
