@@ -155,6 +155,12 @@ try {
       Write-Host "[0/4] Upstream dependencies unchanged and healthy; skipping install." -ForegroundColor Green
     }
 
+    # Keep PM's pinned tools on PATH, but never combine its selected Python
+    # site-packages with Workstation's independent editable .venv. The latter
+    # must resolve its own dependency graph; the checkout remains importable.
+    $env:PYTHONPATH = $Root
+    Remove-Item Env:VIRTUAL_ENV -ErrorAction SilentlyContinue
+
     Write-Host ""
     Write-Host "[1/4] Checking Workstation dependency fingerprint..." -ForegroundColor Cyan
     & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $DependencyGate -Action Check
