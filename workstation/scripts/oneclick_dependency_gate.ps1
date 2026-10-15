@@ -38,10 +38,16 @@ function Get-InstallFingerprint {
       -not (Get-Command npm -ErrorAction SilentlyContinue)) {
     return $null
   }
-  $nodeVersion = (& node --version 2>$null | Select-Object -Last 1)
-  if ($LASTEXITCODE -ne 0) { return $null }
-  $npmVersion = (& cmd.exe /d /c "npm --version 2>NUL" | Select-Object -Last 1)
-  if ($LASTEXITCODE -ne 0) { return $null }
+  # Capture native exit statuses before any PowerShell pipeline; Windows
+  # PowerShell 5.1 can report -1 after piping a successful native command.
+  $nodeOutput = & node --version 2>$null
+  $nodeExit = $LASTEXITCODE
+  if ($nodeExit -ne 0 -or -not $nodeOutput) { return $null }
+  $nodeVersion = $nodeOutput | Select-Object -Last 1
+  $npmOutput = & cmd.exe /d /c "npm --version 2>NUL"
+  $npmExit = $LASTEXITCODE
+  if ($npmExit -ne 0 -or -not $npmOutput) { return $null }
+  $npmVersion = $npmOutput | Select-Object -Last 1
   $parts.Add("node=$nodeVersion")
   $parts.Add("npm=$npmVersion")
   $text = $parts -join "`n"
